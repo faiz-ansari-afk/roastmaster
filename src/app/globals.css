@@ -126,4 +126,21 @@
   html {
     @apply font-mono;
   }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
 }
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thumb-zinc-800::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 2px;
+}
+}
+
+
+
