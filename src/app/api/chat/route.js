@@ -61,10 +61,32 @@ export async function POST(req) {
     const lastMessage = messages[messages.length - 1].content;
 
     const chat = model.startChat({ history });
-    const result = await chat.sendMessage(lastMessage);
-    const reply = result.response.text();
 
-    return NextResponse.json({ reply });
+    const result = await chat.sendMessageStream(lastMessage);
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        try {
+          for await (const chunk of result.stream) {
+            const text = chunk.text();
+            if (text) {
+              controller.enqueue(encoder.encode(text));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
+    // const reply = result.response.text();
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+      },
+    });
   } catch (error) {
     console.error("Gemini API error:", error);
 

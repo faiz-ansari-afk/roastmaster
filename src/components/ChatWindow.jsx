@@ -3,56 +3,27 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createSession, getMessages, saveCompletedExchange } from "@/lib/firestore";
 
-// ── Word-by-word animated bot message ────────────────────────────────────────
-function AnimatedBotMessage({ content, isNew }) {
-  const [visibleCount, setVisibleCount] = useState(isNew ? 0 : Infinity);
-  const words = content.split(" ");
-
-  useEffect(() => {
-    if (!isNew) return;
-    setVisibleCount(0);
-    let i = 0;
-    // Speed varies: short words faster, punctuation has slight pause
-    const tick = () => {
-      i++;
-      setVisibleCount(i);
-      if (i < words.length) {
-        const word = words[i - 1];
-        const hasPunct = /[.!?,;]$/.test(word);
-        const delay = hasPunct ? 120 : 42;
-        setTimeout(tick, delay);
-      }
-    };
-    // Small initial delay so dots disappear first
-    const t = setTimeout(tick, 80);
-    return () => clearTimeout(t);
-  }, [content, isNew]);
-
+// ── Streamed bot message ──────────────────────────────────────────────────
+function BotMessageBubble({ content, isStreaming }) {
   return (
     <div className="flex items-end gap-3 max-w-2xl">
       <div className="w-8 h-8 rounded-full bg-[#1a0000] border border-[#ff2200]/30 flex items-center justify-center text-sm shrink-0">
         🔥
       </div>
-      <div className="px-4 py-3 rounded-2xl rounded-bl-sm text-sm leading-relaxed font-mono bg-[#1c1c1c] border border-zinc-700/60 text-zinc-100">
-        {words.slice(0, visibleCount).map((word, i) => (
+      <div className="px-4 py-3 rounded-2xl rounded-bl-sm text-sm leading-relaxed font-mono bg-[#1c1c1c] border border-zinc-700/60 text-zinc-100 whitespace-pre-wrap break-words">
+        {content}
+        {isStreaming && (
           <span
-            key={i}
             style={{
-              display: "inline",
-              opacity: i === visibleCount - 1 && visibleCount < words.length ? 0.5 : 1,
-              transition: "opacity 0.1s",
+              display: "inline-block",
+              width: 6,
+              height: 14,
+              background: "#ff2200",
+              marginLeft: 4,
+              verticalAlign: "middle",
+              animation: "cursorBlink 0.5s steps(1) infinite",
             }}
-          >
-            {word}{i < visibleCount - 1 || visibleCount >= words.length ? " " : ""}
-          </span>
-        ))}
-        {/* Blinking cursor while typing */}
-        {visibleCount < words.length && (
-          <span style={{
-            display: "inline-block", width: 6, height: 12,
-            background: "#ff2200", marginLeft: 2, verticalAlign: "middle",
-            animation: "cursorBlink 0.5s steps(1) infinite",
-          }} />
+          />
         )}
       </div>
       <style>{`
@@ -62,17 +33,19 @@ function AnimatedBotMessage({ content, isNew }) {
   );
 }
 
-function MessageBubble({ message, isNew }) {
+function MessageBubble({ message, isStreaming }) {
   const isUser = message.role === "user";
 
-  if (!isUser) return <AnimatedBotMessage content={message.content} isNew={isNew} />;
+  if (!isUser) {
+    return <BotMessageBubble content={message.content} isStreaming={isStreaming} />;
+  }
 
   return (
     <div className="flex items-end gap-3 flex-row-reverse max-w-2xl ml-auto">
       <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-sm shrink-0">
         😬
       </div>
-      <div className="px-4 py-3 rounded-2xl rounded-br-sm text-sm leading-relaxed font-mono bg-zinc-900 border border-zinc-800 text-zinc-300">
+      <div className="px-4 py-3 rounded-2xl rounded-br-sm text-sm leading-relaxed font-mono bg-zinc-900 border border-zinc-800 text-zinc-300 whitespace-pre-wrap break-words">
         {message.content}
       </div>
     </div>
@@ -85,17 +58,16 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const [messages, setMessages]               = useState([]);
   const [input, setInput]                     = useState("");
   const [loading, setLoading]                 = useState(false);
+  const [isStreaming, setIsStreaming]         = useState(false);
   const [loadingHistory, setLoadingHistory]   = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
-  // Track which message index is "new" (should animate)
-  const [animatingIdx, setAnimatingIdx]       = useState(null);
   const bottomRef   = useRef(null);
   const textareaRef = useRef(null);
 
   useEffect(() => {
     setCurrentSessionId(sessionId);
     setMessages([]);
-    setAnimatingIdx(null);
+    setIsStreaming(false);
   }, [sessionId]);
 
   useEffect(() => {
@@ -116,19 +88,40 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   };
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+    bottomRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
+  }, [messages, loading, isStreaming]);
+
+  const saveExchange = async (userText, botReply, isFirstMsg) => {
+    if (!user || isGuest || !botReply) return;
+    try {
+      let sid = currentSessionId;
+      if (!sid) {
+        console.log("[Firestore] Creating session for:", user.uid);
+        sid = await createSession(user.uid);
+        console.log("[Firestore] Session created:", sid);
+        setCurrentSessionId(sid);
+        onSessionCreated?.(sid);
+      }
+      if (sid) {
+        await saveCompletedExchange(user.uid, sid, userText, botReply, isFirstMsg, isFirstMsg ? userText : null);
+        console.log("[Firestore] Saved successfully ✅");
+      }
+    } catch (e) {
+      console.error("[Firestore] FAILED ❌ code:", e.code, "message:", e.message);
+    }
+  };
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || isStreaming) return;
     setInput("");
 
     const userMsg = { role: "user", content: text };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setLoading(true);
-    setAnimatingIdx(null);
+
+    const isFirst = messages.length === 0;
 
     try {
       const res = await fetch("/api/chat", {
@@ -140,48 +133,80 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       });
 
       if (!res.ok) throw new Error(`API error ${res.status}`);
-      const data = await res.json();
-      const reply = data.reply || "You broke me. Congrats, I guess.";
-      const botMsg = { role: "assistant", content: reply };
 
-      setMessages((prev) => {
-        const next = [...prev, botMsg];
-        setAnimatingIdx(next.length - 1); // mark last message as new
-        return next;
-      });
+      const contentType = res.headers.get("content-type") || "";
+
+      // Fallback if backend returned JSON (e.g. error replies)
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        const reply = data.reply || "You broke me. Congrats, I guess.";
+        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+        setLoading(false);
+        saveExchange(text, reply, isFirst);
+        return;
+      }
+
+      // Stream handling
       setLoading(false);
+      setIsStreaming(true);
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-      // Save in background
-      if (user && !isGuest) {
-        const isFirst = messages.length === 0;
-        (async () => {
-          try {
-            let sid = currentSessionId;
-            if (!sid) {
-              console.log("[Firestore] Creating session for:", user.uid);
-              sid = await createSession(user.uid);
-              console.log("[Firestore] Session created:", sid);
-              setCurrentSessionId(sid);
-              onSessionCreated?.(sid);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedReply = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          accumulatedReply += chunk;
+          setMessages((prev) => {
+            const next = [...prev];
+            const lastIdx = next.length - 1;
+            if (lastIdx >= 0 && next[lastIdx].role === "assistant") {
+              next[lastIdx] = {
+                ...next[lastIdx],
+                content: accumulatedReply,
+              };
             }
-            if (sid) {
-              await saveCompletedExchange(user.uid, sid, text, reply, isFirst, isFirst ? text : null);
-              console.log("[Firestore] Saved successfully ✅");
-            }
-          } catch (e) {
-            console.error("[Firestore] FAILED ❌ code:", e.code, "message:", e.message);
-          }
-        })();
+            return next;
+          });
+        }
+      } finally {
+        setIsStreaming(false);
+      }
+
+      if (accumulatedReply) {
+        saveExchange(text, accumulatedReply, isFirst);
       }
     } catch (err) {
       console.error("sendMessage:", err);
-      setMessages((prev) => [...prev, { role: "assistant", content: "Even my error handling gave up on you. That's a new low." }]);
       setLoading(false);
+      setIsStreaming(false);
+      setMessages((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last && last.role === "assistant" && !last.content) {
+          next[next.length - 1] = {
+            role: "assistant",
+            content: "Even my error handling gave up on you. That's a new low.",
+          };
+          return next;
+        }
+        return [
+          ...prev,
+          { role: "assistant", content: "Even my error handling gave up on you. That's a new low." },
+        ];
+      });
     }
-  }, [input, loading, messages, currentSessionId, user, isGuest, onSessionCreated]);
+  }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated]);
 
   const handleKey = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!loading && !isStreaming) sendMessage();
+    }
   };
 
   const handleInput = (e) => {
@@ -201,7 +226,11 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           <EmptyState onShowAuth={onShowAuth} user={user} isGuest={isGuest} />
         ) : (
           messages.map((msg, i) => (
-            <MessageBubble key={i} message={msg} isNew={i === animatingIdx} />
+            <MessageBubble
+              key={i}
+              message={msg}
+              isStreaming={isStreaming && i === messages.length - 1}
+            />
           ))
         )}
 
@@ -240,10 +269,10 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           />
           <button
             onClick={sendMessage}
-            disabled={loading || !input.trim()}
+            disabled={loading || isStreaming || !input.trim()}
             className="w-11 h-11 bg-[#ff2200] hover:bg-[#cc1a00] disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-xl transition-all flex items-center justify-center text-lg shrink-0 shadow-[0_0_20px_rgba(255,34,0,0.3)] disabled:shadow-none"
           >
-            {loading ? <span className="animate-spin text-sm">◌</span> : "🔥"}
+            {loading || isStreaming ? <span className="animate-spin text-sm">◌</span> : "🔥"}
           </button>
         </div>
         <p className="text-center text-zinc-500 text-[10px] mt-2 font-mono">
