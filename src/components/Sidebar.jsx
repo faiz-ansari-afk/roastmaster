@@ -2,7 +2,7 @@
 // components/Sidebar.jsx
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getSessions, createSession, deleteSession } from "@/lib/firestore";
+import { subscribeToSessions, deleteSession } from "@/lib/firestore";
 
 export default function Sidebar({
   activeSessionId,
@@ -17,30 +17,32 @@ export default function Sidebar({
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Fetch sessions whenever user changes or a new session is created
+  // Real-time Firestore listener for user sessions
   useEffect(() => {
-    if (!user || isGuest) { setSessions([]); return; }
-    fetchSessions();
+    if (!user || isGuest) {
+      setSessions([]);
+      setLoadingSessions(false);
+      return;
+    }
+
+    setLoadingSessions(true);
+    const unsubscribe = subscribeToSessions(user.uid, (data) => {
+      setSessions(data || []);
+      setLoadingSessions(false);
+    });
+
+    return () => unsubscribe();
   }, [user, isGuest]);
 
-  const fetchSessions = async () => {
-    if (!user || isGuest) return;
-    setLoadingSessions(true);
+  const handleLogout = async () => {
     try {
-      const data = await getSessions(user.uid);
-      setSessions(data);
-    } catch (e) {
-      console.error("Failed to fetch sessions", e);
-    } finally {
-      setLoadingSessions(false);
+      await logout();
+      setSessions([]);
+      onNewSession();
+    } catch (err) {
+      console.error("Logout error:", err);
     }
   };
-
-  // Called by parent when a new session is created so we can refresh
-  useEffect(() => {
-    if (!user || isGuest) return;
-    fetchSessions();
-  }, [activeSessionId]);
 
   const handleDelete = async (e, sessionId) => {
     e.stopPropagation();
@@ -190,11 +192,11 @@ export default function Sidebar({
                 </p>
               </div>
               <button
-                onClick={logout}
-                className="text-zinc-600 hover:text-red-400 text-xs transition-colors shrink-0"
+                onClick={handleLogout}
+                className="text-zinc-600 hover:text-red-400 text-xs transition-colors shrink-0 cursor-pointer"
                 title="Sign out"
               >
-                Out
+                Sign Out
               </button>
             </div>
           )}

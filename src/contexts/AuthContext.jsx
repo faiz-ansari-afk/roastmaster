@@ -21,10 +21,16 @@ export function AuthProvider({ children }) {
   const loginWithGoogle    = () => signInWithPopup(auth, new GoogleAuthProvider());
   const loginWithEmail     = (email, pw) => signInWithEmailAndPassword(auth, email, pw);
   const loginAsGuest       = () => signInAnonymously(auth);
-  const logout             = () => signOut(auth);
+  const logout             = async () => {
+    await signOut(auth);
+    setUser(null);
+  };
   const signUpWithEmail    = async (email, pw, displayName) => {
     const cred = await createUserWithEmailAndPassword(auth, email, pw);
-    if (displayName) await updateProfile(cred.user, { displayName });
+    if (displayName) {
+      await updateProfile(cred.user, { displayName });
+      setUser({ ...cred.user, displayName });
+    }
     return cred;
   };
 

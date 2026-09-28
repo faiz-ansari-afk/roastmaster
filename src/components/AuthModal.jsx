@@ -12,6 +12,36 @@ export default function AuthModal({ onClose }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const getFriendlyError = (e) => {
+    const code = e?.code || "";
+    if (code === "auth/admin-restricted-operation") {
+      return "Anonymous guest login is not enabled in Firebase Console. Please sign up or log in with Email/Google.";
+    }
+    if (code === "auth/email-already-in-use") {
+      return "This email is already registered. Please switch to Log In.";
+    }
+    if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+      return "Invalid email or password. Please check your credentials.";
+    }
+    if (code === "auth/weak-password") {
+      return "Password should be at least 6 characters long.";
+    }
+    if (code === "auth/invalid-email") {
+      return "Please enter a valid email address.";
+    }
+    if (code === "auth/popup-closed-by-user") {
+      return "Google sign-in popup was closed before completion.";
+    }
+    if (code === "auth/cancelled-popup-request") {
+      return "Sign-in was cancelled.";
+    }
+    if (code === "auth/unauthorized-domain") {
+      return "Domain is not authorized in Firebase Console (Authentication → Settings → Authorized domains).";
+    }
+    const msg = e?.message || "Something went wrong. Please try again.";
+    return msg.replace("Firebase: ", "").replace(/\(auth\/[^)]+\)\.?/, "").trim() || "Authentication failed.";
+  };
+
   const handle = async (fn) => {
     setError("");
     setLoading(true);
@@ -19,10 +49,21 @@ export default function AuthModal({ onClose }) {
       await fn();
       onClose();
     } catch (e) {
-      setError(e.message.replace("Firebase: ", "").replace(/\(auth.*\)/, ""));
+      console.error("[Auth] Error:", e);
+      setError(getFriendlyError(e));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!email || !password || loading) return;
+    handle(
+      mode === "login"
+        ? () => loginWithEmail(email, password)
+        : () => signUpWithEmail(email, password, displayName)
+    );
   };
 
   return (
@@ -32,7 +73,7 @@ export default function AuthModal({ onClose }) {
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-zinc-500 hover:text-white text-xl transition-colors"
+          className="absolute top-4 right-4 text-zinc-500 hover:text-white text-xl transition-colors cursor-pointer"
         >✕</button>
 
         {/* Header */}
@@ -50,9 +91,10 @@ export default function AuthModal({ onClose }) {
 
         {/* Google */}
         <button
+          type="button"
           onClick={() => handle(loginWithGoogle)}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-white text-black font-bold py-3 px-4 rounded-xl mb-4 hover:bg-zinc-200 transition-all text-sm disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-3 bg-white text-black font-bold py-3 px-4 rounded-xl mb-4 hover:bg-zinc-200 transition-all text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >
           <svg viewBox="0 0 24 24" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -71,7 +113,7 @@ export default function AuthModal({ onClose }) {
         </div>
 
         {/* Email form */}
-        <div className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3">
           {mode === "signup" && (
             <input
               type="text"
@@ -84,6 +126,7 @@ export default function AuthModal({ onClose }) {
           <input
             type="email"
             placeholder="Email"
+            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full bg-zinc-900 border border-zinc-800 focus:border-[#ff2200] text-white placeholder-zinc-600 px-4 py-3 rounded-xl outline-none transition-colors text-sm"
@@ -91,38 +134,34 @@ export default function AuthModal({ onClose }) {
           <input
             type="password"
             placeholder="Password"
+            required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full bg-zinc-900 border border-zinc-800 focus:border-[#ff2200] text-white placeholder-zinc-600 px-4 py-3 rounded-xl outline-none transition-colors text-sm"
           />
-        </div>
 
-        {error && (
-          <p className="text-red-400 text-xs mt-3 bg-red-950/40 border border-red-900/50 rounded-lg px-3 py-2">
-            ⚠️ {error ?? 'Kya Cheda Bhosdi?'}
-          </p>
-        )}
+          {error && (
+            <p className="text-red-400 text-xs mt-3 bg-red-950/40 border border-red-900/50 rounded-lg px-3 py-2 leading-relaxed">
+              ⚠️ {error}
+            </p>
+          )}
 
-        <button
-          onClick={() =>
-            handle(
-              mode === "login"
-                ? () => loginWithEmail(email, password)
-                : () => signUpWithEmail(email, password, displayName)
-            )
-          }
-          disabled={loading || !email || !password}
-          className="w-full mt-4 bg-[#ff2200] hover:bg-[#cc1a00] text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {loading ? "Loading..." : mode === "login" ? "Login" : "Sign Up"}
-        </button>
+          <button
+            type="submit"
+            disabled={loading || !email || !password}
+            className="w-full mt-4 bg-[#ff2200] hover:bg-[#cc1a00] text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-sm disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+          >
+            {loading ? "Processing..." : mode === "login" ? "Login" : "Sign Up"}
+          </button>
+        </form>
 
         {/* Toggle mode */}
         <p className="text-center text-zinc-600 text-xs mt-4">
           {mode === "login" ? "No account yet? " : "Already suffering? "}
           <button
+            type="button"
             onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); }}
-            className="text-[#ff2200] hover:underline"
+            className="text-[#ff2200] hover:underline cursor-pointer"
           >
             {mode === "login" ? "Sign Up" : "Log In"}
           </button>
@@ -137,9 +176,10 @@ export default function AuthModal({ onClose }) {
 
         {/* Guest */}
         <button
+          type="button"
           onClick={() => handle(loginAsGuest)}
           disabled={loading}
-          className="w-full border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-white font-bold py-3 rounded-xl transition-all text-sm disabled:opacity-50"
+          className="w-full border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-white font-bold py-3 rounded-xl transition-all text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >
           👤 Continue as Guest
         </button>

@@ -5,13 +5,18 @@ import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
-import { createSession } from "@/lib/firestore";
-
 export default function ChatPage() {
   const { user, isGuest } = useAuth();
   const [sessionId, setSessionId] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Reset session on logout
+  useEffect(() => {
+    if (!user) {
+      setSessionId(null);
+    }
+  }, [user]);
 
   // Listen for starter prompt events from ChatWindow empty state
   useEffect(() => {

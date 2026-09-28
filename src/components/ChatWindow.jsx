@@ -61,31 +61,42 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const [isStreaming, setIsStreaming]         = useState(false);
   const [loadingHistory, setLoadingHistory]   = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
+  const sessionCreatedLocallyRef = useRef(null);
   const bottomRef   = useRef(null);
   const textareaRef = useRef(null);
 
-  useEffect(() => {
-    setCurrentSessionId(sessionId);
-    setMessages([]);
-    setIsStreaming(false);
-  }, [sessionId]);
-
-  useEffect(() => {
-    if (!currentSessionId || !user || isGuest) return;
-    loadHistory();
-  }, [currentSessionId]);
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async (sidToLoad) => {
+    if (!user || isGuest || !sidToLoad) return;
     setLoadingHistory(true);
     try {
-      const msgs = await getMessages(user.uid, currentSessionId);
-      setMessages(msgs);
+      const msgs = await getMessages(user.uid, sidToLoad);
+      setMessages(msgs || []);
     } catch (e) {
       console.error("loadHistory:", e);
+      setMessages([]);
     } finally {
       setLoadingHistory(false);
     }
-  };
+  }, [user, isGuest]);
+
+  useEffect(() => {
+    // If sessionId changed because we just created it locally for the current conversation,
+    // do not wipe messages or reload history!
+    if (sessionCreatedLocallyRef.current === sessionId) {
+      sessionCreatedLocallyRef.current = null;
+      setCurrentSessionId(sessionId);
+      return;
+    }
+
+    setCurrentSessionId(sessionId);
+    setIsStreaming(false);
+
+    if (sessionId && user && !isGuest) {
+      loadHistory(sessionId);
+    } else {
+      setMessages([]);
+    }
+  }, [sessionId, user, isGuest, loadHistory]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
@@ -99,15 +110,27 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         console.log("[Firestore] Creating session for:", user.uid);
         sid = await createSession(user.uid);
         console.log("[Firestore] Session created:", sid);
-        setCurrentSessionId(sid);
-        onSessionCreated?.(sid);
+        if (sid) {
+          sessionCreatedLocallyRef.current = sid;
+          setCurrentSessionId(sid);
+          onSessionCreated?.(sid);
+        }
       }
       if (sid) {
-        await saveCompletedExchange(user.uid, sid, userText, botReply, isFirstMsg, isFirstMsg ? userText : null);
-        console.log("[Firestore] Saved successfully ✅");
+        const ok = await saveCompletedExchange(
+          user.uid,
+          sid,
+          userText,
+          botReply,
+          isFirstMsg,
+          isFirstMsg ? userText : null
+        );
+        if (ok) {
+          console.log("[Firestore] Saved exchange successfully ✅");
+        }
       }
     } catch (e) {
-      console.error("[Firestore] FAILED ❌ code:", e.code, "message:", e.message);
+      console.error("[Firestore] saveExchange error:", e?.code, e?.message);
     }
   };
 
