@@ -9,6 +9,7 @@ export default function Sidebar({
   activeSessionId,
   onSelectSession,
   onNewSession,
+  onDeleteSession,
   onShowAuth,
   sidebarOpen,
   onCloseSidebar,
@@ -17,6 +18,18 @@ export default function Sidebar({
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && sessionToDelete && !deletingId) {
+        setSessionToDelete(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sessionToDelete, deletingId]);
 
   // Real-time Firestore listener for user sessions
   useEffect(() => {
@@ -45,16 +58,26 @@ export default function Sidebar({
     }
   };
 
-  const handleDelete = async (e, sessionId) => {
+  const handleDeleteClick = (e, session) => {
     e.stopPropagation();
-    if (!confirm("Delete this session?")) return;
-    setDeletingId(sessionId);
+    setSessionToDelete(session);
+  };
+
+  const confirmDelete = async () => {
+    if (!sessionToDelete || !user) return;
+    const deletedId = sessionToDelete.id;
+    setDeletingId(deletedId);
     try {
-      await deleteSession(user.uid, sessionId);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      if (activeSessionId === sessionId) onNewSession();
+      await deleteSession(user.uid, deletedId);
+      setSessions((prev) => prev.filter((s) => s.id !== deletedId));
+      if (onDeleteSession) {
+        onDeleteSession(deletedId);
+      } else if (activeSessionId === deletedId) {
+        onNewSession();
+      }
+      setSessionToDelete(null);
     } catch (err) {
-      console.error(err);
+      console.error("Delete session error:", err);
     } finally {
       setDeletingId(null);
     }
@@ -167,16 +190,13 @@ export default function Sidebar({
                   </p>
                 </div>
                 <button
-                  onClick={(e) => handleDelete(e, session.id)}
+                  onClick={(e) => handleDeleteClick(e, session)}
                   disabled={deletingId === session.id}
                   className="opacity-0 group-hover:opacity-100 text-[#8C7E74] hover:text-[#DC2626] transition-all p-1.5 rounded-md hover:bg-[#E2D6C7] shrink-0 cursor-pointer"
                   title="Delete session"
+                  aria-label={`Delete session ${session.title}`}
                 >
-                  {deletingId === session.id ? (
-                    <span className="text-xs">...</span>
-                  ) : (
-                    <Trash2 className="w-3.5 h-3.5" />
-                  )}
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))
@@ -223,6 +243,68 @@ export default function Sidebar({
           )}
         </div>
       </aside>
+
+      {/* Delete Confirmation Modal */}
+      {sessionToDelete && (
+        <div
+          className="fixed inset-0 bg-[#241E1C]/50 backdrop-blur-xs z-[100] flex items-center justify-center p-4 transition-all"
+          onClick={() => !deletingId && setSessionToDelete(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+            className="relative w-full max-w-sm bg-white border border-[#E8E0D5] rounded-2xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(36,30,28,0.2)] text-[#241E1C]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-[#FEF2F2] border border-[#FEE2E2] flex items-center justify-center mx-auto mb-3.5 text-[#DC2626] shadow-2xs">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center mb-5">
+              <h3 id="delete-modal-title" className="text-base sm:text-lg font-bold text-[#241E1C]">
+                Delete Roast Session?
+              </h3>
+              <p className="text-xs text-[#786C63] mt-1.5 leading-relaxed">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-[#241E1C]">
+                  "{sessionToDelete.title || "this session"}"
+                </span>
+                ? All roasts and messages in this session will be permanently erased.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                disabled={!!deletingId}
+                onClick={() => setSessionToDelete(null)}
+                className="flex-1 py-2.5 px-3 border border-[#DDD3C4] hover:bg-[#F6F0E6] text-[#5F544D] hover:text-[#241E1C] font-semibold rounded-xl text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!!deletingId}
+                onClick={confirmDelete}
+                className="flex-1 py-2.5 px-3 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold rounded-xl text-xs sm:text-sm shadow-xs transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 active:scale-98"
+              >
+                {deletingId ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

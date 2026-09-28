@@ -9,6 +9,7 @@ import { Flame, Menu, Plus } from "lucide-react";
 export default function ChatPage() {
   const { user, isGuest } = useAuth();
   const [sessionId, setSessionId] = useState(null);
+  const [chatResetKey, setChatResetKey] = useState(0);
   const [showAuth, setShowAuth] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -16,6 +17,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (!user) {
       setSessionId(null);
+      setChatResetKey((k) => k + 1);
     }
   }, [user]);
 
@@ -39,6 +41,13 @@ export default function ChatPage() {
 
   const handleNewSession = () => {
     setSessionId(null);
+    setChatResetKey((k) => k + 1);
+  };
+
+  const handleDeleteSession = (deletedId) => {
+    if (sessionId === deletedId || !sessionId) {
+      handleNewSession();
+    }
   };
 
   const handleSessionCreated = (sid) => {
@@ -52,6 +61,7 @@ export default function ChatPage() {
         activeSessionId={sessionId}
         onSelectSession={setSessionId}
         onNewSession={handleNewSession}
+        onDeleteSession={handleDeleteSession}
         onShowAuth={() => setShowAuth(true)}
         sidebarOpen={sidebarOpen}
         onCloseSidebar={() => setSidebarOpen(false)}
@@ -108,6 +118,7 @@ export default function ChatPage() {
         {/* Chat */}
         <div className="flex-1 overflow-hidden relative">
           <ChatWindow
+            key={chatResetKey}
             sessionId={sessionId}
             onSessionCreated={handleSessionCreated}
             onShowAuth={() => setShowAuth(true)}

@@ -83,12 +83,13 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   useEffect(() => {
     // If sessionId changed because we just created it locally for the current conversation,
     // do not wipe messages or reload history!
-    if (sessionCreatedLocallyRef.current === sessionId) {
+    if (sessionId && sessionCreatedLocallyRef.current === sessionId) {
       sessionCreatedLocallyRef.current = null;
       setCurrentSessionId(sessionId);
       return;
     }
 
+    sessionCreatedLocallyRef.current = null;
     setCurrentSessionId(sessionId);
     setIsStreaming(false);
 
@@ -96,6 +97,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       loadHistory(sessionId);
     } else {
       setMessages([]);
+      setInput("");
     }
   }, [sessionId, user, isGuest, loadHistory]);
 
