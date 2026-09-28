@@ -1,21 +1,22 @@
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { Flame, BookmarkCheck, User, Zap } from "lucide-react";
 
 const DEMO_SCRIPT = [
-  { role: "user",  text: "Yaar itni garmi kyun ho rahi hai aajkal? 😩", delay: 700 },
-  { role: "bot",   text: "Itni dikkat hai toh Pakistan chale jaa —🔥", delay: 1600 },
+  { role: "user",  text: "Yaar itni garmi kyun ho rahi hai aajkal?", delay: 700 },
+  { role: "bot",   text: "Itni dikkat hai toh Pakistan chale jaa —", delay: 1600 },
   { role: "user",  text: "Bhai seriously, global warming ka koi solution bata na", delay: 1100 },
-  { role: "bot",   text: "Tum log AC full blast karte ho, fir poochte ho garmi kyun hai. Pehle apna IQ globally warm karo bhai, phir baat karte hain. 🙏", delay: 1700 },
-  { role: "user",  text: "Abe tu toh bahut bura hai yaar 😭😭", delay: 900 },
-  { role: "bot",   text: "Aur tu bahut bekar sawal poochta hai — phir bhi dono yahin hain. Toh kaun zyada bekar hai? Soch le. 🤌", delay: 1800 },
+  { role: "bot",   text: "Tum log AC full blast karte ho, fir poochte ho garmi kyun hai. Pehle apna IQ globally warm karo bhai, phir baat karte hain.", delay: 1700 },
+  { role: "user",  text: "Abe tu toh bahut bura hai yaar", delay: 900 },
+  { role: "bot",   text: "Aur tu bahut bekar sawal poochta hai — phir bhi dono yahin hain. Toh kaun zyada bekar hai? Soch le.", delay: 1800 },
 ];
 
 const FEATURES = [
-  { icon: "🔥", label: "Roasts every answer" },
-  { icon: "💾", label: "Saves your humiliation history" },
-  { icon: "👤", label: "Guest or account login" },
-  { icon: "⚡", label: "Powered by Claude AI" },
+  { icon: Flame, label: "Roasts every answer" },
+  { icon: BookmarkCheck, label: "Saves humiliation history" },
+  { icon: User, label: "Guest or account login" },
+  { icon: Zap, label: "Powered by Claude AI" },
 ];
 
 // ── Typewriter ───────────────────────────────────────────────────────────────
@@ -55,12 +56,12 @@ function DemoMessage({ msg, active, onDone, onTick }) {
     }}>
       <div style={{
         width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
+        display: "flex", alignItems: "center", justifyContent: "center",
         background: isBot ? "#FEF3C7" : "#EFE8DE",
         border: isBot ? "1px solid #FDE68A" : "1px solid #DDD3C4",
         boxShadow: isBot ? "0 2px 8px rgba(217,119,6,0.15)" : "none",
       }}>
-        {isBot ? "🔥" : "😬"}
+        {isBot ? <Flame className="w-3.5 h-3.5 text-[#D97706]" /> : <User className="w-3.5 h-3.5 text-[#786C63]" />}
       </div>
 
       <div style={{
@@ -202,10 +203,15 @@ export default function IntroPage() {
         {/* Title */}
         <div style={{ textAlign: "center" }}>
           <div style={{
-            fontSize: 48, marginBottom: 6, display: "inline-block",
-            filter: "drop-shadow(0 4px 16px rgba(217,119,6,0.35))",
+            width: 52, height: 52, borderRadius: 16,
+            background: "#FEF3C7", border: "1px solid #FDE68A",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            marginBottom: 8,
+            boxShadow: "0 4px 16px rgba(217,119,6,0.2)",
             animation: "popIn 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.2s both",
-          }}>🔥</div>
+          }}>
+            <Flame className="w-7 h-7 text-[#D97706]" />
+          </div>
 
           <div style={{ position: "relative" }}>
             <h1 style={{
@@ -223,7 +229,7 @@ export default function IntroPage() {
             color: "#8C7E74", fontSize: 9.5, letterSpacing: 5,
             textTransform: "uppercase", marginTop: 6, fontWeight: 700,
             animation: "fadeIn 0.5s 1s both",
-          }}>AI THAT HATES YOU • DESI EDITION 🇮🇳</div>
+          }}>AI THAT HATES YOU • DESI EDITION</div>
         </div>
 
         {/* ── Demo chat ── */}
@@ -284,18 +290,21 @@ export default function IntroPage() {
         {/* ── Features ── */}
         {showFeatures && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {FEATURES.map((f, i) => (
-              <div key={i} style={{
-                background: "#FFFFFF", border: "1px solid #E8E0D5",
-                borderRadius: 12, padding: "10px 12px",
-                display: "flex", alignItems: "center", gap: 8,
-                boxShadow: "0 2px 8px rgba(36,30,28,0.03)",
-                animation: `fadeUp 0.35s ${i * 0.07}s cubic-bezier(0.34,1.4,0.64,1) both`,
-              }}>
-                <span style={{ fontSize: 15 }}>{f.icon}</span>
-                <span style={{ color: "#5F544D", fontSize: 11.5, fontWeight: 600 }}>{f.label}</span>
-              </div>
-            ))}
+            {FEATURES.map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <div key={i} style={{
+                  background: "#FFFFFF", border: "1px solid #E8E0D5",
+                  borderRadius: 12, padding: "10px 12px",
+                  display: "flex", alignItems: "center", gap: 8,
+                  boxShadow: "0 2px 8px rgba(36,30,28,0.03)",
+                  animation: `fadeUp 0.35s ${i * 0.07}s cubic-bezier(0.34,1.4,0.64,1) both`,
+                }}>
+                  <Icon className="w-4 h-4 text-[#D97706] shrink-0" />
+                  <span style={{ color: "#5F544D", fontSize: 11.5, fontWeight: 600 }}>{f.label}</span>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -324,7 +333,10 @@ export default function IntroPage() {
                 transition: "transform 0.18s, box-shadow 0.18s",
               }}
             >
-              🔥 &nbsp; HIMMAT HAI TOH ANDAR AA
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Flame style={{ width: 16, height: 16 }} />
+                <span>HIMMAT HAI TOH ANDAR AA</span>
+              </span>
             </button>
             <p style={{ textAlign: "center", color: "#8C7E74", fontSize: 9.5, marginTop: 9, letterSpacing: 2, fontWeight: 600 }}>
               MAAKE LAADLE FEELINGS NHI BACHEGI • GUARANTEED

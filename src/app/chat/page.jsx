@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { Flame, Menu, Plus } from "lucide-react";
 export default function ChatPage() {
   const { user, isGuest } = useAuth();
   const [sessionId, setSessionId] = useState(null);
@@ -66,14 +67,12 @@ export default function ChatPage() {
               className="lg:hidden p-2 -ml-1 text-[#6B5F57] hover:text-[#241E1C] hover:bg-[#EFE8DE] rounded-xl transition-colors cursor-pointer flex items-center justify-center"
               aria-label="Open navigation menu"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              <Menu className="w-5 h-5" />
             </button>
 
             {/* Brand on mobile/tablet */}
             <div className="flex items-center gap-2 lg:hidden">
-              <span className="text-xl">🔥</span>
+              <Flame className="w-5 h-5 text-[#D97706]" />
               <span className="font-extrabold tracking-tight text-sm sm:text-base text-[#241E1C]">
                 RoastMaster
               </span>
@@ -91,7 +90,7 @@ export default function ChatPage() {
               className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#8C4A11] bg-[#F4ECE1] hover:bg-[#EAE0D3] border border-[#DDD3C4] rounded-xl transition-all cursor-pointer shadow-2xs"
               title="Start new roast"
             >
-              <span className="text-sm font-bold">+</span>
+              <Plus className="w-3.5 h-3.5" />
               <span>New</span>
             </button>
 

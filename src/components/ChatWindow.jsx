@@ -2,13 +2,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createSession, getMessages, saveCompletedExchange } from "@/lib/firestore";
+import { Flame, User, Send, Loader2, ArrowRight, Sparkles } from "lucide-react";
 
 // ── Streamed bot message ──────────────────────────────────────────────────
 function BotMessageBubble({ content, isStreaming }) {
   return (
     <div className="flex items-start gap-2.5 sm:gap-3 max-w-2xl sm:max-w-3xl">
-      <div className="w-8 h-8 rounded-full bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-sm shrink-0 shadow-2xs mt-0.5">
-        🔥
+      <div className="w-8 h-8 rounded-full bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+        <Flame className="w-4 h-4 text-[#D97706]" />
       </div>
       <div className="px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl rounded-tl-xs text-sm sm:text-[15px] leading-relaxed bg-white border border-[#E8DFD3] text-[#241E1C] shadow-[0_2px_12px_rgba(36,30,28,0.04)] whitespace-pre-wrap break-words">
         {content}
@@ -42,8 +43,8 @@ function MessageBubble({ message, isStreaming }) {
 
   return (
     <div className="flex items-start gap-2.5 sm:gap-3 flex-row-reverse max-w-2xl sm:max-w-3xl ml-auto">
-      <div className="w-8 h-8 rounded-full bg-[#EFE9DF] border border-[#DDD4C5] flex items-center justify-center text-sm shrink-0 shadow-2xs mt-0.5">
-        😬
+      <div className="w-8 h-8 rounded-full bg-[#EFE9DF] border border-[#DDD4C5] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+        <User className="w-4 h-4 text-[#786C63]" />
       </div>
       <div className="px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl rounded-tr-xs text-sm sm:text-[15px] leading-relaxed bg-[#28211E] text-[#FAF7F2] border border-[#3C322D] shadow-sm whitespace-pre-wrap break-words">
         {message.content}
@@ -259,8 +260,8 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
         {loading && (
           <div className="flex items-center gap-2.5 sm:gap-3 max-w-2xl">
-            <div className="w-8 h-8 rounded-full bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-sm shrink-0 shadow-2xs">
-              🔥
+            <div className="w-8 h-8 rounded-full bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center shrink-0 shadow-2xs">
+              <Flame className="w-4 h-4 text-[#D97706]" />
             </div>
             <div className="bg-white border border-[#E8DFD3] rounded-2xl rounded-tl-xs px-4 py-3 shadow-2xs">
               <div className="flex gap-1.5 items-center h-4">
@@ -277,8 +278,9 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       {user && isGuest && (
         <div className="mx-3.5 sm:mx-6 mb-2 bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] rounded-xl px-4 py-2 flex items-center justify-between shadow-2xs">
           <p className="text-xs">Guest mode — history won't be saved</p>
-          <button onClick={onShowAuth} className="text-[#B45309] text-xs font-bold hover:underline cursor-pointer">
-            Save history →
+          <button onClick={onShowAuth} className="text-[#B45309] text-xs font-bold hover:underline cursor-pointer flex items-center gap-1">
+            <span>Save history</span>
+            <ArrowRight className="w-3 h-3" />
           </button>
         </div>
       )}
@@ -297,9 +299,14 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           <button
             onClick={sendMessage}
             disabled={loading || isStreaming || !input.trim()}
-            className="w-10 h-10 sm:w-11 sm:h-11 bg-gradient-to-tr from-[#D97706] to-[#F59E0B] hover:from-[#B45309] hover:to-[#D97706] disabled:from-[#E2D8CC] disabled:to-[#E2D8CC] disabled:text-[#A89C90] text-white rounded-xl sm:rounded-2xl transition-all flex items-center justify-center text-lg shrink-0 shadow-[0_4px_14px_rgba(217,119,6,0.3)] disabled:shadow-none cursor-pointer disabled:cursor-not-allowed active:scale-95"
+            className="w-10 h-10 sm:w-11 sm:h-11 bg-gradient-to-tr from-[#D97706] to-[#F59E0B] hover:from-[#B45309] hover:to-[#D97706] disabled:from-[#E2D8CC] disabled:to-[#E2D8CC] disabled:text-[#A89C90] text-white rounded-xl sm:rounded-2xl transition-all flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(217,119,6,0.3)] disabled:shadow-none cursor-pointer disabled:cursor-not-allowed active:scale-95"
+            aria-label="Send message"
           >
-            {loading || isStreaming ? <span className="animate-spin text-sm">◌</span> : "🔥"}
+            {loading || isStreaming ? (
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+            ) : (
+              <Send className="w-4 h-4 text-white" />
+            )}
           </button>
         </div>
         <p className="text-center text-[#9C8F85] text-[10px] sm:text-[11px] mt-2 font-medium">
@@ -320,8 +327,8 @@ function EmptyState({ user, isGuest, onShowAuth }) {
   ];
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[360px] text-center px-4 py-8">
-      <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-3xl mb-4 shadow-xs">
-        🎤
+      <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center mb-4 shadow-xs">
+        <Flame className="w-8 h-8 text-[#D97706]" />
       </div>
       <h2 className="text-[#92400E] text-lg sm:text-xl font-black tracking-wider uppercase mb-2">
         Drop the mic. I'll pick it up.

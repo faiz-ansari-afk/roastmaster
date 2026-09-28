@@ -38,7 +38,7 @@ export async function createSession(userId) {
   console.log("[Firestore] Creating session for user:", userId);
   try {
     const sessionPromise = addDoc(collection(db, "users", userId, "sessions"), {
-      title: "New Roast Session 🔥",
+      title: "New Roast Session",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       messageCount: 0,

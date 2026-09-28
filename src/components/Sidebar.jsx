@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { subscribeToSessions, deleteSession } from "@/lib/firestore";
+import { Flame, X, Plus, MessageSquare, Trash2, User, LogOut } from "lucide-react";
 
 export default function Sidebar({
   activeSessionId,
@@ -80,8 +81,8 @@ export default function Sidebar({
         {/* Logo */}
         <div className="p-4 sm:p-5 border-b border-[#E6DDD0] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-lg shadow-2xs">
-              🔥
+            <div className="w-9 h-9 rounded-xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center shadow-2xs">
+              <Flame className="w-5 h-5 text-[#D97706]" />
             </div>
             <div>
               <div className="text-[#92400E] font-black tracking-wider text-sm uppercase">
@@ -95,7 +96,7 @@ export default function Sidebar({
             className="lg:hidden p-1.5 text-[#8C7E74] hover:text-[#241E1C] hover:bg-[#EAE2D5] rounded-lg transition-colors cursor-pointer"
             aria-label="Close sidebar"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -105,7 +106,7 @@ export default function Sidebar({
             onClick={() => { onNewSession(); onCloseSidebar(); }}
             className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#D97706] to-[#B45309] hover:from-[#B45309] hover:to-[#92400E] text-white font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-all text-xs sm:text-sm cursor-pointer active:scale-98"
           >
-            <span className="text-base font-bold">+</span>
+            <Plus className="w-4 h-4" />
             <span>New Roast Session</span>
           </button>
         </div>
@@ -114,7 +115,9 @@ export default function Sidebar({
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
           {!user ? (
             <div className="text-center text-[#8C7E74] text-xs mt-10 px-4">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-[#EFE8DE] flex items-center justify-center text-base">💬</div>
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-[#EFE8DE] flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-[#8C7E74]" />
+              </div>
               <p className="mb-3 text-[#5F544D]">Sign in to save your roast history</p>
               <button
                 onClick={onShowAuth}
@@ -166,10 +169,14 @@ export default function Sidebar({
                 <button
                   onClick={(e) => handleDelete(e, session.id)}
                   disabled={deletingId === session.id}
-                  className="opacity-0 group-hover:opacity-100 text-[#8C7E74] hover:text-[#DC2626] transition-all text-xs p-1 rounded-md hover:bg-[#E2D6C7] shrink-0 cursor-pointer"
+                  className="opacity-0 group-hover:opacity-100 text-[#8C7E74] hover:text-[#DC2626] transition-all p-1.5 rounded-md hover:bg-[#E2D6C7] shrink-0 cursor-pointer"
                   title="Delete session"
                 >
-                  {deletingId === session.id ? "..." : "✕"}
+                  {deletingId === session.id ? (
+                    <span className="text-xs">...</span>
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
                 </button>
               </div>
             ))
@@ -190,8 +197,10 @@ export default function Sidebar({
               <div className="w-8 h-8 rounded-full bg-[#E2D7C8] border border-[#DDD0BF] flex items-center justify-center text-xs font-bold text-[#5F544D] shrink-0 overflow-hidden shadow-2xs">
                 {user.photoURL ? (
                   <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                ) : isGuest ? (
+                  <User className="w-4 h-4 text-[#5F544D]" />
                 ) : (
-                  <span>{isGuest ? "👤" : (user.displayName?.[0] || user.email?.[0] || "?").toUpperCase()}</span>
+                  <span>{(user.displayName?.[0] || user.email?.[0] || "?").toUpperCase()}</span>
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -204,10 +213,11 @@ export default function Sidebar({
               </div>
               <button
                 onClick={handleLogout}
-                className="text-[#8C7E74] hover:text-[#DC2626] text-xs font-medium transition-colors shrink-0 cursor-pointer hover:underline"
+                className="text-[#8C7E74] hover:text-[#DC2626] text-xs font-medium transition-colors shrink-0 cursor-pointer flex items-center gap-1 hover:underline"
                 title="Sign out"
               >
-                Sign Out
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
               </button>
             </div>
           )}

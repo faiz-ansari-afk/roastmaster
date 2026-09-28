@@ -2,6 +2,7 @@
 // components/AuthModal.jsx
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Flame, X, User, AlertCircle } from "lucide-react";
 
 export default function AuthModal({ onClose }) {
   const { loginWithGoogle, signUpWithEmail, loginWithEmail, loginAsGuest } = useAuth();
@@ -73,14 +74,16 @@ export default function AuthModal({ onClose }) {
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#8C7E74] hover:text-[#241E1C] hover:bg-[#EFE8DE] p-1.5 rounded-lg text-lg transition-colors cursor-pointer"
+          className="absolute top-4 right-4 text-[#8C7E74] hover:text-[#241E1C] hover:bg-[#EFE8DE] p-1.5 rounded-lg transition-colors cursor-pointer"
           aria-label="Close modal"
-        >✕</button>
+        >
+          <X className="w-5 h-5" />
+        </button>
 
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-2xl mx-auto mb-3 shadow-2xs">
-            🔥
+          <div className="w-12 h-12 rounded-2xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center mx-auto mb-3 shadow-2xs">
+            <Flame className="w-6 h-6 text-[#D97706]" />
           </div>
           <h2 className="text-[#92400E] text-xl sm:text-2xl font-black tracking-wider uppercase">
             {mode === "login" ? "Welcome Back" : "Join the Suffering"}
@@ -144,8 +147,9 @@ export default function AuthModal({ onClose }) {
           />
 
           {error && (
-            <p className="text-[#B91C1C] text-xs mt-3 bg-[#FEF2F2] border border-[#FECACA] rounded-xl px-3.5 py-2.5 leading-relaxed">
-              ⚠️ {error}
+            <p className="text-[#B91C1C] text-xs mt-3 bg-[#FEF2F2] border border-[#FECACA] rounded-xl px-3.5 py-2.5 leading-relaxed flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#DC2626]" />
+              <span>{error}</span>
             </p>
           )}
 
@@ -182,9 +186,10 @@ export default function AuthModal({ onClose }) {
           type="button"
           onClick={() => handle(loginAsGuest)}
           disabled={loading}
-          className="w-full border border-[#DDD3C4] hover:border-[#9C8F85] hover:bg-[#F6F0E6] text-[#5F544D] hover:text-[#241E1C] font-semibold py-2.5 sm:py-3 rounded-xl transition-all text-xs sm:text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          className="w-full border border-[#DDD3C4] hover:border-[#9C8F85] hover:bg-[#F6F0E6] text-[#5F544D] hover:text-[#241E1C] font-semibold py-2.5 sm:py-3 rounded-xl transition-all text-xs sm:text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          👤 Continue as Guest
+          <User className="w-4 h-4 text-[#786C63]" />
+          <span>Continue as Guest</span>
         </button>
         <p className="text-center text-[#8C7E74] text-xs mt-2">
           Guest sessions are temporary — history won't be saved
