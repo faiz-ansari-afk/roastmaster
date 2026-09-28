@@ -61,75 +61,86 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Overlay for mobile */}
+      {/* Overlay for mobile & tablet */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-20 lg:hidden"
+          className="fixed inset-0 bg-[#241E1C]/40 backdrop-blur-xs z-40 lg:hidden transition-opacity"
           onClick={onCloseSidebar}
         />
       )}
 
       <aside
         className={`
-          fixed top-0 left-0 h-full w-72 bg-[#0a0a0a] border-r border-zinc-900
-          flex flex-col z-30 transition-transform duration-300
+          fixed top-0 left-0 h-[100dvh] w-72 sm:w-80 bg-[#F7F3ED] border-r border-[#E6DDD0]
+          flex flex-col z-50 transition-transform duration-300 shadow-xl lg:shadow-none
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
           lg:relative lg:translate-x-0 lg:z-auto
         `}
       >
         {/* Logo */}
-        <div className="p-5 border-b border-zinc-900">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🔥</span>
+        <div className="p-4 sm:p-5 border-b border-[#E6DDD0] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-lg shadow-2xs">
+              🔥
+            </div>
             <div>
-              <div className="text-[#ff2200] font-black tracking-widest uppercase text-sm">
+              <div className="text-[#92400E] font-black tracking-wider text-sm uppercase">
                 RoastMaster
               </div>
-              <div className="text-zinc-700 text-[10px] tracking-wider">AI THAT HATES YOU</div>
+              <div className="text-[#8C7E74] text-[10px] font-medium tracking-wider">AI THAT HATES YOU</div>
             </div>
           </div>
+          <button
+            onClick={onCloseSidebar}
+            className="lg:hidden p-1.5 text-[#8C7E74] hover:text-[#241E1C] hover:bg-[#EAE2D5] rounded-lg transition-colors cursor-pointer"
+            aria-label="Close sidebar"
+          >
+            ✕
+          </button>
         </div>
 
         {/* New Chat Button */}
         <div className="p-3">
           <button
             onClick={() => { onNewSession(); onCloseSidebar(); }}
-            className="w-full flex items-center gap-2 bg-[#ff2200]/10 hover:bg-[#ff2200]/20 border border-[#ff2200]/30 hover:border-[#ff2200]/60 text-[#ff2200] font-bold py-2.5 px-4 rounded-xl transition-all text-sm"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#D97706] to-[#B45309] hover:from-[#B45309] hover:to-[#92400E] text-white font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-all text-xs sm:text-sm cursor-pointer active:scale-98"
           >
-            <span className="text-lg">+</span> New Roast Session
+            <span className="text-base font-bold">+</span>
+            <span>New Roast Session</span>
           </button>
         </div>
 
         {/* Sessions list */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
           {!user ? (
-            <div className="text-center text-zinc-600 text-xs mt-8 px-4">
-              <p className="mb-3">Login to save your roast history 😬</p>
+            <div className="text-center text-[#8C7E74] text-xs mt-10 px-4">
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-[#EFE8DE] flex items-center justify-center text-base">💬</div>
+              <p className="mb-3 text-[#5F544D]">Sign in to save your roast history</p>
               <button
                 onClick={onShowAuth}
-                className="text-[#ff2200] hover:underline text-xs"
+                className="text-[#D97706] font-semibold hover:underline text-xs cursor-pointer"
               >
-                Sign In
+                Sign In →
               </button>
             </div>
           ) : isGuest ? (
-            <div className="text-center text-zinc-600 text-xs mt-8 px-4">
-              <p className="mb-1">You're a guest.</p>
-              <p className="mb-3 text-zinc-700">History won't be saved.</p>
+            <div className="text-center text-[#8C7E74] text-xs mt-10 px-4">
+              <p className="mb-1 text-[#5F544D] font-medium">Guest mode active</p>
+              <p className="mb-3 text-[#8C7E74] text-[11px]">History won't be saved permanently</p>
               <button
                 onClick={onShowAuth}
-                className="text-[#ff2200] hover:underline"
+                className="text-[#D97706] font-semibold hover:underline text-xs cursor-pointer"
               >
-                Create Account →
+                Create Free Account →
               </button>
             </div>
           ) : loadingSessions ? (
-            <div className="text-zinc-700 text-xs text-center mt-8 animate-pulse">
+            <div className="text-[#8C7E74] text-xs text-center mt-10 animate-pulse">
               Loading sessions...
             </div>
           ) : sessions.length === 0 ? (
-            <div className="text-zinc-700 text-xs text-center mt-8 px-4">
-              No sessions yet. Start getting roasted!
+            <div className="text-[#8C7E74] text-xs text-center mt-10 px-4">
+              No past sessions yet. Ask your first question!
             </div>
           ) : (
             sessions.map((session) => (
@@ -142,20 +153,20 @@ export default function Sidebar({
                 className={`
                   w-full text-left px-3 py-2.5 rounded-xl transition-all group flex items-start justify-between gap-2 cursor-pointer
                   ${activeSessionId === session.id
-                    ? "bg-[#ff2200]/15 border border-[#ff2200]/30 text-white"
-                    : "hover:bg-zinc-900 text-zinc-400 hover:text-white border border-transparent"}
+                    ? "bg-[#EFE8DE] border border-[#DDD0C0] text-[#241E1C] font-medium shadow-2xs"
+                    : "hover:bg-[#EFE8DE]/60 text-[#5F544D] hover:text-[#241E1C] border border-transparent"}
                 `}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{session.title}</p>
-                  <p className="text-[10px] text-zinc-600 mt-0.5">
-                    {session.messageCount || 0} messages
+                  <p className="text-xs font-semibold truncate leading-tight">{session.title}</p>
+                  <p className="text-[10px] text-[#8C7E74] mt-1 flex items-center gap-1">
+                    <span>{session.messageCount || 0} messages</span>
                   </p>
                 </div>
                 <button
                   onClick={(e) => handleDelete(e, session.id)}
                   disabled={deletingId === session.id}
-                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 transition-all text-sm mt-0.5 shrink-0"
+                  className="opacity-0 group-hover:opacity-100 text-[#8C7E74] hover:text-[#DC2626] transition-all text-xs p-1 rounded-md hover:bg-[#E2D6C7] shrink-0 cursor-pointer"
                   title="Delete session"
                 >
                   {deletingId === session.id ? "..." : "✕"}
@@ -166,17 +177,17 @@ export default function Sidebar({
         </div>
 
         {/* User info / Login at bottom */}
-        <div className="p-4 border-t border-zinc-900">
+        <div className="p-3.5 border-t border-[#E6DDD0] bg-[#EFE9E1]/50">
           {!user ? (
             <button
               onClick={onShowAuth}
-              className="w-full bg-[#ff2200] hover:bg-[#cc1a00] text-white font-black py-2.5 rounded-xl text-sm uppercase tracking-widest transition-all"
+              className="w-full bg-[#D97706] hover:bg-[#B45309] text-white font-semibold py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs"
             >
               Sign In
             </button>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-sm shrink-0 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-[#E2D7C8] border border-[#DDD0BF] flex items-center justify-center text-xs font-bold text-[#5F544D] shrink-0 overflow-hidden shadow-2xs">
                 {user.photoURL ? (
                   <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -184,16 +195,16 @@ export default function Sidebar({
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-xs font-medium truncate">
+                <p className="text-[#241E1C] text-xs font-semibold truncate">
                   {isGuest ? "Guest User" : (user.displayName || user.email)}
                 </p>
-                <p className="text-zinc-600 text-[10px]">
+                <p className="text-[#8C7E74] text-[10px]">
                   {isGuest ? "Temporary session" : "Logged in"}
                 </p>
               </div>
               <button
                 onClick={handleLogout}
-                className="text-zinc-600 hover:text-red-400 text-xs transition-colors shrink-0 cursor-pointer"
+                className="text-[#8C7E74] hover:text-[#DC2626] text-xs font-medium transition-colors shrink-0 cursor-pointer hover:underline"
                 title="Sign out"
               >
                 Sign Out

@@ -6,22 +6,22 @@ import { createSession, getMessages, saveCompletedExchange } from "@/lib/firesto
 // ── Streamed bot message ──────────────────────────────────────────────────
 function BotMessageBubble({ content, isStreaming }) {
   return (
-    <div className="flex items-end gap-3 max-w-2xl">
-      <div className="w-8 h-8 rounded-full bg-[#1a0000] border border-[#ff2200]/30 flex items-center justify-center text-sm shrink-0">
+    <div className="flex items-start gap-2.5 sm:gap-3 max-w-2xl sm:max-w-3xl">
+      <div className="w-8 h-8 rounded-full bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-sm shrink-0 shadow-2xs mt-0.5">
         🔥
       </div>
-      <div className="px-4 py-3 rounded-2xl rounded-bl-sm text-sm leading-relaxed font-mono bg-[#1c1c1c] border border-zinc-700/60 text-zinc-100 whitespace-pre-wrap break-words">
+      <div className="px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl rounded-tl-xs text-sm sm:text-[15px] leading-relaxed bg-white border border-[#E8DFD3] text-[#241E1C] shadow-[0_2px_12px_rgba(36,30,28,0.04)] whitespace-pre-wrap break-words">
         {content}
         {isStreaming && (
           <span
             style={{
               display: "inline-block",
               width: 6,
-              height: 14,
-              background: "#ff2200",
+              height: 15,
+              background: "#D97706",
               marginLeft: 4,
               verticalAlign: "middle",
-              animation: "cursorBlink 0.5s steps(1) infinite",
+              animation: "cursorBlink 0.6s steps(1) infinite",
             }}
           />
         )}
@@ -41,11 +41,11 @@ function MessageBubble({ message, isStreaming }) {
   }
 
   return (
-    <div className="flex items-end gap-3 flex-row-reverse max-w-2xl ml-auto">
-      <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-sm shrink-0">
+    <div className="flex items-start gap-2.5 sm:gap-3 flex-row-reverse max-w-2xl sm:max-w-3xl ml-auto">
+      <div className="w-8 h-8 rounded-full bg-[#EFE9DF] border border-[#DDD4C5] flex items-center justify-center text-sm shrink-0 shadow-2xs mt-0.5">
         😬
       </div>
-      <div className="px-4 py-3 rounded-2xl rounded-br-sm text-sm leading-relaxed font-mono bg-zinc-900 border border-zinc-800 text-zinc-300 whitespace-pre-wrap break-words">
+      <div className="px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl rounded-tr-xs text-sm sm:text-[15px] leading-relaxed bg-[#28211E] text-[#FAF7F2] border border-[#3C322D] shadow-sm whitespace-pre-wrap break-words">
         {message.content}
       </div>
     </div>
@@ -239,11 +239,11 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a] md:w-4xl md:mx-auto">
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+    <div className="flex flex-col h-full bg-[#FAF7F2] w-full max-w-4xl mx-auto">
+      <div className="flex-1 overflow-y-auto px-3.5 py-4 sm:px-6 sm:py-6 space-y-4">
         {loadingHistory ? (
           <div className="flex justify-center mt-20">
-            <div className="text-zinc-600 text-sm animate-pulse">Loading history...</div>
+            <div className="text-[#8C7E74] text-xs sm:text-sm animate-pulse font-medium">Loading history...</div>
           </div>
         ) : messages.length === 0 ? (
           <EmptyState onShowAuth={onShowAuth} user={user} isGuest={isGuest} />
@@ -258,13 +258,15 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         )}
 
         {loading && (
-          <div className="flex items-end gap-3 max-w-2xl">
-            <div className="w-8 h-8 rounded-full bg-[#1a0000] border border-[#ff2200]/30 flex items-center justify-center text-sm shrink-0">🔥</div>
-            <div className="bg-[#1c1c1c] border border-zinc-700/60 rounded-2xl rounded-bl-sm px-5 py-3">
-              <div className="flex gap-1.5 items-center h-5">
-                <span className="w-2 h-2 bg-[#ff2200] rounded-full animate-bounce [animation-delay:0ms]" />
-                <span className="w-2 h-2 bg-[#ff2200] rounded-full animate-bounce [animation-delay:150ms]" />
-                <span className="w-2 h-2 bg-[#ff2200] rounded-full animate-bounce [animation-delay:300ms]" />
+          <div className="flex items-center gap-2.5 sm:gap-3 max-w-2xl">
+            <div className="w-8 h-8 rounded-full bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-sm shrink-0 shadow-2xs">
+              🔥
+            </div>
+            <div className="bg-white border border-[#E8DFD3] rounded-2xl rounded-tl-xs px-4 py-3 shadow-2xs">
+              <div className="flex gap-1.5 items-center h-4">
+                <span className="w-2 h-2 bg-[#D97706] rounded-full animate-bounce [animation-delay:0ms]" />
+                <span className="w-2 h-2 bg-[#D97706] rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-2 h-2 bg-[#D97706] rounded-full animate-bounce [animation-delay:300ms]" />
               </div>
             </div>
           </div>
@@ -273,14 +275,16 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       </div>
 
       {user && isGuest && (
-        <div className="mx-4 mb-2 bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-2 flex items-center justify-between">
-          <p className="text-zinc-500 text-xs">Guest mode — history won't be saved</p>
-          <button onClick={onShowAuth} className="text-[#ff2200] text-xs font-bold hover:underline">Save history →</button>
+        <div className="mx-3.5 sm:mx-6 mb-2 bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] rounded-xl px-4 py-2 flex items-center justify-between shadow-2xs">
+          <p className="text-xs">Guest mode — history won't be saved</p>
+          <button onClick={onShowAuth} className="text-[#B45309] text-xs font-bold hover:underline cursor-pointer">
+            Save history →
+          </button>
         </div>
       )}
 
-      <div className="border-t border-zinc-900 p-4">
-        <div className="flex gap-3 items-end max-w-3xl mx-auto">
+      <div className="border-t border-[#E8E0D5] bg-[#FAF7F2]/95 backdrop-blur-md p-3 sm:p-4">
+        <div className="flex gap-2 sm:gap-3 items-end max-w-3xl mx-auto">
           <textarea
             ref={textareaRef}
             value={input}
@@ -288,17 +292,17 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
             onKeyDown={handleKey}
             placeholder="Say something stupid… I dare you"
             rows={1}
-            className="flex-1 bg-zinc-900 border border-zinc-800 focus:border-[#ff2200]/50 text-white placeholder-zinc-600 px-4 py-3 rounded-xl outline-none transition-colors text-sm resize-none overflow-hidden font-mono"
+            className="flex-1 bg-white border border-[#DDD3C4] focus:border-[#D97706] focus:ring-2 focus:ring-[#D97706]/20 text-[#241E1C] placeholder-[#9C8F85] px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl outline-none transition-all text-base sm:text-sm resize-none overflow-hidden shadow-2xs leading-normal"
           />
           <button
             onClick={sendMessage}
             disabled={loading || isStreaming || !input.trim()}
-            className="w-11 h-11 bg-[#ff2200] hover:bg-[#cc1a00] disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-xl transition-all flex items-center justify-center text-lg shrink-0 shadow-[0_0_20px_rgba(255,34,0,0.3)] disabled:shadow-none"
+            className="w-10 h-10 sm:w-11 sm:h-11 bg-gradient-to-tr from-[#D97706] to-[#F59E0B] hover:from-[#B45309] hover:to-[#D97706] disabled:from-[#E2D8CC] disabled:to-[#E2D8CC] disabled:text-[#A89C90] text-white rounded-xl sm:rounded-2xl transition-all flex items-center justify-center text-lg shrink-0 shadow-[0_4px_14px_rgba(217,119,6,0.3)] disabled:shadow-none cursor-pointer disabled:cursor-not-allowed active:scale-95"
           >
             {loading || isStreaming ? <span className="animate-spin text-sm">◌</span> : "🔥"}
           </button>
         </div>
-        <p className="text-center text-zinc-500 text-[10px] mt-2 font-mono">
+        <p className="text-center text-[#9C8F85] text-[10px] sm:text-[11px] mt-2 font-medium">
           ENTER to send • SHIFT+ENTER for new line
         </p>
       </div>
@@ -307,23 +311,41 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 }
 
 function EmptyState({ user, isGuest, onShowAuth }) {
-  const starters = ["What is 2+2?", "Am I smart?", "Give me life advice", "Tell me I'm doing great", "How do I get rich?"];
+  const starters = [
+    "What is 2+2?",
+    "Am I smart?",
+    "Give me life advice",
+    "Tell me I'm doing great",
+    "How do I get rich?",
+  ];
   return (
-    <div className="flex flex-col items-center justify-center h-[95%] text-center px-4">
-      <div className="text-6xl mb-4 animate-bounce">🎤</div>
-      <h2 className="text-[#ff2200] text-xl font-black tracking-widest uppercase mb-2">Drop the mic. I'll pick it up.</h2>
-      <p className="text-zinc-600 text-sm mb-8 max-w-sm">Ask me anything. I'll answer it — buried under a mountain of roasting.</p>
+    <div className="flex flex-col items-center justify-center h-full min-h-[360px] text-center px-4 py-8">
+      <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center text-3xl mb-4 shadow-xs">
+        🎤
+      </div>
+      <h2 className="text-[#92400E] text-lg sm:text-xl font-black tracking-wider uppercase mb-2">
+        Drop the mic. I'll pick it up.
+      </h2>
+      <p className="text-[#786C63] text-xs sm:text-sm mb-6 max-w-sm leading-relaxed">
+        Ask me anything. I'll answer it — buried under a mountain of savage roasting.
+      </p>
       <div className="flex flex-wrap gap-2 justify-center max-w-lg">
         {starters.map((s) => (
-          <button key={s}
+          <button
+            key={s}
             onClick={() => window.dispatchEvent(new CustomEvent("roast-starter", { detail: s }))}
-            className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:border-[#ff2200]/40 text-zinc-400 hover:text-white rounded-lg text-xs transition-all font-mono"
-          >{s}</button>
+            className="px-3.5 py-2 bg-white hover:bg-[#FDF9F4] border border-[#DDD3C4] hover:border-[#D97706]/50 text-[#5F544D] hover:text-[#92400E] rounded-xl text-xs font-medium shadow-2xs transition-all cursor-pointer active:scale-97"
+          >
+            {s}
+          </button>
         ))}
       </div>
       {!user && (
-        <p className="text-zinc-700 text-xs mt-10">
-          <button onClick={onShowAuth} className="text-[#ff2200] hover:underline">Sign in</button>{" "}to save your humiliation history
+        <p className="text-[#8C7E74] text-xs mt-8">
+          <button onClick={onShowAuth} className="text-[#D97706] font-semibold hover:underline cursor-pointer">
+            Sign in
+          </button>{" "}
+          to save your humiliation history
         </p>
       )}
     </div>

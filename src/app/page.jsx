@@ -56,27 +56,29 @@ function DemoMessage({ msg, active, onDone, onTick }) {
       <div style={{
         width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-        background: isBot ? "#ff2200" : "#2a2a3e",
-        boxShadow: isBot ? "0 0 10px rgba(255,34,0,0.5)" : "none",
+        background: isBot ? "#FEF3C7" : "#EFE8DE",
+        border: isBot ? "1px solid #FDE68A" : "1px solid #DDD3C4",
+        boxShadow: isBot ? "0 2px 8px rgba(217,119,6,0.15)" : "none",
       }}>
         {isBot ? "🔥" : "😬"}
       </div>
 
       <div style={{
-        maxWidth: "80%", padding: "9px 13px", borderRadius: 14,
+        maxWidth: "82%", padding: "9px 13px", borderRadius: 14,
         fontSize: 12.5, lineHeight: 1.65,
-        fontFamily: "'Courier New', monospace", fontWeight: 500,
-        background: isBot ? "#ff2200" : "#ffffff",
-        color: isBot ? "#ffffff" : "#111111",
+        fontFamily: "var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif", fontWeight: 500,
+        background: isBot ? "#FFFFFF" : "#28211E",
+        color: isBot ? "#241E1C" : "#FAF7F2",
+        border: isBot ? "1px solid #EAE3D8" : "none",
         borderBottomLeftRadius: isBot ? 3 : 14,
         borderBottomRightRadius: !isBot ? 3 : 14,
-        boxShadow: isBot ? "0 4px 20px rgba(255,34,0,0.35)" : "0 2px 12px rgba(0,0,0,0.25)",
+        boxShadow: isBot ? "0 2px 10px rgba(36,30,28,0.05)" : "0 3px 12px rgba(40,33,30,0.12)",
       }}>
         {displayed}
         {active && !done && (
           <span style={{
             display: "inline-block", width: 6, height: 12,
-            background: isBot ? "rgba(255,255,255,0.8)" : "#333",
+            background: isBot ? "#D97706" : "#FAF7F2",
             marginLeft: 2, verticalAlign: "middle",
             animation: "blink 0.5s steps(1) infinite",
           }} />
@@ -105,7 +107,7 @@ export default function IntroPage() {
       dur:  (Math.random() * 5 + 4).toFixed(1),
       delay:(Math.random() * 7).toFixed(1),
       size: (Math.random() * 3 + 1.5).toFixed(1),
-      hue:  Math.round(Math.random() * 30 + 3),
+      hue:  Math.round(Math.random() * 25 + 32),
     }))
   );
 
@@ -159,37 +161,31 @@ export default function IntroPage() {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#060606",
+      minHeight: "100dvh", background: "#FAF7F2",
       display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "20px 16px", overflow: "hidden", position: "relative",
-      fontFamily: "'Courier New', monospace",
+      padding: "24px 16px", overflow: "hidden", position: "relative",
+      fontFamily: "var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif",
       opacity: exiting ? 0 : 1,
       transform: exiting ? "scale(0.96)" : "scale(1)",
       transition: "opacity 0.6s ease, transform 0.6s ease",
     }}>
 
-      {/* Scanlines */}
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50,
-        backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.06) 3px,rgba(0,0,0,0.06) 4px)",
-      }} />
-
-      {/* BG radial glow */}
+      {/* Background warm radial glow */}
       <div style={{
         position: "fixed", top: "50%", left: "50%",
         transform: "translate(-50%,-50%)",
         width: 860, height: 860, borderRadius: "50%",
-        background: "radial-gradient(circle,rgba(255,34,0,0.07) 0%,transparent 65%)",
+        background: "radial-gradient(circle, rgba(217,119,6,0.07) 0%, rgba(254,243,199,0.25) 45%, transparent 70%)",
         pointerEvents: "none", zIndex: 0,
       }} />
 
-      {/* Embers */}
+      {/* Warm Golden Embers */}
       {embers.map((e) => (
         <div key={e.id} style={{
           position: "fixed", bottom: -8, left: e.left + "%",
           width: e.size + "px", height: e.size + "px", borderRadius: "50%",
-          background: `hsl(${e.hue},100%,60%)`,
-          boxShadow: `0 0 5px 2px hsla(${e.hue},100%,50%,0.55)`,
+          background: `hsl(${e.hue},90%,55%)`,
+          boxShadow: `0 0 6px 1px hsla(${e.hue},90%,50%,0.35)`,
           animation: `floatUp ${e.dur}s ${e.delay}s infinite ease-in`,
           opacity: 0, zIndex: 1,
         }} />
@@ -198,46 +194,34 @@ export default function IntroPage() {
       {/* ── Card ── */}
       <div style={{
         position: "relative", zIndex: 10,
-        width: "100%", maxWidth: 430,
-        display: "flex", flexDirection: "column", gap: 22,
+        width: "100%", maxWidth: 440,
+        display: "flex", flexDirection: "column", gap: 20,
         animation: "fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) both",
       }}>
 
         {/* Title */}
         <div style={{ textAlign: "center" }}>
           <div style={{
-            fontSize: 50, marginBottom: 8, display: "inline-block",
-            filter: "drop-shadow(0 0 22px rgba(255,60,0,0.95))",
+            fontSize: 48, marginBottom: 6, display: "inline-block",
+            filter: "drop-shadow(0 4px 16px rgba(217,119,6,0.35))",
             animation: "popIn 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.2s both",
           }}>🔥</div>
 
           <div style={{ position: "relative" }}>
-            {glitch && <>
-              <span style={{
-                position: "absolute", left: 3, top: -2, color: "#00ffff", opacity: 0.6,
-                clipPath: "inset(25% 0 50% 0)", fontWeight: 900,
-                fontSize: "clamp(24px,6.5vw,38px)", letterSpacing: 6,
-                width: "100%", textAlign: "center", pointerEvents: "none",
-              }}>ROASTMASTER</span>
-              <span style={{
-                position: "absolute", left: -3, top: 3, color: "#ff00bb", opacity: 0.6,
-                clipPath: "inset(58% 0 12% 0)", fontWeight: 900,
-                fontSize: "clamp(24px,6.5vw,38px)", letterSpacing: 6,
-                width: "100%", textAlign: "center", pointerEvents: "none",
-              }}>ROASTMASTER</span>
-            </>}
             <h1 style={{
-              margin: 0, color: "#ff2200",
-              fontSize: "clamp(24px,6.5vw,38px)",
-              fontWeight: 900, letterSpacing: 6, textTransform: "uppercase",
-              textShadow: "0 0 24px rgba(255,34,0,0.75),0 0 55px rgba(255,34,0,0.3)",
+              margin: 0,
+              background: "linear-gradient(135deg, #241E1C 20%, #78350F 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              fontSize: "clamp(26px, 7vw, 38px)",
+              fontWeight: 900, letterSpacing: 5, textTransform: "uppercase",
               animation: "revealTitle 0.6s 0.35s both",
             }}>ROASTMASTER</h1>
           </div>
 
           <div style={{
-            color: "#2e2e2e", fontSize: 9, letterSpacing: 8,
-            textTransform: "uppercase", marginTop: 5,
+            color: "#8C7E74", fontSize: 9.5, letterSpacing: 5,
+            textTransform: "uppercase", marginTop: 6, fontWeight: 700,
             animation: "fadeIn 0.5s 1s both",
           }}>AI THAT HATES YOU • DESI EDITION 🇮🇳</div>
         </div>
@@ -245,40 +229,42 @@ export default function IntroPage() {
         {/* ── Demo chat ── */}
         {started && (
           <div style={{
-            background: "#111", border: "1px solid #222", borderRadius: 14,
+            background: "#FFFFFF",
+            border: "1px solid #E8E0D5",
+            borderRadius: 18,
             overflow: "hidden",
-            boxShadow: "0 0 40px rgba(255,34,0,0.08),0 20px 50px rgba(0,0,0,0.8)",
+            boxShadow: "0 16px 36px -10px rgba(36,30,28,0.08), 0 0 0 1px rgba(232,224,213,0.6)",
             animation: "fadeUp 0.45s cubic-bezier(0.22,1,0.36,1) both",
           }}>
             {/* Window chrome */}
             <div style={{
-              background: "#0e0e0e", borderBottom: "1px solid #1c1c1c",
-              padding: "8px 12px", display: "flex", alignItems: "center", gap: 8,
+              background: "#F7F3ED", borderBottom: "1px solid #E8E0D5",
+              padding: "9px 14px", display: "flex", alignItems: "center", gap: 8,
             }}>
               <div style={{ display: "flex", gap: 5 }}>
-                {["#ff5f56","#ffbd2e","#27c93f"].map((c, i) => (
-                  <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />
+                {["#FDA4AF","#FDE68A","#A7F3D0"].map((c, i) => (
+                  <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c, border: "1px solid rgba(0,0,0,0.06)" }} />
                 ))}
               </div>
-              <span style={{ flex: 1, textAlign: "center", color: "#2a2a2a", fontSize: 9, letterSpacing: 4 }}>
+              <span style={{ flex: 1, textAlign: "center", color: "#8C7E74", fontSize: 9, fontWeight: 700, letterSpacing: 3 }}>
                 LIVE DEMO — DESI EDITION
               </span>
               <div style={{
-                width: 6, height: 6, borderRadius: "50%",
-                background: "#ff2200", boxShadow: "0 0 5px #ff2200",
+                width: 7, height: 7, borderRadius: "50%",
+                background: "#D97706", boxShadow: "0 0 6px rgba(217,119,6,0.6)",
                 animation: "pulse 1.3s infinite",
               }} />
             </div>
 
             {/* ── Scrollable messages container ─────────────────────────── */}
             <div
-              ref={chatContainerRef}           // ← attach ref here
+              ref={chatContainerRef}
               style={{
                 padding: "14px 12px",
                 display: "flex", flexDirection: "column", gap: 10,
-                height: 220,                   // fixed height so it actually scrolls
+                height: 220,
                 overflowY: "auto",
-                background: "#111",
+                background: "#FAF7F2",
                 scrollBehavior: "smooth",
               }}
             >
@@ -290,24 +276,24 @@ export default function IntroPage() {
                   onTick={i === activeIdx ? scrollToBottom : undefined}
                 />
               ))}
-              {/* spacer so last bubble isn't glued to bottom edge */}
               <div style={{ height: 4, flexShrink: 0 }} />
             </div>
           </div>
         )}
 
-        {/* ── Features — English ── */}
+        {/* ── Features ── */}
         {showFeatures && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {FEATURES.map((f, i) => (
               <div key={i} style={{
-                background: "#0e0e0e", border: "1px solid #1c1c1c",
-                borderRadius: 10, padding: "9px 12px",
+                background: "#FFFFFF", border: "1px solid #E8E0D5",
+                borderRadius: 12, padding: "10px 12px",
                 display: "flex", alignItems: "center", gap: 8,
+                boxShadow: "0 2px 8px rgba(36,30,28,0.03)",
                 animation: `fadeUp 0.35s ${i * 0.07}s cubic-bezier(0.34,1.4,0.64,1) both`,
               }}>
-                <span style={{ fontSize: 14 }}>{f.icon}</span>
-                <span style={{ color: "#555", fontSize: 14 }}>{f.label}</span>
+                <span style={{ fontSize: 15 }}>{f.icon}</span>
+                <span style={{ color: "#5F544D", fontSize: 11.5, fontWeight: 600 }}>{f.label}</span>
               </div>
             ))}
           </div>
@@ -319,27 +305,28 @@ export default function IntroPage() {
             <button
               onClick={enter}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "scale(1.03) translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 0 50px rgba(255,34,0,0.6),0 12px 40px rgba(255,34,0,0.3)";
+                e.currentTarget.style.transform = "scale(1.02) translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 10px 28px rgba(217,119,6,0.35)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "scale(1) translateY(0)";
-                e.currentTarget.style.boxShadow = "0 0 28px rgba(255,34,0,0.35),0 8px 28px rgba(255,34,0,0.15)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(217,119,6,0.25)";
               }}
               style={{
                 width: "100%",
-                background: "linear-gradient(135deg,#aa0000,#ff2200,#ff5500)",
-                color: "#fff", fontFamily: "'Courier New', monospace",
-                fontWeight: 900, fontSize: 13, letterSpacing: 4,
-                textTransform: "uppercase", border: "none", borderRadius: 12,
-                padding: "15px 28px", cursor: "pointer",
-                boxShadow: "0 0 28px rgba(255,34,0,0.35),0 8px 28px rgba(255,34,0,0.15)",
+                background: "linear-gradient(135deg, #D97706, #F59E0B)",
+                color: "#FFFFFF",
+                fontFamily: "var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif",
+                fontWeight: 800, fontSize: 13, letterSpacing: 3,
+                textTransform: "uppercase", border: "none", borderRadius: 14,
+                padding: "15px 24px", cursor: "pointer",
+                boxShadow: "0 6px 20px rgba(217,119,6,0.25)",
                 transition: "transform 0.18s, box-shadow 0.18s",
               }}
             >
               🔥 &nbsp; HIMMAT HAI TOH ANDAR AA
             </button>
-            <p style={{ textAlign: "center", color: "gray", fontSize: 9, marginTop: 9, letterSpacing: 3 }}>
+            <p style={{ textAlign: "center", color: "#8C7E74", fontSize: 9.5, marginTop: 9, letterSpacing: 2, fontWeight: 600 }}>
               MAAKE LAADLE FEELINGS NHI BACHEGI • GUARANTEED
             </p>
           </div>
@@ -349,7 +336,7 @@ export default function IntroPage() {
       <style>{`
         @keyframes fadeUp    { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
         @keyframes popIn     { from{opacity:0;transform:scale(0.25) rotate(-18deg)} to{opacity:1;transform:scale(1) rotate(0deg)} }
-        @keyframes revealTitle { from{opacity:0;letter-spacing:20px} to{opacity:1;letter-spacing:6px} }
+        @keyframes revealTitle { from{opacity:0;letter-spacing:16px} to{opacity:1;letter-spacing:5px} }
         @keyframes fadeIn    { from{opacity:0} to{opacity:1} }
         @keyframes msgIn     { from{opacity:0;transform:translateY(8px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes blink     { 0%,100%{opacity:1} 50%{opacity:0} }
