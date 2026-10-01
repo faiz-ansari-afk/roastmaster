@@ -14,11 +14,15 @@ import {
   Copy,
   Check,
   Code2,
+  Mic2,
+  Sparkles,
+  BookOpen,
+  Laugh,
 } from "lucide-react";
 
 // ── Helpers for structured data parsing & severity metadata ───────────────────
 function parseRoastData(raw) {
-  if (!raw) return { roast: "", severity: null, category: null, suggestion: "" };
+  if (!raw) return { roast: "", severity: null, category: null, suggestion: "", toolCall: null };
 
   if (typeof raw === "object") {
     return {
@@ -26,6 +30,7 @@ function parseRoastData(raw) {
       severity: typeof raw.severity === "number" ? raw.severity : null,
       category: raw.category || null,
       suggestion: raw.suggestion || "",
+      toolCall: raw.toolCall || null,
     };
   }
 
@@ -40,6 +45,7 @@ function parseRoastData(raw) {
             severity: typeof parsed.severity === "number" ? parsed.severity : null,
             category: parsed.category || null,
             suggestion: parsed.suggestion || "",
+            toolCall: parsed.toolCall || null,
           };
         }
       } catch {
@@ -51,10 +57,11 @@ function parseRoastData(raw) {
       severity: null,
       category: null,
       suggestion: "",
+      toolCall: null,
     };
   }
 
-  return { roast: String(raw), severity: null, category: null, suggestion: "" };
+  return { roast: String(raw), severity: null, category: null, suggestion: "", toolCall: null };
 }
 
 function getSeverityBadge(severity) {
@@ -94,15 +101,18 @@ function BotMessageBubble({ content, isStreaming }) {
   const severityInfo = getSeverityBadge(data.severity);
 
   const handleCopy = () => {
-    let textToCopy = `🔥 Roast:\n${data.roast}`;
+    let textToCopy = `🔥 Standup Roast:\n${data.roast}`;
     if (data.severity != null) {
-      textToCopy += `\n\nSeverity: ${data.severity}/10`;
+      textToCopy += `\n\nRoast Heat: ${data.severity}/10`;
     }
     if (data.category) {
       textToCopy += `\nCategory: ${data.category}`;
     }
     if (data.suggestion) {
       textToCopy += `\n\n💡 Actually improve:\n${data.suggestion}`;
+    }
+    if (data.toolCall) {
+      textToCopy += `\n\n🎤 Comedian Vault Tool: ${data.toolCall.tool}\nTopic: ${data.toolCall.topic || ""}\nAmmo: ${data.toolCall.ammo || ""}\nAngle: ${data.toolCall.angle || ""}`;
     }
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
@@ -126,7 +136,7 @@ function BotMessageBubble({ content, isStreaming }) {
             {/* Left: Flame + Roast Title */}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] text-xs font-black tracking-wider uppercase">
               <Flame className="w-3.5 h-3.5 text-[#D97706] fill-[#D97706]" />
-              <span>Roast</span>
+              <span>Standup Roast</span>
             </div>
 
             {/* Right: Category + Severity */}
@@ -144,7 +154,7 @@ function BotMessageBubble({ content, isStreaming }) {
                   title={`${severityInfo.label} (${data.severity}/10)`}
                 >
                   <Gauge className="w-3 h-3" />
-                  <span>Severity: {data.severity}/10</span>
+                  <span>Roast Heat: {data.severity}/10</span>
                 </div>
               )}
             </div>
@@ -194,6 +204,73 @@ function BotMessageBubble({ content, isStreaming }) {
           )}
         </div>
 
+        {/* 🎤 Standup Comedian's Comedy Vault Tool Call */}
+        {data.toolCall && (
+          <div className="mt-4 pt-3.5 border-t border-[#F0E8DD]">
+            <div className="bg-[#241E1C] text-[#FAF7F2] rounded-xl p-3.5 sm:p-4 border border-[#3E342F] shadow-sm">
+              {/* Header bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-[#3E342F]">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#D97706]/20 border border-[#D97706]/40 flex items-center justify-center">
+                    <Mic2 className="w-3.5 h-3.5 text-[#F59E0B]" />
+                  </div>
+                  <span className="text-[11px] font-black tracking-wider text-[#FCD34D] uppercase flex items-center gap-1.5 font-mono">
+                    <span>TOOL EXECUTED:</span>
+                    <span className="text-white bg-[#372E29] px-1.5 py-0.5 rounded border border-[#4F423B]">
+                      {data.toolCall.tool || "fetch_roast_ammo"}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-[#FBBF24] bg-[#78350F]/40 border border-[#B45309]/60 px-2.5 py-0.5 rounded-full">
+                  <Sparkles className="w-3 h-3 text-[#F59E0B]" />
+                  <span>{data.toolCall.status || "AMMO_UNLOCKED"}</span>
+                </div>
+              </div>
+
+              {/* Ammo Details */}
+              <div className="space-y-2.5 text-xs">
+                {data.toolCall.topic && (
+                  <div className="bg-[#2E2724] p-2.5 rounded-lg border border-[#423731] flex items-center justify-between gap-2">
+                    <span className="text-[10px] uppercase font-bold text-[#A89C90] flex items-center gap-1">
+                      <Tag className="w-3 h-3 text-[#D97706]" />
+                      <span>Researched Topic:</span>
+                    </span>
+                    <span className="font-semibold text-[#FDF9F4] font-mono text-[11px]">
+                      {data.toolCall.topic}
+                    </span>
+                  </div>
+                )}
+
+                {data.toolCall.ammo && (
+                  <div className="bg-[#2E2724] p-2.5 rounded-lg border border-[#423731]">
+                    <div className="text-[10px] uppercase font-bold text-[#F59E0B] flex items-center gap-1 mb-1">
+                      <BookOpen className="w-3 h-3 text-[#F59E0B]" />
+                      <span>Comedy Vault Ammo</span>
+                    </div>
+                    <div className="text-[#E6DDD2] leading-relaxed">
+                      {data.toolCall.ammo}
+                    </div>
+                  </div>
+                )}
+
+                {data.toolCall.angle && (
+                  <div className="bg-[#332219]/60 border border-[#523526] rounded-lg p-2.5 flex items-start gap-2">
+                    <Laugh className="w-4 h-4 text-[#F59E0B] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-[#FBBF24] uppercase text-[10px] block">
+                        Crowd-Work Angle:
+                      </span>
+                      <span className="text-[#E6DDD2] italic">
+                        "{data.toolCall.angle}"
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Actually Improve Box */}
         {data.suggestion && (
           <div className="mt-4 pt-3.5 border-t border-[#F0E8DD]">
@@ -217,7 +294,7 @@ function BotMessageBubble({ content, isStreaming }) {
             <button
               onClick={handleCopy}
               className="flex items-center gap-1 text-[11px] font-semibold text-[#8C7E74] hover:text-[#241E1C] hover:bg-[#F5EFE8] px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-              title="Copy roast and suggestion"
+              title="Copy roast, suggestion and comedian notes"
             >
               {copied ? (
                 <>
@@ -434,13 +511,13 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         {loading && (
           <div className="flex items-start gap-2.5 sm:gap-3 max-w-2xl sm:max-w-3xl">
             <div className="w-8 h-8 rounded-full bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center shrink-0 shadow-2xs mt-1 animate-pulse">
-              <Flame className="w-4 h-4 text-[#D97706] animate-bounce" />
+              <Mic2 className="w-4 h-4 text-[#D97706] animate-bounce" />
             </div>
             <div className="flex-1 bg-white border border-[#E8DFD3] rounded-2xl rounded-tl-xs p-4 sm:p-5 shadow-[0_2px_14px_rgba(36,30,28,0.05)]">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-2 h-2 rounded-full bg-[#D97706] animate-ping" />
                 <span className="text-xs font-bold text-[#D97706] uppercase tracking-wider">
-                  RoastMaster is analyzing your code catastrophe...
+                  Consulting Comedy Vault (calling fetch_roast_ammo)...
                 </span>
               </div>
               <div className="space-y-2">
@@ -498,23 +575,23 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
 function EmptyState({ user, onShowAuth }) {
   const starters = [
+    { label: "Roast my choice of PHP in 2026", text: "Roast my decision to build our new enterprise SaaS with PHP in 2026." },
     { label: "Infinite loop in React useEffect", text: "Roast this React code: useEffect(() => { setCount(count + 1); }, [count]);" },
     { label: "Centering a div with margin: -9999px", text: "Roast my CSS: .center { position: absolute; margin: -9999px auto; }" },
-    { label: "Storing password in plain text localStorage", text: "Roast this: localStorage.setItem('user_password', '123456');" },
-    { label: "Why is 2+2=5?", text: "Why is 2+2=5 in JavaScript?" },
-    { label: "Give me life advice", text: "Give me life advice, RoastMaster" },
+    { label: "Storing password in plaintext localStorage", text: "Roast this: localStorage.setItem('user_password', '123456');" },
+    { label: "Roast my 500-line single function", text: "I have a single JavaScript function that is 500 lines long with 12 nested if statements." },
   ];
 
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[360px] text-center px-4 py-8">
       <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center mb-4 shadow-xs">
-        <Flame className="w-8 h-8 text-[#D97706]" />
+        <Mic2 className="w-8 h-8 text-[#D97706]" />
       </div>
       <h2 className="text-[#92400E] text-lg sm:text-xl font-black tracking-wider uppercase mb-2">
-        Drop the code. I'll burn it down.
+        Take the front row. It's crowd work time.
       </h2>
       <p className="text-[#786C63] text-xs sm:text-sm mb-6 max-w-sm leading-relaxed">
-        Submit code or questions. Get graded on severity, categorized, roasted mercilessly, and given actual advice on how to improve.
+        Submit code or questions. RoastMaster researches your topic via real-time tool calls to the Comedy Vault, roasts you like an open-mic heckler, and gives actual advice.
       </p>
       <div className="flex flex-wrap gap-2 justify-center max-w-xl">
         {starters.map((s, idx) => (
