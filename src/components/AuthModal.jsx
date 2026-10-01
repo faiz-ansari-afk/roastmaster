@@ -1,8 +1,8 @@
 "use client";
-// components/AuthModal.jsx
+// components/AuthModal.jsx — VIP Comedy Club Backstage Lounge Pass (Baby Pink Edition)
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Flame, X, AlertCircle } from "lucide-react";
+import { X, AlertCircle, Ticket, Lock, Mail, User } from "lucide-react";
 
 export default function AuthModal({ onClose }) {
   const { signUpWithEmail, loginWithEmail } = useAuth();
@@ -16,10 +16,14 @@ export default function AuthModal({ onClose }) {
   const getFriendlyError = (e) => {
     const code = e?.code || "";
     if (code === "auth/email-already-in-use") {
-      return "This email is already registered. Please switch to Log In.";
+      return "This email is already registered. Switch to Log In.";
     }
-    if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
-      return "Invalid email or password. Please check your credentials.";
+    if (
+      code === "auth/invalid-credential" ||
+      code === "auth/wrong-password" ||
+      code === "auth/user-not-found"
+    ) {
+      return "Invalid email or password. Please verify your credentials.";
     }
     if (code === "auth/weak-password") {
       return "Password should be at least 6 characters long.";
@@ -56,12 +60,12 @@ export default function AuthModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#241E1C]/50 backdrop-blur-xs p-4">
-      <div className="relative w-full max-w-md bg-white border border-[#E8E0D5] rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(36,30,28,0.15)] text-[#241E1C] max-h-[90dvh] overflow-y-auto">
-        {/* Close */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D1C24]/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-white border border-[#FBCFE8] rounded-3xl p-6 sm:p-8 shadow-[0_20px_60px_rgba(236,72,153,0.18)] text-[#2D1C24] max-h-[90dvh] overflow-y-auto">
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#8C7E74] hover:text-[#241E1C] hover:bg-[#EFE8DE] p-1.5 rounded-lg transition-colors cursor-pointer"
+          className="absolute top-4 right-4 text-[#9D7889] hover:text-[#2D1C24] hover:bg-[#FDF2F8] p-2 rounded-xl transition-colors cursor-pointer"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" />
@@ -69,50 +73,64 @@ export default function AuthModal({ onClose }) {
 
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center mx-auto mb-3 shadow-2xs">
-            <Flame className="w-6 h-6 text-[#D97706]" />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] flex items-center justify-center mx-auto mb-3 shadow-[0_4px_16px_rgba(236,72,153,0.3)]">
+            <Ticket className="w-7 h-7 text-white" />
           </div>
-          <h2 className="text-[#92400E] text-xl sm:text-2xl font-black tracking-wider uppercase">
-            {mode === "login" ? "Welcome Back" : "Join the Suffering"}
+          <div className="inline-block px-2.5 py-0.5 rounded-full bg-[#FDF2F8] border border-[#FBCFE8] text-[#BE185D] text-[10px] font-mono font-bold tracking-widest uppercase mb-1.5">
+            VIP BACKSTAGE PASS
+          </div>
+          <h2 className="text-[#2D1C24] text-xl sm:text-2xl font-black tracking-wide uppercase font-mono">
+            {mode === "login" ? "Claim Your Mic" : "Join The Lineup"}
           </h2>
-          <p className="text-[#786C63] text-xs mt-1.5 tracking-wide">
+          <p className="text-[#836270] text-xs mt-1.5 font-sans">
             {mode === "login"
-              ? "Ready to get roasted again?"
-              : "Create an account to save your humiliation history"}
+              ? "Sign in to access your saved roast sets & comedy notes."
+              : "Create an account to save your humiliation history forever."}
           </p>
         </div>
 
-        {/* Email form */}
-        <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Email Form */}
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           {mode === "signup" && (
-            <input
-              type="text"
-              placeholder="Display Name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full bg-[#FAF7F2] border border-[#DDD3C4] focus:border-[#D97706] focus:bg-white text-[#241E1C] placeholder-[#9C8F85] px-4 py-2.5 sm:py-3 rounded-xl outline-none transition-colors text-sm"
-            />
+            <div className="relative">
+              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#EC4899]" />
+              <input
+                type="text"
+                placeholder="Heckler Name / Stage Alias"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full bg-[#FFF8FA] border border-[#FBCFE8] focus:border-[#EC4899] focus:ring-2 focus:ring-[#F472B6]/20 focus:bg-white text-[#2D1C24] placeholder-[#9D7889] pl-10 pr-4 py-3 rounded-xl outline-none transition-colors text-sm font-sans"
+              />
+            </div>
           )}
-          <input
-            type="email"
-            placeholder="Email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-[#FAF7F2] border border-[#DDD3C4] focus:border-[#D97706] focus:bg-white text-[#241E1C] placeholder-[#9C8F85] px-4 py-2.5 sm:py-3 rounded-xl outline-none transition-colors text-sm"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-[#FAF7F2] border border-[#DDD3C4] focus:border-[#D97706] focus:bg-white text-[#241E1C] placeholder-[#9C8F85] px-4 py-2.5 sm:py-3 rounded-xl outline-none transition-colors text-sm"
-          />
+
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#EC4899]" />
+            <input
+              type="email"
+              placeholder="Email Address"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-[#FFF8FA] border border-[#FBCFE8] focus:border-[#EC4899] focus:ring-2 focus:ring-[#F472B6]/20 focus:bg-white text-[#2D1C24] placeholder-[#9D7889] pl-10 pr-4 py-3 rounded-xl outline-none transition-colors text-sm font-sans"
+            />
+          </div>
+
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#EC4899]" />
+            <input
+              type="password"
+              placeholder="Secret Passcode"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-[#FFF8FA] border border-[#FBCFE8] focus:border-[#EC4899] focus:ring-2 focus:ring-[#F472B6]/20 focus:bg-white text-[#2D1C24] placeholder-[#9D7889] pl-10 pr-4 py-3 rounded-xl outline-none transition-colors text-sm font-sans"
+            />
+          </div>
 
           {error && (
-            <p className="text-[#B91C1C] text-xs mt-3 bg-[#FEF2F2] border border-[#FECACA] rounded-xl px-3.5 py-2.5 leading-relaxed flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-[#DC2626]" />
+            <p className="text-[#BE123C] text-xs mt-3 bg-[#FFE4E6] border border-[#FDA4AF] rounded-xl px-3.5 py-2.5 leading-relaxed flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#E11D48]" />
               <span>{error}</span>
             </p>
           )}
@@ -120,21 +138,24 @@ export default function AuthModal({ onClose }) {
           <button
             type="submit"
             disabled={loading || !email || !password}
-            className="w-full mt-4 bg-gradient-to-tr from-[#D97706] to-[#F59E0B] hover:from-[#B45309] hover:to-[#D97706] text-white font-bold py-3 rounded-xl transition-all uppercase tracking-wider text-xs sm:text-sm disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(217,119,6,0.25)] active:scale-98"
+            className="w-full mt-4 bg-gradient-to-r from-[#F472B6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#DB2777] text-white font-black py-3.5 rounded-xl transition-all uppercase tracking-wider text-xs sm:text-sm disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed shadow-[0_4px_16px_rgba(236,72,153,0.35)] active:scale-98 font-mono"
           >
-            {loading ? "Processing..." : mode === "login" ? "Login" : "Sign Up"}
+            {loading ? "AUTHENTICATING..." : mode === "login" ? "ENTER VIP LOUNGE" : "CLAIM VIP PASS"}
           </button>
         </form>
 
-        {/* Toggle mode */}
-        <p className="text-center text-[#786C63] text-xs mt-5">
-          {mode === "login" ? "No account yet? " : "Already suffering? "}
+        {/* Toggle Mode */}
+        <p className="text-center text-[#836270] text-xs mt-6 font-mono">
+          {mode === "login" ? "Need a ticket? " : "Already have a pass? "}
           <button
             type="button"
-            onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); }}
-            className="text-[#D97706] font-semibold hover:underline cursor-pointer"
+            onClick={() => {
+              setMode(mode === "login" ? "signup" : "login");
+              setError("");
+            }}
+            className="text-[#EC4899] hover:text-[#BE185D] font-bold hover:underline cursor-pointer"
           >
-            {mode === "login" ? "Sign Up" : "Log In"}
+            {mode === "login" ? "Sign Up Here" : "Log In Here"}
           </button>
         </p>
       </div>

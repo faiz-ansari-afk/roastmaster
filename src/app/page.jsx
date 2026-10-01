@@ -1,6 +1,15 @@
 "use client";
+// app/page.jsx — The Live Roast Arena Entrance (Baby Pink Edition)
 import { useRouter } from "next/navigation";
-import { Flame, ArrowRight, ShieldAlert, Sparkles, History, MessageSquare } from "lucide-react";
+import {
+  Flame,
+  ArrowRight,
+  Ticket,
+  Mic2,
+  Radio,
+  BookOpen,
+  Laugh,
+} from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -10,57 +19,69 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-[100dvh] bg-[#FAF7F2] text-[#241E1C] flex items-center justify-center p-4 sm:p-6 selection:bg-[#FEF3C7] selection:text-[#92400E]">
-      <div className="w-full max-w-md bg-white border border-[#E8E0D5] rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(36,30,28,0.06)] text-center">
-        {/* Brand Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center mx-auto mb-5 shadow-2xs">
-          <Flame className="w-8 h-8 text-[#D97706]" />
+    <main className="min-h-[100dvh] bg-[#FFF5F7] text-[#2D1C24] flex items-center justify-center p-4 sm:p-6 selection:bg-[#FCE7F3] selection:text-[#BE185D] relative overflow-hidden">
+      {/* Overhead Stage Spotlight Beam — Soft Baby Pink Glow */}
+      <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[radial-gradient(ellipse_at_top,_rgba(244,114,182,0.2)_0%,_rgba(236,72,153,0.05)_50%,_transparent_75%)] blur-2xl z-0 animate-spotlight" />
+
+      <div className="relative z-10 w-full max-w-lg bg-white/95 border border-[#FBCFE8] rounded-3xl p-6 sm:p-10 shadow-[0_20px_60px_rgba(236,72,153,0.1)] text-center backdrop-blur-xl">
+        {/* Stage Mic Halo */}
+        <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] flex items-center justify-center mx-auto mb-6 shadow-[0_0_25px_rgba(244,114,182,0.35)]">
+          <Mic2 className="w-10 h-10 text-white" />
+          <div className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E11D48] opacity-75" />
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#E11D48]" />
+          </div>
         </div>
 
-        {/* Heading */}
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#241E1C] uppercase">
-          RoastMaster
+        {/* Live Stage Marquee */}
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FDF2F8] border border-[#FBCFE8] text-[#BE185D] text-[11px] font-mono font-bold tracking-widest uppercase mb-3">
+          <Radio className="w-3.5 h-3.5 text-[#E11D48] animate-pulse" />
+          <span>LIVE COMEDY CELLAR • VIP FRONT ROW</span>
+        </div>
+
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-[#2D1C24] uppercase font-mono">
+          ROASTMASTER
         </h1>
-        <p className="text-xs font-bold text-[#D97706] tracking-widest uppercase mt-1">
-          AI That Has Zero Chill • Desi Edition
+        <p className="text-xs font-bold text-[#EC4899] tracking-widest uppercase mt-1 font-mono">
+          Unfiltered Standup Roast • Powered by Comedy Vault AI
         </p>
 
         {/* Description */}
-        <p className="text-sm text-[#786C63] mt-3.5 leading-relaxed max-w-xs mx-auto">
-          Ask anything and get savage, hilarious answers with zero mercy. Enter only if you can handle the heat.
+        <p className="text-sm text-[#836270] mt-4 leading-relaxed max-w-sm mx-auto font-sans">
+          Step up to the stage mic. Our headliner uses real-time tool calls to query the Comedy Vault for verified technical quirks and roast you with zero mercy.
         </p>
 
-        {/* Highlights */}
-        <div className="grid grid-cols-2 gap-2.5 my-6 text-left">
-          <div className="bg-[#FAF7F2] border border-[#E8E0D5] rounded-xl p-3 flex items-center gap-2.5">
-            <Flame className="w-4 h-4 text-[#D97706] shrink-0" />
-            <span className="text-xs font-semibold text-[#5F544D]">Brutal Roasts</span>
+        {/* Feature Stubs */}
+        <div className="grid grid-cols-2 gap-2.5 my-7 text-left font-mono">
+          <div className="bg-[#FDF2F8] border border-[#FCE7F3] rounded-2xl p-3 flex items-center gap-2.5">
+            <Flame className="w-4 h-4 text-[#EC4899] shrink-0" />
+            <span className="text-xs font-bold text-[#2D1C24]">Brutal Crowd Work</span>
           </div>
-          <div className="bg-[#FAF7F2] border border-[#E8E0D5] rounded-xl p-3 flex items-center gap-2.5">
-            <History className="w-4 h-4 text-[#D97706] shrink-0" />
-            <span className="text-xs font-semibold text-[#5F544D]">Saved Sessions</span>
+          <div className="bg-[#FDF2F8] border border-[#FCE7F3] rounded-2xl p-3 flex items-center gap-2.5">
+            <BookOpen className="w-4 h-4 text-[#EC4899] shrink-0" />
+            <span className="text-xs font-bold text-[#2D1C24]">Comedy Vault Tool</span>
           </div>
-          <div className="bg-[#FAF7F2] border border-[#E8E0D5] rounded-xl p-3 flex items-center gap-2.5">
-            <Sparkles className="w-4 h-4 text-[#D97706] shrink-0" />
-            <span className="text-xs font-semibold text-[#5F544D]">Streaming AI</span>
+          <div className="bg-[#FDF2F8] border border-[#FCE7F3] rounded-2xl p-3 flex items-center gap-2.5">
+            <Ticket className="w-4 h-4 text-[#EC4899] shrink-0" />
+            <span className="text-xs font-bold text-[#2D1C24]">Green Room Sets</span>
           </div>
-          <div className="bg-[#FAF7F2] border border-[#E8E0D5] rounded-xl p-3 flex items-center gap-2.5">
-            <ShieldAlert className="w-4 h-4 text-[#D97706] shrink-0" />
-            <span className="text-xs font-semibold text-[#5F544D]">Zero Feelings</span>
+          <div className="bg-[#FDF2F8] border border-[#FCE7F3] rounded-2xl p-3 flex items-center gap-2.5">
+            <Laugh className="w-4 h-4 text-[#EC4899] shrink-0" />
+            <span className="text-xs font-bold text-[#2D1C24]">Zero Mercy Policy</span>
           </div>
         </div>
 
-        {/* CTA Button */}
+        {/* CTA Take The Stage */}
         <button
           onClick={handleEnter}
-          className="w-full bg-gradient-to-r from-[#D97706] to-[#B45309] hover:from-[#B45309] hover:to-[#92400E] text-white font-bold py-3.5 px-6 rounded-2xl text-sm sm:text-base tracking-wide shadow-[0_6px_20px_rgba(217,119,6,0.25)] transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-98"
+          className="w-full bg-gradient-to-r from-[#F472B6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#DB2777] text-white font-black py-4 px-6 rounded-2xl text-sm sm:text-base tracking-wider uppercase shadow-[0_4px_20px_rgba(236,72,153,0.3)] hover:shadow-[0_6px_25px_rgba(236,72,153,0.45)] transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-98 font-mono"
         >
-          <span>Dare to Enter</span>
+          <span>Claim Front Row Mic</span>
           <ArrowRight className="w-4 h-4" />
         </button>
 
-        <p className="text-[11px] text-[#9C8F85] mt-3 font-medium">
-          Himmat hai toh aao • Feelings ki guarantee nahi
+        <p className="text-[11px] text-[#9D7889] mt-3.5 font-mono">
+          ENTRANCE AT YOUR OWN RISK • FEELINGS NOT COVERED
         </p>
       </div>
     </main>

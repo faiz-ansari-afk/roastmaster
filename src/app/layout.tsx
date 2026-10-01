@@ -23,7 +23,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
       </head>
-      <body className="bg-[#FAF7F2] text-[#241E1C] antialiased selection:bg-[#FEF3C7] selection:text-[#92400E]">
+      <body className="bg-[#FFF5F7] text-[#2D1C24] antialiased selection:bg-[#FCE7F3] selection:text-[#BE185D]">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
