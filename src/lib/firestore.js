@@ -3,6 +3,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   doc,
   setDoc,
   deleteDoc,
@@ -223,5 +224,98 @@ export async function getMessages(userId, sessionId) {
       console.error("[Firestore] getMessages fallback error:", fallbackErr);
       return [];
     }
+  }
+}
+
+// ── USER PROFILE & DATA MANAGEMENT ───────────────────────────────────────────
+
+export async function getUserProfile(userId) {
+  if (!userId) return null;
+  try {
+    // 1. Check subcollection /users/{userId}/profile/info (always passes /users/{userId}/{document=**} rule)
+    try {
+      const subDocSnap = await withTimeout(
+        getDoc(doc(db, "users", userId, "profile", "info")),
+        4000
+      );
+      if (subDocSnap && subDocSnap.exists()) {
+        return subDocSnap.data();
+      }
+    } catch (subErr) {
+      console.warn("[Firestore] getUserProfile subcollection check:", subErr.code || subErr.message);
+    }
+
+    // 2. Check root doc /users/{userId}
+    const userDocSnap = await withTimeout(getDoc(doc(db, "users", userId)), 4000);
+    if (userDocSnap && userDocSnap.exists()) {
+      return userDocSnap.data();
+    }
+    return null;
+  } catch (err) {
+    console.error("[Firestore] getUserProfile error:", err.code || err.message);
+    return null;
+  }
+}
+
+export async function saveUserProfile(userId, profileData) {
+  if (!userId) return false;
+  const payload = {
+    ...profileData,
+    updatedAt: serverTimestamp(),
+  };
+
+  let saved = false;
+
+  // 1. Write to subcollection /users/{userId}/profile/info (guaranteed to match /users/{userId}/{document=**})
+  try {
+    await withTimeout(
+      setDoc(doc(db, "users", userId, "profile", "info"), payload, { merge: true }),
+      5000
+    );
+    saved = true;
+  } catch (subErr) {
+    console.warn("[Firestore] saveUserProfile subcollection write failed:", subErr.code || subErr.message);
+  }
+
+  // 2. Also write to root doc /users/{userId} for backwards compatibility
+  try {
+    await withTimeout(
+      setDoc(doc(db, "users", userId), payload, { merge: true }),
+      5000
+    );
+    saved = true;
+  } catch (rootErr) {
+    console.warn("[Firestore] saveUserProfile root doc write failed:", rootErr.code || rootErr.message);
+  }
+
+  return saved;
+}
+
+export async function deleteAllUserSessions(userId) {
+  if (!userId) return { success: false, count: 0 };
+  try {
+    const sessionsSnap = await withTimeout(
+      getDocs(collection(db, "users", userId, "sessions")),
+      8000
+    );
+    let count = 0;
+    for (const sessionDoc of sessionsSnap.docs) {
+      const sessionId = sessionDoc.id;
+      try {
+        const msgsSnap = await withTimeout(
+          getDocs(collection(db, "users", userId, "sessions", sessionId, "messages")),
+          5000
+        );
+        await Promise.all(msgsSnap.docs.map((d) => deleteDoc(d.ref)));
+      } catch (msgErr) {
+        console.warn("[Firestore] Failed deleting messages for session", sessionId, msgErr);
+      }
+      await deleteDoc(sessionDoc.ref);
+      count++;
+    }
+    return { success: true, count };
+  } catch (err) {
+    console.error("[Firestore] deleteAllUserSessions error:", err.code || err.message);
+    return { success: false, count: 0, error: err.message };
   }
 }

@@ -184,9 +184,8 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
   return (
     <div
       onClick={isSpeaking ? skipReveal : undefined}
-      className={`relative group/card w-full max-w-3xl my-3 transition-all ${
-        isSpeaking ? "cursor-pointer" : ""
-      }`}
+      className={`relative group/card w-full max-w-3xl my-3 transition-all ${isSpeaking ? "cursor-pointer" : ""
+        }`}
       title={isSpeaking ? "Click to reveal punchline immediately" : ""}
     >
       {/* Soft Baby Pink Stage Dais Halo */}
@@ -223,29 +222,24 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
               {/* 5-Bar Dancing Audio Equalizer Visualizer — Baby Pink */}
               <div className="flex items-end gap-0.5 h-4 ml-1 px-1.5 py-0.5 bg-[#FDF2F8] rounded-md border border-[#FCE7F3]">
                 <span
-                  className={`w-0.5 bg-[#F472B6] rounded-full ${
-                    isSpeaking ? "animate-sound-1" : "h-1"
-                  }`}
+                  className={`w-0.5 bg-[#F472B6] rounded-full ${isSpeaking ? "animate-sound-1" : "h-1"
+                    }`}
                 />
                 <span
-                  className={`w-0.5 bg-[#EC4899] rounded-full ${
-                    isSpeaking ? "animate-sound-2" : "h-2"
-                  }`}
+                  className={`w-0.5 bg-[#EC4899] rounded-full ${isSpeaking ? "animate-sound-2" : "h-2"
+                    }`}
                 />
                 <span
-                  className={`w-0.5 bg-[#F472B6] rounded-full ${
-                    isSpeaking ? "animate-sound-3" : "h-3"
-                  }`}
+                  className={`w-0.5 bg-[#F472B6] rounded-full ${isSpeaking ? "animate-sound-3" : "h-3"
+                    }`}
                 />
                 <span
-                  className={`w-0.5 bg-[#EC4899] rounded-full ${
-                    isSpeaking ? "animate-sound-4" : "h-1.5"
-                  }`}
+                  className={`w-0.5 bg-[#EC4899] rounded-full ${isSpeaking ? "animate-sound-4" : "h-1.5"
+                    }`}
                 />
                 <span
-                  className={`w-0.5 bg-[#F472B6] rounded-full ${
-                    isSpeaking ? "animate-sound-5" : "h-2"
-                  }`}
+                  className={`w-0.5 bg-[#F472B6] rounded-full ${isSpeaking ? "animate-sound-5" : "h-2"
+                    }`}
                 />
               </div>
             </div>
@@ -292,11 +286,10 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
               {Array.from({ length: 10 }).map((_, idx) => (
                 <div
                   key={idx}
-                  className={`rounded-full transition-all duration-500 ${
-                    idx < data.severity
-                      ? `${severityInfo.meterClass} shadow-[0_0_6px_rgba(236,72,153,0.35)]`
-                      : "bg-[#FCE7F3]"
-                  }`}
+                  className={`rounded-full transition-all duration-500 ${idx < data.severity
+                    ? `${severityInfo.meterClass} shadow-[0_0_6px_rgba(236,72,153,0.35)]`
+                    : "bg-[#FCE7F3]"
+                    }`}
                 />
               ))}
             </div>
@@ -418,11 +411,10 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleApplaud}
-                className={`flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-                  hasApplauded
-                    ? "bg-[#FCE7F3] border-[#FBCFE8] text-[#BE185D]"
-                    : "bg-white border-[#FCE7F3] text-[#836270] hover:text-[#2D1C24] hover:bg-[#FDF2F8]"
-                }`}
+                className={`flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${hasApplauded
+                  ? "bg-[#FCE7F3] border-[#FBCFE8] text-[#BE185D]"
+                  : "bg-white border-[#FCE7F3] text-[#836270] hover:text-[#2D1C24] hover:bg-[#FDF2F8]"
+                  }`}
                 title="Applaud the roast!"
               >
                 <span>👏</span>
@@ -431,11 +423,10 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
 
               <button
                 onClick={handleTomato}
-                className={`flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-                  hasThrownTomato
-                    ? "bg-[#FFE4E6] border-[#FDA4AF] text-[#E11D48]"
-                    : "bg-white border-[#FCE7F3] text-[#836270] hover:text-[#2D1C24] hover:bg-[#FDF2F8]"
-                }`}
+                className={`flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${hasThrownTomato
+                  ? "bg-[#FFE4E6] border-[#FDA4AF] text-[#E11D48]"
+                  : "bg-white border-[#FCE7F3] text-[#836270] hover:text-[#2D1C24] hover:bg-[#FDF2F8]"
+                  }`}
                 title="Throw a tomato at the stage!"
               >
                 <span>🍅</span>
@@ -747,7 +738,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
               value={input}
               onChange={handleInput}
               onKeyDown={handleKey}
-              placeholder="Step up to the mic... heckle the stage with your code or question"
+              placeholder="Step up to the mic..."
               rows={1}
               style={{ maxHeight: "160px" }}
               className="flex-1 bg-transparent text-[#2D1C24] placeholder-[#9D7889] px-2 py-2 sm:py-2.5 outline-none text-sm sm:text-[15px] resize-none overflow-y-auto leading-normal font-sans"
@@ -769,9 +760,9 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
             </button>
           </div>
 
-          <div className="flex items-center justify-between px-2 pt-2 text-[10px] sm:text-[11px] font-mono text-[#836270]">
+          <div className="flex items-center justify-between px-2 pt-2 text-[10px] sm:text-[11px] font-mono text-[#836270] hidden md:block">
             <span>PRESS ENTER TO HECKLE • SHIFT+ENTER FOR MULTILINE</span>
-            <span className="text-[#EC4899] font-bold">MIC LIVE 🎙️</span>
+            <span className="text-[#EC4899] font-bold ">MIC LIVE 🎙️</span>
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import {
   signInAnonymously, signOut, updateProfile,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { getUserProfile } from "@/lib/firestore";
 
 const AuthContext = createContext({});
 
@@ -14,7 +15,28 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => { setUser(u); setLoading(false); });
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        let mergedUser = u;
+        try {
+          const profile = await getUserProfile(u.uid);
+          if (profile) {
+            mergedUser = {
+              ...u,
+              displayName: profile.displayName || u.displayName,
+              photoURL: profile.photoURL || u.photoURL,
+              stageTitle: profile.stageTitle || null,
+            };
+          }
+        } catch (profileErr) {
+          console.warn("[Auth] Failed fetching initial profile:", profileErr);
+        }
+        setUser(mergedUser);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
     return () => unsub();
   }, []);
 
@@ -34,9 +56,39 @@ export function AuthProvider({ children }) {
     return cred;
   };
 
+  const updateUserProfile = async ({ displayName, photoURL }) => {
+    if (!auth.currentUser) return;
+    const authUpdates = {};
+    if (displayName !== undefined && displayName !== null) {
+      authUpdates.displayName = displayName;
+    }
+    // Only pass http/https URLs to Firebase Auth (data URLs cause auth/invalid-photo-url)
+    if (
+      photoURL !== undefined &&
+      (photoURL === null || photoURL === "" || photoURL.startsWith("http://") || photoURL.startsWith("https://"))
+    ) {
+      authUpdates.photoURL = photoURL || null;
+    }
+
+    try {
+      if (Object.keys(authUpdates).length > 0) {
+        await updateProfile(auth.currentUser, authUpdates);
+      }
+    } catch (authErr) {
+      console.warn("[Auth] Firebase Auth updateProfile notice:", authErr.code || authErr.message);
+    }
+
+    setUser((prev) => ({
+      ...(auth.currentUser || {}),
+      ...(prev || {}),
+      displayName: displayName !== undefined ? displayName : prev?.displayName,
+      photoURL: photoURL !== undefined ? photoURL : prev?.photoURL,
+    }));
+  };
+
   return (
     <AuthContext.Provider value={{ user, loading, isGuest: user?.isAnonymous ?? false,
-      loginWithGoogle, loginWithEmail, loginAsGuest, logout, signUpWithEmail }}>
+      loginWithGoogle, loginWithEmail, loginAsGuest, logout, signUpWithEmail, updateUserProfile }}>
       {!loading && children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,7 @@
 "use client";
 // components/Sidebar.jsx — Backstage Green Room & VIP Setlists (Baby Pink Edition)
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { subscribeToSessions, deleteSession } from "@/lib/firestore";
 import SearchModal from "./SearchModal";
@@ -166,6 +167,21 @@ export default function Sidebar({
           </button>
         </div>
 
+        {/* Mobile View Only: Live Broadcast & Stage Heat Status (Moved from Navbar) */}
+        <div className="sm:hidden px-4 py-2 bg-[#FFF0F4] border-b border-[#FBCFE8] flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#E11D48] animate-pulse" />
+            <span className="font-mono text-[10px] font-black tracking-widest text-[#E11D48] uppercase">
+              LIVE ON AIR
+            </span>
+            <span className="text-[10px] text-[#836270] font-medium font-mono">• CELLAR STAGE</span>
+          </div>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FFE4E6] border border-[#FDA4AF] text-[10px] font-mono font-bold text-[#BE185D]">
+            <Flame className="w-3 h-3 text-[#EC4899]" />
+            <span>HEAT 9.8/10</span>
+          </div>
+        </div>
+
         {/* Take The Stage Button (New Set) */}
         <div className="p-3.5 bg-[#FFF0F4] border-b border-[#FBCFE8]">
           <button
@@ -193,9 +209,12 @@ export default function Sidebar({
                 Search sets & roasts...
               </span>
             </div>
-            <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#BE185D] bg-[#FCE7F3] border border-[#FBCFE8] rounded-md shadow-2xs shrink-0">
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#BE185D] bg-[#FCE7F3] border border-[#FBCFE8] rounded-md shadow-2xs shrink-0">
               <span className="text-[9px]">Ctrl</span> K
             </kbd>
+            <span className="sm:hidden inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-bold text-[#BE185D] bg-[#FCE7F3] border border-[#FBCFE8] rounded-md shadow-2xs shrink-0">
+              <Sparkles className="w-2.5 h-2.5 text-[#EC4899]" /> AI SEARCH
+            </span>
           </button>
         </div>
 
@@ -346,35 +365,44 @@ export default function Sidebar({
                 onShowAuth();
                 onCloseSidebar();
               }}
-              className="w-full bg-[#EC4899] hover:bg-[#DB2777] text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs font-mono"
+              className="w-full flex items-center justify-center gap-2 bg-[#EC4899] hover:bg-[#DB2777] text-white font-black py-2.5 px-3 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs font-mono"
             >
-              Sign In To VIP Lounge
+              <User className="w-4 h-4" />
+              <span>Sign In • VIP Lounge Pass</span>
             </button>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center text-xs font-black text-[#BE185D] shrink-0 overflow-hidden shadow-2xs">
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                ) : isGuest ? (
-                  <User className="w-4 h-4 text-[#EC4899]" />
-                ) : (
-                  <span>
-                    {(user.displayName?.[0] || user.email?.[0] || "?").toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[#2D1C24] text-xs font-bold truncate">
-                  {isGuest ? "VIP Front-Row Guest" : (user.displayName || user.email)}
-                </p>
-                <p className="text-[#836270] text-[10px] font-mono uppercase tracking-wider">
-                  {isGuest ? "Temporary Pass" : "Verified Heckler"}
-                </p>
-              </div>
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/profile"
+                onClick={onCloseSidebar}
+                className="flex items-center gap-2.5 flex-1 min-w-0 group hover:opacity-90 transition-opacity cursor-pointer"
+                title="Open VIP Heckler Profile & Settings"
+              >
+                <div className="w-9 h-9 rounded-xl bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center text-xs font-black text-[#BE185D] shrink-0 overflow-hidden shadow-2xs group-hover:scale-105 transition-transform">
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : isGuest ? (
+                    <User className="w-4 h-4 text-[#EC4899]" />
+                  ) : (
+                    <span>
+                      {(user.displayName?.[0] || user.email?.[0] || "?").toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[#2D1C24] text-xs font-bold truncate group-hover:text-[#EC4899] transition-colors">
+                    {isGuest ? "VIP Front-Row Guest" : (user.displayName || user.email)}
+                  </p>
+                  <p className="text-[#836270] text-[10px] font-mono uppercase tracking-wider flex items-center gap-1">
+                    <span>{isGuest ? "Temporary Pass" : "VIP Profile"}</span>
+                    <span className="text-[#EC4899] font-bold">→</span>
+                  </p>
+                </div>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-[#836270] hover:text-[#E11D48] text-xs font-medium transition-colors shrink-0 cursor-pointer flex items-center gap-1 hover:underline p-1.5 rounded-lg hover:bg-white"
