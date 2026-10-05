@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { subscribeToSessions, deleteSession } from "@/lib/firestore";
+import SearchModal from "./SearchModal";
 import {
   Flame,
   X,
@@ -14,6 +15,8 @@ import {
   Radio,
   Clock,
   ChevronRight,
+  Search,
+  Sparkles,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -30,6 +33,25 @@ export default function Sidebar({
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Global Ctrl+K / Cmd+K listener & open-search event
+  useEffect(() => {
+    const handleGlobalKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    const handleOpenSearchEvent = () => setSearchOpen(true);
+
+    window.addEventListener("keydown", handleGlobalKey);
+    window.addEventListener("open-search", handleOpenSearchEvent);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKey);
+      window.removeEventListener("open-search", handleOpenSearchEvent);
+    };
+  }, []);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -155,6 +177,25 @@ export default function Sidebar({
           >
             <Plus className="w-4 h-4" />
             <span>Take The Stage (New Set)</span>
+          </button>
+        </div>
+
+        {/* Semantic Search Quick Bar (Docs Style - Ctrl + K) */}
+        <div className="p-3 bg-[#FFF8FA] border-b border-[#FBCFE8]">
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="w-full flex items-center justify-between px-3 py-2.5 bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#F472B6] rounded-xl text-xs text-[#836270] hover:text-[#2D1C24] transition-all shadow-2xs group cursor-pointer"
+            title="Search sets & past roasts with Semantic AI (Ctrl + K)"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Search className="w-3.5 h-3.5 text-[#EC4899] group-hover:scale-110 transition-transform shrink-0" />
+              <span className="font-medium truncate text-[#836270] group-hover:text-[#2D1C24]">
+                Search sets & roasts...
+              </span>
+            </div>
+            <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#BE185D] bg-[#FCE7F3] border border-[#FBCFE8] rounded-md shadow-2xs shrink-0">
+              <span className="text-[9px]">Ctrl</span> K
+            </kbd>
           </button>
         </div>
 
@@ -410,6 +451,17 @@ export default function Sidebar({
           </div>
         </div>
       )}
+
+      {/* Semantic Search Command Palette Modal */}
+      <SearchModal
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        sessions={sessions}
+        onSelectSession={(sid) => {
+          onSelectSession(sid);
+          onCloseSidebar();
+        }}
+      />
     </>
   );
 }

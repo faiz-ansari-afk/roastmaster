@@ -134,6 +134,16 @@ export async function saveCompletedExchange(userId, sessionId, userMsg, botMsg, 
   try {
     const msgsRef = collection(db, "users", userId, "sessions", sessionId, "messages");
 
+    const assistantDoc = {
+      role: "assistant",
+      content: botMsg,
+      createdAt: serverTimestamp(),
+    };
+
+    if (Array.isArray(botMsg?.embedding) && botMsg.embedding.length > 0) {
+      assistantDoc.embedding = botMsg.embedding;
+    }
+
     // Save both messages in parallel
     const writePromise = Promise.all([
       addDoc(msgsRef, {
@@ -141,11 +151,7 @@ export async function saveCompletedExchange(userId, sessionId, userMsg, botMsg, 
         content: userMsg,
         createdAt: serverTimestamp(),
       }),
-      addDoc(msgsRef, {
-        role: "assistant",
-        content: botMsg,
-        createdAt: serverTimestamp(),
-      }),
+      addDoc(msgsRef, assistantDoc),
     ]);
 
     await withTimeout(writePromise, 6000);
@@ -154,16 +160,26 @@ export async function saveCompletedExchange(userId, sessionId, userMsg, botMsg, 
     const sessionRef = doc(db, "users", userId, "sessions", sessionId);
     const cleanTitle = title && title.length > 40 ? title.slice(0, 40) + "..." : title;
 
+    const sessionUpdate = {
+      updatedAt: serverTimestamp(),
+      messageCount: increment(2),
+      ...(isFirstMessage && cleanTitle ? { title: cleanTitle } : {}),
+    };
+
+    // Store embedding and snippet on session doc for fast, lightweight vault search
+    if (Array.isArray(botMsg?.embedding) && botMsg.embedding.length > 0) {
+      sessionUpdate.embedding = botMsg.embedding;
+    }
+    const roastText = typeof botMsg === "object" ? botMsg?.roast : String(botMsg || "");
+    if (roastText) {
+      sessionUpdate.snippet = roastText.slice(0, 160);
+    }
+    if (botMsg?.category) {
+      sessionUpdate.category = botMsg.category;
+    }
+
     await withTimeout(
-      setDoc(
-        sessionRef,
-        {
-          updatedAt: serverTimestamp(),
-          messageCount: increment(2),
-          ...(isFirstMessage && cleanTitle ? { title: cleanTitle } : {}),
-        },
-        { merge: true }
-      ),
+      setDoc(sessionRef, sessionUpdate, { merge: true }),
       5000
     );
     return true;
@@ -185,6 +201,7 @@ export async function getMessages(userId, sessionId) {
       id: d.id,
       role: d.data().role,
       content: d.data().content,
+      embedding: d.data().embedding || null,
     }));
   } catch (err) {
     console.warn("[Firestore] getMessages with orderBy failed, falling back to manual sort:", err.code || err.message);
@@ -197,6 +214,7 @@ export async function getMessages(userId, sessionId) {
         id: d.id,
         role: d.data().role,
         content: d.data().content,
+        embedding: d.data().embedding || null,
         createdAt: d.data().createdAt?.toMillis?.() || 0,
       }));
       docs.sort((a, b) => a.createdAt - b.createdAt);

@@ -11,6 +11,7 @@ import {
   Ticket,
   Radio,
   User,
+  Search,
 } from "lucide-react";
 
 export default function ChatPage() {
@@ -93,6 +94,20 @@ export default function ChatPage() {
               <Ticket className="w-3.5 h-3.5 text-[#EC4899]" />
               <span className="hidden sm:inline">BACKSTAGE SETS</span>
               <span className="sm:hidden">SETS</span>
+            </button>
+
+            {/* Semantic Search Quick Trigger Button */}
+            <button
+              onClick={() => window.dispatchEvent(new Event("open-search"))}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-[#FFF0F4] hover:bg-[#FCE7F3] border border-[#FBCFE8] hover:border-[#F472B6] text-[#BE185D] hover:text-[#9D174D] rounded-xl text-xs font-bold font-mono transition-all cursor-pointer shadow-2xs active:scale-95"
+              title="Semantic Search Roast Sets (Ctrl + K)"
+              aria-label="Search Roast Sets"
+            >
+              <Search className="w-3.5 h-3.5 text-[#EC4899]" />
+              <span className="hidden md:inline">SEARCH</span>
+              <kbd className="hidden lg:inline-flex items-center px-1 py-0.2 text-[9px] bg-white border border-[#FBCFE8] rounded text-[#BE185D]">
+                Ctrl K
+              </kbd>
             </button>
 
             {/* Marquee Brand */}

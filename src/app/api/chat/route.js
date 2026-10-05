@@ -1,31 +1,44 @@
 // app/api/chat/route.js
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { getEmbedding } from "@/lib/embeddings";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const SYSTEM_PROMPT = `
-You are RoastMaster — a legendary, savage standup comedian headlining an unfiltered roast comedy club.
-The user is sitting in the VIP front row, and your job is to do brutal, hilarious crowd work on them, their code, their choices, or their questions.
+You are RoastMaster — a legendary, razor-sharp standup comedian headlining an unfiltered roast comedy club.
+The user is sitting in the VIP front row asking a question, sharing code, or making life/tech choices.
 
-STYLE & COMEDY TIMING:
-• Pure standup comedy delivery: sharp observational humor, punchy setups, killer punchlines, sarcastic analogies, and callback roasts.
-• Natural, effortless mix of English and relatable Hinglish slang (e.g., "Bhai tu seriously...", "Matlab kuch bhi?", "Kaun hain yeh log, kahan se aate hain?").
-• Sarcastic, quick-witted, stand-up crowd-work roast energy (like a blend of Bill Burr/Jimmy Carr and Zakir Khan/Biswa/Samay Raina).
-• NO boring or clinical answers. Your roast must sound like an actual standup comedian riffing on stage into a mic!
-• NEVER discriminate by race, religion, gender, disability, or orientation. Roast their code, their logic, and their decisions, not their identity.
+CORE COMEDY RULES:
+1. SHORT & PUNCHY (STRICT):
+   - Deliver exactly 1 to 2 crisp, razor-sharp sentences (strictly under 35-45 words).
+   - No long preambles, no monologues. Immediate setup + savage punchline.
 
-TOOL CALLING:
-You have access to the "fetch_roast_ammo" tool. When the user asks about a technology, language, code snippet, bug, or topic, ALWAYS call "fetch_roast_ammo" to retrieve real-world quirks, community memes, and comedic facts to fuel your punchlines.
-After receiving the tool results, craft a high-energy roast combining the tool's ammo with your signature standup flair.
+2. DIVERSE & 100% UNIQUE JOKES (CRITICAL):
+   - NEVER repeat the same joke, metaphor, or punchline across different queries.
+   - ABSOLUTELY BANNED: Never use stock clichés like "umbrella in a car wash", "dog chasing tail", or stale internet memes.
+   - BANNED OPENINGS: Do NOT start with predictable formulas like "Bhai tu seriously..." or "Matlab tu wahi banda hai...". Start with fresh, dynamic, unpredictable phrasing every single turn!
+   - Every roast must be 100% tailored specifically to the exact topic, words, and context of the user's question.
+
+3. BACKSTAGE REAL TALK:
+   - The "suggestion" field must ALWAYS contain "Backstage Real Talk" — clever, constructive, genuinely helpful advice directly answering their dilemma with wit.
+
+4. STYLE:
+   - Quick-witted, stand-up crowd work. Natural, effortless blend of smart English and relatable Hinglish slang.
+   - Roast their ideas, questions, code, and choices — NEVER their identity, gender, or race.
+
+5. TOOL CALLING (fetch_roast_ammo):
+   - You have access to the "fetch_roast_ammo" tool.
+   - STRICT CONDITION: Call "fetch_roast_ammo" ONLY if the user's prompt is specifically about computer programming, coding, software development, code snippets, tech stacks, databases, or developer tools.
+   - STRICTLY FORBIDDEN: NEVER call this tool for non-code queries (such as travel, routes, geography, distances, food, cooking, personal relationships, health, fitness, or general life). For non-code questions, answer directly without calling any tools!
 
 OUTPUT FORMAT:
 Always return valid JSON:
 {
-  "roast": "The savage, hilarious standup comedy roast (2-4 punchy sentences)",
-  "severity": <integer from 1 to 10 evaluating the blunder or heat>,
-  "category": "<1-2 words category, e.g. Frontend, Backend, Career, Logic, CSS>",
-  "suggestion": "<Genius, constructive, and actually helpful takeaway on how to fix or improve>"
+  "roast": "1-2 short, razor-sharp punchline sentences specifically roasting the user's exact topic",
+  "severity": <integer from 1 to 10>,
+  "category": "<1-2 words category, e.g. Frontend, Backend, Career, Logic, Food, Lifestyle, Travel, AI>",
+  "suggestion": "<Backstage Real Talk: clever, constructive, and actually helpful takeaway or advice>"
 }
 `;
 
@@ -34,19 +47,19 @@ const ROAST_AMMO_TOOL = {
     {
       name: "fetch_roast_ammo",
       description:
-        "Fetches verified technical quirks, infamous community stereotypes, blunder metrics, and punchline ammo about any programming language, framework, library, code pattern, or topic.",
+        "Fetches technical quirks and blunder ammo STRICTLY for programming languages, software frameworks, code snippets, bugs, and developer tools. DO NOT use for non-coding topics like travel, food, geography, or daily life.",
       parameters: {
         type: "object",
         properties: {
           topic: {
             type: "string",
             description:
-              "The specific technology, library, framework, programming language, code pattern, or topic being roasted (e.g. 'React useEffect', 'PHP in 2026', 'CSS centering', 'Docker', 'Python whitespace', 'Vanilla JS').",
+              "The specific technology, library, framework, programming language, code pattern, or developer tool being roasted (e.g. 'React useEffect', 'PHP in 2026', 'CSS centering', 'Docker', 'Python whitespace', 'Vanilla JS').",
           },
           targetCategory: {
             type: "string",
             description:
-              "The category of the target: 'frontend', 'backend', 'devops', 'database', 'syntax', 'career', or 'lifestyle'.",
+              "The technical category: 'frontend', 'backend', 'devops', 'database', 'syntax', 'security', or 'architecture'.",
           },
         },
         required: ["topic", "targetCategory"],
@@ -56,8 +69,62 @@ const ROAST_AMMO_TOOL = {
 };
 
 // ── Real Backend Tool Implementation ─────────────────────────────────────────
+
+// Helper to determine if a query is truly about software development or coding
+function isCodeTopic(text = "", category = "") {
+  const combined = `${text} ${category}`.toLowerCase();
+
+  // Clear non-code domains that must NEVER trigger technical ammo
+  const nonCodeSignals = [
+    "travel", "geography", "distance", "city", "mumbai", "pune", "highway", "lonavala", "bhiwandi",
+    "weather", "food", "cook", "biryani", "pulao", "recipe", "restaurant", "tea", "coffee",
+    "movie", "cricket", "bollywood", "relationship", "gym", "workout", "dating", "lifestyle"
+  ];
+  if (nonCodeSignals.some((sig) => combined.includes(sig))) {
+    return false;
+  }
+
+  const codeKeywords = [
+    "react", "useeffect", "hook", "javascript", "js", "typescript", "ts",
+    "python", "django", "flask", "css", "html", "tailwind", "git", "github",
+    "sql", "database", "query", "mongo", "docker", "kubernetes", "k8s", "aws",
+    "cloud", "devops", "code", "coding", "programmer", "programming", "software",
+    "bug", "api", "node", "npm", "server", "algorithm", "dsa", "leetcode",
+    "framework", "library", "syntax", "compiler", "deploy", "php", "laravel",
+    "rust", "golang", "c++", "java", "rag", "llm"
+  ];
+
+  const matchesWord = (target, kw) => {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(^|\\W)${escaped}(\\W|$)`, "i");
+    return regex.test(target);
+  };
+
+  return codeKeywords.some((kw) => matchesWord(combined, kw));
+}
+
 function executeFetchRoastAmmo(topic = "", targetCategory = "general") {
   const t = (topic || "").toLowerCase();
+  const cat = (targetCategory || "").toLowerCase();
+
+  // If outside of code context, do not return technical ammo
+  if (!isCodeTopic(t, cat)) {
+    return {
+      isCode: false,
+      topic,
+      category: targetCategory,
+      verifiedFacts: "",
+      crowdRoastAngle: "",
+      status: "NON_CODE_TOPIC",
+    };
+  }
+
+  // Exact whole-word matching helper so short keywords like "ai" don't match "mumbai"
+  const matchesKeyword = (text, kw) => {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(^|\\W)${escaped}(\\W|$)`, "i");
+    return regex.test(text);
+  };
 
   const ammoVault = [
     {
@@ -132,14 +199,42 @@ function executeFetchRoastAmmo(topic = "", targetCategory = "general") {
       crowdRoastAngle:
         "Querying without an index is like asking every person in Mumbai if their name is Ramesh until you find one.",
     },
+    {
+      match: ["ai", "rag", "llm", "gpt", "agent", "prompt", "model", "langchain"],
+      facts:
+        "90% of modern AI architects are just calling an API endpoint and wrapping it in 4 nested if-statements.",
+      painPoints:
+        "Paying $400 in API tokens for a bot that hallucinates fake book titles with supreme confidence.",
+      crowdRoastAngle:
+        "Calling an API wrapper an autonomous AGI system is like calling a toaster a culinary chef.",
+    },
+    {
+      match: ["docker", "k8s", "kubernetes", "cloud", "aws", "devops"],
+      facts:
+        "'It works on my machine' was solved by shipping the machine, which now crashes in production inside 400 lines of unformatted YAML.",
+      painPoints:
+        "Leaving an idle cluster running over the weekend and waking up to an AWS bill higher than rent.",
+      crowdRoastAngle:
+        "Overengineering a simple personal blog with multi-region Kubernetes clusters.",
+    },
+    {
+      match: ["career", "resume", "job", "interview", "salary", "faang", "dsa", "leetcode"],
+      facts:
+        "Candidates spend 6 months inverting binary trees on LeetCode only to spend their career centering div tags and fixing form validation.",
+      painPoints:
+        "Ghosted after 6 interview rounds, LinkedIn thought leaders pretending they worked 25 hours a day.",
+      crowdRoastAngle:
+        "Training like an astronaut just to push grocery shopping cart bug fixes.",
+    },
   ];
 
   const matched = ammoVault.find((item) =>
-    item.match.some((keyword) => t.includes(keyword))
+    item.match.some((keyword) => matchesKeyword(t, keyword))
   );
 
   if (matched) {
     return {
+      isCode: true,
       topic: topic || "Web Development",
       category: targetCategory,
       verifiedFacts: matched.facts,
@@ -149,12 +244,14 @@ function executeFetchRoastAmmo(topic = "", targetCategory = "general") {
     };
   }
 
+  // Dynamic code-fallback for other technical topics
   return {
-    topic: topic || "General Topic",
+    isCode: true,
+    topic: topic || "Software Engineering",
     category: targetCategory,
-    verifiedFacts: `Known observation: '${topic}' has thousands of community threads debating why it keeps breaking.`,
-    painPoints: "Classic overcomplication, bypassing fundamentals, and hoping nobody notices in code review.",
-    crowdRoastAngle: `Compare dealing with '${topic}' to bringing an umbrella inside a car wash.`,
+    verifiedFacts: `Common technical observation: '${topic}' has developers passionately arguing while completely ignoring the edge cases.`,
+    painPoints: "Overcomplication in implementation and skipping fundamental design patterns.",
+    crowdRoastAngle: `Expose the technical irony of treating '${topic}' like an overengineered silver bullet.`,
     status: "AMMO_UNLOCKED",
   };
 }
@@ -237,8 +334,7 @@ export async function POST(req) {
           tools: [ROAST_AMMO_TOOL],
           toolConfig: {
             functionCallingConfig: {
-              mode: "ANY",
-              allowedFunctionNames: ["fetch_roast_ammo"],
+              mode: "AUTO",
             },
           },
         });
@@ -260,14 +356,17 @@ export async function POST(req) {
             args.targetCategory || "general"
           );
 
-          const toolCallInfo = {
-            tool: "fetch_roast_ammo",
-            name: "Comedian's Comedy Vault",
-            topic: args.topic || "Topic",
-            ammo: toolResult.verifiedFacts,
-            angle: toolResult.crowdRoastAngle,
-            status: "AMMO_UNLOCKED",
-          };
+          // Only attach teleprompter toolCall if the query is an actual code topic!
+          const toolCallInfo = toolResult?.isCode
+            ? {
+                tool: "fetch_roast_ammo",
+                name: "Comedian's Technical Vault",
+                topic: args.topic || "Code",
+                ammo: toolResult.verifiedFacts,
+                angle: toolResult.crowdRoastAngle,
+                status: "AMMO_UNLOCKED",
+              }
+            : null;
 
           // Feed tool response back to Gemini to synthesize final standup comedy roast
           const turn2Contents = [
@@ -294,7 +393,7 @@ export async function POST(req) {
           finalPayload = parseStructuredRoast(res2.response.text(), toolCallInfo);
           break;
         } else {
-          // Model responded directly
+          // Model responded directly (for non-code topics)
           finalPayload = parseStructuredRoast(res1.response.text(), null);
           break;
         }
@@ -306,6 +405,22 @@ export async function POST(req) {
 
     if (!finalPayload && lastError) {
       throw lastError;
+    }
+
+    if (finalPayload) {
+      try {
+        const roastText = finalPayload.roast || "";
+        const suggestionText = finalPayload.suggestion || "";
+        const categoryText = finalPayload.category || "";
+        // Clean, query-centric embedding text capturing topic, roast, and backstage advice
+        const textToEmbed = `Topic: ${lastMessage}. Subject: ${lastMessage}. Category: ${categoryText}. Roast: ${roastText}. Backstage: ${suggestionText}`.trim();
+        const embedding = await getEmbedding(textToEmbed);
+        if (embedding && embedding.length > 0) {
+          finalPayload.embedding = embedding;
+        }
+      } catch (embErr) {
+        console.warn("[Chat API] Failed to generate embedding for exchange:", embErr?.message || embErr);
+      }
     }
 
     return NextResponse.json(finalPayload, {
