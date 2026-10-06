@@ -31,6 +31,8 @@ import {
   FileText,
   X,
   FileCheck,
+  ChevronDown,
+  Pencil,
 } from "lucide-react";
 
 // ── Helpers for structured data parsing & severity metadata ───────────────────
@@ -143,6 +145,80 @@ function useCharacterReveal(text, isNew = false) {
   };
 
   return { displayedText, isSpeaking, skipReveal };
+}
+
+// ── Collapsible RAG Sources Accordion (Initially Collapsed) ───────────────────
+function RagSourcesAccordion({ sources }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!sources || sources.length === 0) return null;
+
+  return (
+    <div className="mt-3.5 pt-3.5 border-t border-[#FCE7F3] animate-in fade-in duration-400">
+      <div className="bg-[#FFF5F7] text-[#2D1C24] rounded-2xl p-3 sm:p-3.5 border border-[#FBCFE8] transition-all">
+        {/* Accordion Toggle Header — Collapsed by default */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded((prev) => !prev);
+          }}
+          className="w-full flex items-center justify-between text-left cursor-pointer group focus:outline-none"
+          aria-expanded={isExpanded}
+          title={isExpanded ? "Click to collapse excerpts" : "Click to expand excerpts"}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-5 h-5 rounded-md bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center shrink-0">
+              <FileText className="w-3 h-3 text-[#EC4899]" />
+            </div>
+            <span className="text-[10px] font-black tracking-widest text-[#BE185D] uppercase font-mono truncate">
+              GROUNDED IN PDF (AIVEN PGVECTOR):
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+            <span className="text-[10px] font-mono text-[#BE185D] bg-[#FCE7F3] px-2 py-0.5 rounded-full font-bold">
+              {sources.length} EXCERPTS RETRIEVED
+            </span>
+            <div className="w-5 h-5 rounded-md flex items-center justify-center text-[#836270] group-hover:text-[#BE185D] group-hover:bg-[#FCE7F3] transition-colors">
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-[#EC4899] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                  }`}
+              />
+            </div>
+          </div>
+        </button>
+
+        {/* Collapsible Content — Initially Collapsed */}
+        {isExpanded && (
+          <div className="mt-2.5 pt-2.5 border-t border-[#FCE7F3] space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+            {sources.map((src, sIdx) => (
+              <div
+                key={sIdx}
+                className="bg-white p-2.5 rounded-xl border border-[#FCE7F3] text-xs shadow-2xs"
+              >
+                <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1 text-[#9D174D]">
+                  <span className="flex items-center gap-1.5 truncate max-w-[240px] sm:max-w-md">
+                    <FileCheck className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
+                    <span className="truncate">{src.fileName}</span>
+                    <span className="text-[#836270] font-normal shrink-0">
+                      (Chunk #{src.chunkIndex + 1})
+                    </span>
+                  </span>
+                  <span className="bg-[#FDF2F8] text-[#BE185D] border border-[#FBCFE8] px-1.5 py-0.5 rounded shrink-0">
+                    {(src.similarity * 100).toFixed(0)}% match
+                  </span>
+                </div>
+                <p className="text-[#4A2D3C] text-[11px] leading-relaxed italic line-clamp-3 pl-5">
+                  "{src.snippet}"
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ── On-Stage Headliner Roast Card (Baby Pink Edition + Text-by-Text Reveal) ───
@@ -329,49 +405,9 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
           )}
         </div>
 
-        {/* 📄 The Grounding Sources from Aiven pgvector — COMPLETELY HIDDEN until finished speaking */}
+        {/* 📄 The Grounding Sources from Aiven pgvector — Collapsible Accordion */}
         {!isSpeaking && data.ragSources && data.ragSources.length > 0 && (
-          <div className="mt-3.5 pt-3.5 border-t border-[#FCE7F3] animate-in fade-in duration-400">
-            <div className="bg-[#FFF5F7] text-[#2D1C24] rounded-2xl p-3.5 sm:p-4 border border-[#FBCFE8]">
-              <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-[#FCE7F3]">
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-md bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center">
-                    <FileText className="w-3 h-3 text-[#EC4899]" />
-                  </div>
-                  <span className="text-[10px] font-black tracking-widest text-[#BE185D] uppercase font-mono">
-                    GROUNDED IN PDF (AIVEN PGVECTOR):
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-[#BE185D] bg-[#FCE7F3] px-2 py-0.5 rounded-full font-bold">
-                  {data.ragSources.length} EXCERPTS RETRIEVED
-                </span>
-              </div>
-              <div className="space-y-2">
-                {data.ragSources.map((src, sIdx) => (
-                  <div
-                    key={sIdx}
-                    className="bg-white p-2.5 rounded-xl border border-[#FCE7F3] text-xs shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1 text-[#9D174D]">
-                      <span className="flex items-center gap-1.5 truncate max-w-[240px] sm:max-w-md">
-                        <FileCheck className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
-                        <span className="truncate">{src.fileName}</span>
-                        <span className="text-[#836270] font-normal shrink-0">
-                          (Chunk #{src.chunkIndex + 1})
-                        </span>
-                      </span>
-                      <span className="bg-[#FDF2F8] text-[#BE185D] border border-[#FBCFE8] px-1.5 py-0.5 rounded shrink-0">
-                        {(src.similarity * 100).toFixed(0)}% match
-                      </span>
-                    </div>
-                    <p className="text-[#4A2D3C] text-[11px] leading-relaxed italic line-clamp-2 pl-5">
-                      "{src.snippet}"
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <RagSourcesAccordion sources={data.ragSources} />
         )}
 
         {/* Backstage Real Talk (Actually Improve) — COMPLETELY HIDDEN until finished speaking */}
@@ -499,6 +535,10 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
   const [sessionTitle, setSessionTitle] = useState("");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState("");
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const editTitleInputRef = useRef(null);
   const [attachedDocs, setAttachedDocs] = useState([]);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [uploadError, setUploadError] = useState(null);
@@ -581,8 +621,42 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       setMessages([]);
       setInput("");
       setSessionTitle("");
+      setIsEditingTitle(false);
     }
   }, [sessionId, user, isGuest, loadHistory]);
+
+  const handleStartEditTitle = () => {
+    setEditTitleValue(sessionTitle || "Standup Roast");
+    setIsEditingTitle(true);
+    setTimeout(() => {
+      editTitleInputRef.current?.focus();
+      editTitleInputRef.current?.select();
+    }, 50);
+  };
+
+  const handleSaveTitle = async () => {
+    const trimmed = editTitleValue.trim();
+    if (!trimmed) {
+      setIsEditingTitle(false);
+      return;
+    }
+    setIsSavingTitle(true);
+    setSessionTitle(trimmed);
+    try {
+      if (currentSessionId && user && !isGuest) {
+        await updateSessionTitle(user.uid, currentSessionId, trimmed);
+      }
+    } catch (err) {
+      console.error("Failed to update session title:", err);
+    } finally {
+      setIsSavingTitle(false);
+      setIsEditingTitle(false);
+    }
+  };
+
+  const handleCancelEditTitle = () => {
+    setIsEditingTitle(false);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
@@ -833,20 +907,90 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           <EmptyStageState onShowAuth={onShowAuth} user={user} isGuest={isGuest} />
         ) : (
           <>
+            {/* Sticky Live Set Marquee & Manual Title Editor */}
             {sessionTitle && (
-              <div className="flex items-center justify-between px-3.5 py-2 mb-2 bg-white/90 border border-[#FBCFE8] rounded-2xl shadow-2xs backdrop-blur-xs">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FCE7F3] border border-[#FBCFE8] text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0">
-                    <Flame className="w-3 h-3 text-[#EC4899]" />
-                    <span>LIVE SET</span>
-                  </span>
-                  <span className="text-xs sm:text-sm font-extrabold text-[#2D1C24] truncate">
-                    {sessionTitle}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px] font-mono text-[#836270] shrink-0">
-                  <span>{messages.length} {messages.length === 1 ? "EXCHANGE" : "EXCHANGES"}</span>
-                </div>
+              <div className="sticky -top-4 md:-top-6 z-20 -mx-2 sm:-mx-4 px-2 sm:px-4 py-2 bg-[#FFF5F7]/95 backdrop-blur-md">
+                {isEditingTitle ? (
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-white border border-[#EC4899] ring-2 ring-[#F472B6]/25 rounded-2xl shadow-xs transition-all">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FCE7F3] border border-[#FBCFE8] text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0">
+                        <Flame className="w-3 h-3 text-[#EC4899]" />
+                        <span>EDIT SET</span>
+                      </span>
+                      <input
+                        ref={editTitleInputRef}
+                        type="text"
+                        value={editTitleValue}
+                        onChange={(e) => setEditTitleValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleSaveTitle();
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            handleCancelEditTitle();
+                          }
+                        }}
+                        disabled={isSavingTitle}
+                        maxLength={60}
+                        className="flex-1 min-w-0 bg-[#FFF5F7] border border-[#FBCFE8] focus:border-[#EC4899] text-xs sm:text-sm font-bold text-[#2D1C24] px-2.5 py-1 rounded-xl outline-none"
+                        placeholder="Enter set title..."
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleSaveTitle}
+                        disabled={isSavingTitle}
+                        className="p-1.5 text-white bg-[#EC4899] hover:bg-[#DB2777] rounded-xl cursor-pointer transition-colors shadow-2xs"
+                        title="Save title (Enter)"
+                        aria-label="Save title"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEditTitle}
+                        disabled={isSavingTitle}
+                        className="p-1.5 text-[#836270] hover:text-[#2D1C24] hover:bg-[#FCE7F3] rounded-xl cursor-pointer transition-colors"
+                        title="Cancel (Esc)"
+                        aria-label="Cancel"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-3.5 py-2 bg-white/95 border border-[#FBCFE8] rounded-2xl shadow-xs backdrop-blur-xs transition-all">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FCE7F3] border border-[#FBCFE8] text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0">
+                        <Flame className="w-3 h-3 text-[#EC4899]" />
+                        <span>LIVE SET</span>
+                      </span>
+                      <div className="flex items-center gap-1.5 min-w-0 group/title">
+                        <h2
+                          className="text-xs sm:text-sm font-extrabold text-[#2D1C24] truncate cursor-pointer hover:text-[#BE185D] transition-colors"
+                          onClick={handleStartEditTitle}
+                          title="Click to rename set"
+                        >
+                          {sessionTitle}
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={handleStartEditTitle}
+                          className="opacity-70 group-hover/title:opacity-100 hover:opacity-100 p-1 text-[#836270] hover:text-[#BE185D] hover:bg-[#FCE7F3] rounded-lg transition-all cursor-pointer shrink-0"
+                          title="Rename set"
+                          aria-label="Rename set"
+                        >
+                          <Pencil className="w-3 h-3 text-[#EC4899]" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-mono text-[#836270] shrink-0">
+                      <span>{messages.length} {messages.length === 1 ? "EXCHANGE" : "EXCHANGES"}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {messages.map((msg, i) => (
@@ -1062,7 +1206,7 @@ function EmptyStageState({ user, onShowAuth }) {
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center h-full min-h-[420px] text-center px-4 py-8">
+    <div className="flex flex-col items-center justify-center h-[97%] min-h-[420px] text-center px-4 py-8">
       {/* Solitary Stage Spotlight on Vintage Mic */}
       <div className="relative mb-6">
         <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] flex items-center justify-center shadow-[0_0_30px_rgba(244,114,182,0.35)]">
