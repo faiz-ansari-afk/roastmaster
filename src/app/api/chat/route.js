@@ -2,6 +2,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { getEmbedding } from "@/lib/embeddings";
+import { searchSimilarChunks } from "@/lib/db";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -290,7 +291,7 @@ function parseStructuredRoast(text, toolCallData) {
 
 export async function POST(req) {
   try {
-    const { messages } = await req.json();
+    const { messages, sessionId } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Invalid messages" }, { status: 400 });
@@ -317,6 +318,63 @@ export async function POST(req) {
         ? JSON.stringify(lastItem)
         : String(lastItem || "");
 
+    // ── RAG Retrieval via Aiven pgvector ────────────────────────────────────
+    let retrievedDocs = [];
+    let ragContext = "";
+
+    if (sessionId && lastMessage.trim()) {
+      try {
+        const queryVector = await getEmbedding(lastMessage);
+        if (Array.isArray(queryVector) && queryVector.length > 0) {
+          retrievedDocs = await searchSimilarChunks({
+            sessionId,
+            queryVector,
+            limit: 4,
+            minSimilarity: 0.30,
+          });
+
+          if (retrievedDocs.length > 0) {
+            ragContext = retrievedDocs
+              .map(
+                (c, idx) =>
+                  `[Excerpt ${idx + 1} from "${c.fileName}" (Relevance: ${(c.similarity * 100).toFixed(0)}%)]:\n"${c.content}"`
+              )
+              .join("\n\n");
+            console.log(`[Chat API RAG] Retrieved ${retrievedDocs.length} chunks from Aiven pgvector for session: ${sessionId}`);
+          }
+        }
+      } catch (ragErr) {
+        console.warn("[Chat API] RAG retrieval error (falling back to standard chat):", ragErr?.message || ragErr);
+      }
+    }
+
+    let activeSystemPrompt = SYSTEM_PROMPT;
+    if (ragContext) {
+      activeSystemPrompt += `
+
+DOCUMENT CONTEXT (from user's uploaded reference PDF via Aiven pgvector):
+======================================================================
+${ragContext}
+======================================================================
+
+RAG RULES:
+1. Ground your roast and advice directly in the facts, claims, code, or context of the document excerpts above.
+2. In "roast", mock or roast their document, ideas, or questions with razor-sharp standup comedy punchlines (1-2 sentences).
+3. In "suggestion" (Backstage Real Talk), answer the user's specific query with genuine facts and constructive advice from the document.
+`;
+    }
+
+    const defaultToolCallInfo = retrievedDocs.length > 0
+      ? {
+          tool: "aiven_pgvector_rag",
+          name: "Aiven pgvector Knowledge Vault",
+          topic: retrievedDocs[0].fileName,
+          ammo: `${retrievedDocs.length} excerpts retrieved from "${retrievedDocs[0].fileName}" (top match ${(retrievedDocs[0].similarity * 100).toFixed(0)}%).`,
+          angle: "Roast and critique armed with their exact document text.",
+          status: "RAG_RETRIEVED",
+        }
+      : null;
+
     const modelsToTry = [
       "gemini-flash-lite-latest",
       "gemini-2.5-flash-lite",
@@ -330,7 +388,7 @@ export async function POST(req) {
       try {
         const model = genAI.getGenerativeModel({
           model: modelName,
-          systemInstruction: SYSTEM_PROMPT,
+          systemInstruction: activeSystemPrompt,
           tools: [ROAST_AMMO_TOOL],
           toolConfig: {
             functionCallingConfig: {
@@ -366,7 +424,7 @@ export async function POST(req) {
                 angle: toolResult.crowdRoastAngle,
                 status: "AMMO_UNLOCKED",
               }
-            : null;
+            : defaultToolCallInfo;
 
           // Feed tool response back to Gemini to synthesize final standup comedy roast
           const turn2Contents = [
@@ -394,7 +452,7 @@ export async function POST(req) {
           break;
         } else {
           // Model responded directly (for non-code topics)
-          finalPayload = parseStructuredRoast(res1.response.text(), null);
+          finalPayload = parseStructuredRoast(res1.response.text(), defaultToolCallInfo);
           break;
         }
       } catch (err) {
@@ -408,6 +466,15 @@ export async function POST(req) {
     }
 
     if (finalPayload) {
+      if (retrievedDocs.length > 0) {
+        finalPayload.ragSources = retrievedDocs.map((d) => ({
+          fileName: d.fileName,
+          chunkIndex: d.chunkIndex,
+          similarity: d.similarity,
+          snippet: d.content.slice(0, 160) + (d.content.length > 160 ? "..." : ""),
+        }));
+      }
+
       try {
         const roastText = finalPayload.roast || "";
         const suggestionText = finalPayload.suggestion || "";

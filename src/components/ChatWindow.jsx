@@ -21,11 +21,15 @@ import {
   Laugh,
   Radio,
   Clock,
+  Paperclip,
+  FileText,
+  X,
+  FileCheck,
 } from "lucide-react";
 
 // ── Helpers for structured data parsing & severity metadata ───────────────────
 function parseRoastData(raw) {
-  if (!raw) return { roast: "", severity: null, category: null, suggestion: "", toolCall: null };
+  if (!raw) return { roast: "", severity: null, category: null, suggestion: "", toolCall: null, ragSources: null };
 
   if (typeof raw === "object") {
     return {
@@ -34,6 +38,7 @@ function parseRoastData(raw) {
       category: raw.category || null,
       suggestion: raw.suggestion || "",
       toolCall: raw.toolCall || null,
+      ragSources: Array.isArray(raw.ragSources) ? raw.ragSources : null,
     };
   }
 
@@ -49,6 +54,7 @@ function parseRoastData(raw) {
             category: parsed.category || null,
             suggestion: parsed.suggestion || "",
             toolCall: parsed.toolCall || null,
+            ragSources: Array.isArray(parsed.ragSources) ? parsed.ragSources : null,
           };
         }
       } catch {
@@ -61,10 +67,11 @@ function parseRoastData(raw) {
       category: null,
       suggestion: "",
       toolCall: null,
+      ragSources: null,
     };
   }
 
-  return { roast: String(raw), severity: null, category: null, suggestion: "", toolCall: null };
+  return { roast: String(raw), severity: null, category: null, suggestion: "", toolCall: null, ragSources: null };
 }
 
 function getSeverityBadge(severity) {
@@ -389,6 +396,51 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
           </div>
         )}
 
+        {/* 📄 The Grounding Sources from Aiven pgvector — COMPLETELY HIDDEN until finished speaking */}
+        {!isSpeaking && data.ragSources && data.ragSources.length > 0 && (
+          <div className="mt-3.5 pt-3.5 border-t border-[#FCE7F3] animate-in fade-in duration-400">
+            <div className="bg-[#FFF5F7] text-[#2D1C24] rounded-2xl p-3.5 sm:p-4 border border-[#FBCFE8]">
+              <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-[#FCE7F3]">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-md bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center">
+                    <FileText className="w-3 h-3 text-[#EC4899]" />
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest text-[#BE185D] uppercase font-mono">
+                    GROUNDED IN PDF (AIVEN PGVECTOR):
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-[#BE185D] bg-[#FCE7F3] px-2 py-0.5 rounded-full font-bold">
+                  {data.ragSources.length} EXCERPTS RETRIEVED
+                </span>
+              </div>
+              <div className="space-y-2">
+                {data.ragSources.map((src, sIdx) => (
+                  <div
+                    key={sIdx}
+                    className="bg-white p-2.5 rounded-xl border border-[#FCE7F3] text-xs shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1 text-[#9D174D]">
+                      <span className="flex items-center gap-1.5 truncate max-w-[240px] sm:max-w-md">
+                        <FileCheck className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
+                        <span className="truncate">{src.fileName}</span>
+                        <span className="text-[#836270] font-normal shrink-0">
+                          (Chunk #{src.chunkIndex + 1})
+                        </span>
+                      </span>
+                      <span className="bg-[#FDF2F8] text-[#BE185D] border border-[#FBCFE8] px-1.5 py-0.5 rounded shrink-0">
+                        {(src.similarity * 100).toFixed(0)}% match
+                      </span>
+                    </div>
+                    <p className="text-[#4A2D3C] text-[11px] leading-relaxed italic line-clamp-2 pl-5">
+                      "{src.snippet}"
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Backstage Real Talk (Actually Improve) — COMPLETELY HIDDEN until finished speaking */}
         {!isSpeaking && data.suggestion && (
           <div className="mt-4 pt-3.5 border-t border-[#FCE7F3] animate-in fade-in duration-400">
@@ -513,6 +565,10 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const [isStreaming, setIsStreaming] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
+  const [attachedDocs, setAttachedDocs] = useState([]);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const fileInputRef = useRef(null);
   const sessionCreatedLocallyRef = useRef(null);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
@@ -530,6 +586,28 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       setLoadingHistory(false);
     }
   }, [user, isGuest]);
+
+  // Load existing indexed PDF documents whenever the active session changes
+  useEffect(() => {
+    if (!currentSessionId) {
+      setAttachedDocs([]);
+      return;
+    }
+    let isMounted = true;
+    fetch(`/api/rag/upload?sessionId=${encodeURIComponent(currentSessionId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && Array.isArray(data?.documents)) {
+          setAttachedDocs(data.documents);
+        }
+      })
+      .catch((err) => {
+        console.warn("[RAG] Failed to load session documents:", err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [currentSessionId]);
 
   useEffect(() => {
     if (sessionId && sessionCreatedLocallyRef.current === sessionId) {
@@ -553,6 +631,112 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
   }, [messages, loading, isStreaming]);
+
+  // Upload and index PDF into Aiven PostgreSQL (pgvector)
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      setUploadError("Only PDF documents are supported for RAG analysis.");
+      return;
+    }
+
+    setUploadError(null);
+    setUploadingPdf(true);
+
+    try {
+      let sid = currentSessionId;
+      if (!sid) {
+        if (user && !isGuest) {
+          sid = await createSession(user.uid);
+          if (sid) {
+            sessionCreatedLocallyRef.current = sid;
+            setCurrentSessionId(sid);
+            onSessionCreated?.(sid);
+          }
+        } else {
+          sid = `session_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+          setCurrentSessionId(sid);
+        }
+      }
+
+      if (!sid) {
+        throw new Error("Could not initialize chat session for document upload.");
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("sessionId", sid);
+      if (user?.uid) {
+        formData.append("userId", user.uid);
+      }
+
+      const res = await fetch("/api/rag/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to upload and index PDF.");
+      }
+
+      setAttachedDocs((prev) => {
+        const filtered = prev.filter((d) => d.fileName !== data.fileName);
+        return [
+          ...filtered,
+          {
+            fileName: data.fileName,
+            totalChunks: data.totalChunks,
+            totalPages: data.totalPages,
+          },
+        ];
+      });
+
+      // Display real-time announcement in the comedy stage stream
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: {
+            roast: `Aha! You uploaded "${data.fileName}" onto the stage (${data.totalPages} pages, ${data.totalChunks} chunks indexed in Aiven pgvector). The mic is hot — roast me, ask me for bugs, or let's critique this document!`,
+            severity: 3,
+            category: "PDF Ingested",
+            suggestion: `Try asking: "Roast the biggest mistake in ${data.fileName}" or "What are the main takeaways in this PDF?".`,
+            toolCall: {
+              tool: "aiven_pgvector_ingest",
+              name: "Aiven pgvector Vault",
+              topic: data.fileName,
+              ammo: `${data.totalChunks} chunks embedded with Gemini (768-dim) and stored in Aiven PostgreSQL (table roastmaster.public.document_chunks).`,
+              angle: "Ready for live semantic search and retrieval crowd work.",
+              status: "INDEXED",
+            },
+          },
+          isNew: true,
+        },
+      ]);
+    } catch (err) {
+      console.error("handleFileUpload error:", err);
+      setUploadError(err.message || "Failed to process PDF.");
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
+
+  const handleRemoveDoc = async () => {
+    if (!currentSessionId) return;
+    try {
+      await fetch(`/api/rag/upload?sessionId=${encodeURIComponent(currentSessionId)}`, {
+        method: "DELETE",
+      });
+      setAttachedDocs([]);
+    } catch (err) {
+      console.error("handleRemoveDoc error:", err);
+    }
+  };
 
   const saveExchange = async (userText, botReply, isFirstMsg) => {
     if (!user || isGuest || !botReply) return;
@@ -598,11 +782,22 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
     const isFirst = messages.length === 0;
 
+    let sid = currentSessionId;
+    if (!sid && user && !isGuest) {
+      sid = await createSession(user.uid);
+      if (sid) {
+        sessionCreatedLocallyRef.current = sid;
+        setCurrentSessionId(sid);
+        onSessionCreated?.(sid);
+      }
+    }
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionId: sid || currentSessionId,
           messages: updatedMessages.map((m) => {
             let contentText = "";
             if (typeof m.content === "object" && m.content !== null) {
@@ -638,7 +833,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
       setMessages((prev) => [...prev, { role: "assistant", content: fallbackError, isNew: true }]);
     }
-  }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated]);
+  }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated, saveExchange]);
 
   const handleKey = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -726,11 +921,86 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       {/* The Stage Podium Console (Input Deck) — Baby Pink */}
       <div className="p-2 sm:p-4 mb-2">
         <div className="relative max-w-3xl mx-auto bg-white/95 backdrop-blur-md border border-[#FBCFE8] focus-within:border-[#EC4899] focus-within:ring-2 focus-within:ring-[#F472B6]/25 rounded-2xl sm:rounded-3xl p-2 sm:p-3 shadow-[0_8px_30px_rgba(244,114,182,0.08)] transition-all">
+          {/* Active PDF Badge / Chip */}
+          {attachedDocs.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 border-b border-[#FCE7F3]">
+              {attachedDocs.map((doc, dIdx) => (
+                <div
+                  key={dIdx}
+                  className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[#FDF2F8] border border-[#FBCFE8] text-xs font-mono text-[#BE185D] shadow-2xs animate-in fade-in"
+                >
+                  <FileText className="w-3.5 h-3.5 text-[#EC4899]" />
+                  <span className="font-bold truncate max-w-[170px] sm:max-w-[240px]">
+                    {doc.fileName}
+                  </span>
+                  <span className="text-[10px] text-[#9D174D] bg-[#FCE7F3] px-1.5 py-0.5 rounded-md font-semibold">
+                    {doc.totalChunks} chunks in Aiven pgvector
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveDoc(doc.fileName)}
+                    className="text-[#9D7889] hover:text-[#E11D48] transition-colors cursor-pointer p-0.5 rounded-md hover:bg-white"
+                    title="Remove document from session"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload Progress Indicator */}
+          {uploadingPdf && (
+            <div className="mb-2 px-3 py-1.5 rounded-xl bg-[#FDF2F8] border border-[#FBCFE8] text-[#BE185D] text-xs font-mono flex items-center gap-2 animate-pulse">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#EC4899]" />
+              <span>Extracting text, chunking & storing 768-dim embeddings in Aiven pgvector...</span>
+            </div>
+          )}
+
+          {/* Upload Error Banner */}
+          {uploadError && (
+            <div className="mb-2 px-3 py-1.5 rounded-xl bg-[#FFF1F2] border border-[#FECDD3] text-[#BE123C] text-xs font-mono flex items-center justify-between">
+              <span>⚠️ {uploadError}</span>
+              <button
+                type="button"
+                onClick={() => setUploadError(null)}
+                className="cursor-pointer ml-2 text-[#BE123C] hover:text-[#9F1239]"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+
           <div className="flex gap-2 sm:gap-3 items-end">
             {/* Vintage Stage Mic Icon */}
             <div className="w-10 h-10 rounded-2xl bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center shrink-0 mb-0.5">
               <Mic2 className="w-5 h-5 text-[#EC4899]" />
             </div>
+
+            {/* Hidden PDF File Input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            {/* Paperclip PDF Upload Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPdf || loading || isStreaming}
+              className="w-10 h-10 rounded-2xl bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#EC4899] text-[#BE185D] flex items-center justify-center shrink-0 mb-0.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-2xs"
+              title="Upload PDF for RAG Roast (Aiven pgvector)"
+              aria-label="Upload PDF"
+            >
+              {uploadingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin text-[#EC4899]" />
+              ) : (
+                <Paperclip className="w-4 h-4 text-[#EC4899] group-hover:scale-110 transition-transform" />
+              )}
+            </button>
 
             {/* Input Textarea */}
             <textarea
@@ -738,7 +1008,11 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
               value={input}
               onChange={handleInput}
               onKeyDown={handleKey}
-              placeholder="Step up to the mic..."
+              placeholder={
+                attachedDocs.length > 0
+                  ? `Ask about or roast ${attachedDocs[0].fileName}...`
+                  : "Step up to the mic..."
+              }
               rows={1}
               style={{ maxHeight: "160px" }}
               className="flex-1 bg-transparent text-[#2D1C24] placeholder-[#9D7889] px-2 py-2 sm:py-2.5 outline-none text-sm sm:text-[15px] resize-none overflow-y-auto leading-normal font-sans"
@@ -773,6 +1047,11 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 // ── The Empty Stage State (Baby Pink Edition) ─────────────────────────────────
 function EmptyStageState({ user, onShowAuth }) {
   const coasters = [
+    {
+      label: "Roast my PDF Document",
+      text: "Roast everything wrong with my uploaded document.",
+      icon: "📄",
+    },
     {
       label: "Roast my PHP in 2026",
       text: "Roast my decision to build our new enterprise SaaS with PHP in 2026.",
