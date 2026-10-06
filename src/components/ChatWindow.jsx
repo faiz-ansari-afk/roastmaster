@@ -35,7 +35,7 @@ import {
 
 // ── Helpers for structured data parsing & severity metadata ───────────────────
 function parseRoastData(raw) {
-  if (!raw) return { roast: "", severity: null, category: null, suggestion: "", toolCall: null, ragSources: null };
+  if (!raw) return { roast: "", severity: null, category: null, suggestion: "", ragSources: null };
 
   if (typeof raw === "object") {
     return {
@@ -43,7 +43,6 @@ function parseRoastData(raw) {
       severity: typeof raw.severity === "number" ? raw.severity : null,
       category: raw.category || null,
       suggestion: raw.suggestion || "",
-      toolCall: raw.toolCall || null,
       ragSources: Array.isArray(raw.ragSources) ? raw.ragSources : null,
     };
   }
@@ -59,7 +58,6 @@ function parseRoastData(raw) {
             severity: typeof parsed.severity === "number" ? parsed.severity : null,
             category: parsed.category || null,
             suggestion: parsed.suggestion || "",
-            toolCall: parsed.toolCall || null,
             ragSources: Array.isArray(parsed.ragSources) ? parsed.ragSources : null,
           };
         }
@@ -72,12 +70,11 @@ function parseRoastData(raw) {
       severity: null,
       category: null,
       suggestion: "",
-      toolCall: null,
       ragSources: null,
     };
   }
 
-  return { roast: String(raw), severity: null, category: null, suggestion: "", toolCall: null, ragSources: null };
+  return { roast: String(raw), severity: null, category: null, suggestion: "", ragSources: null };
 }
 
 function getSeverityBadge(severity) {
@@ -175,9 +172,6 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
     }
     if (data.suggestion) {
       textToCopy += `\n\n💡 Backstage Real Talk:\n${data.suggestion}`;
-    }
-    if (data.toolCall) {
-      textToCopy += `\n\n🎤 Comedian Vault Tool: ${data.toolCall.tool}\nTopic: ${data.toolCall.topic || ""}\nAmmo: ${data.toolCall.ammo || ""}\nAngle: ${data.toolCall.angle || ""}`;
     }
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
@@ -334,73 +328,6 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
             </p>
           )}
         </div>
-
-        {/* 🎤 The Comedian's Secret Teleprompter (Tool Call) — COMPLETELY HIDDEN until finished speaking */}
-        {!isSpeaking && data.toolCall && (
-          <div className="mt-4 pt-3.5 border-t border-[#FCE7F3] animate-in fade-in duration-400">
-            <div className="bg-[#FFF8FA] text-[#2D1C24] rounded-2xl p-3.5 sm:p-4 border border-[#FBCFE8] shadow-2xs">
-              {/* Teleprompter Header */}
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-[#FCE7F3]">
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-md bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center">
-                    <BookOpen className="w-3 h-3 text-[#EC4899]" />
-                  </div>
-                  <span className="text-[10px] font-black tracking-widest text-[#BE185D] uppercase font-mono flex items-center gap-1.5">
-                    <span>COMEDIAN'S TELEPROMPTER CUE:</span>
-                    <span className="text-[#2D1C24] bg-white px-1.5 py-0.5 rounded border border-[#FBCFE8]">
-                      {data.toolCall.tool || "fetch_roast_ammo"}
-                    </span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-[#BE185D] bg-[#FCE7F3] border border-[#FBCFE8] px-2 py-0.5 rounded-full">
-                  <Sparkles className="w-3 h-3 text-[#EC4899]" />
-                  <span>{data.toolCall.status || "AMMO_UNLOCKED"}</span>
-                </div>
-              </div>
-
-              {/* Cue Details */}
-              <div className="space-y-2.5 text-xs font-sans">
-                {data.toolCall.topic && (
-                  <div className="bg-white p-2.5 rounded-xl border border-[#FCE7F3] flex items-center justify-between gap-2">
-                    <span className="text-[10px] uppercase font-bold text-[#836270] flex items-center gap-1 font-mono">
-                      <Tag className="w-3 h-3 text-[#EC4899]" />
-                      <span>Researched Topic:</span>
-                    </span>
-                    <span className="font-bold text-[#BE185D] font-mono text-xs">
-                      {data.toolCall.topic}
-                    </span>
-                  </div>
-                )}
-
-                {data.toolCall.ammo && (
-                  <div className="bg-white p-2.5 rounded-xl border border-[#FCE7F3]">
-                    <div className="text-[10px] uppercase font-bold text-[#EC4899] flex items-center gap-1 mb-1 font-mono">
-                      <BookOpen className="w-3 h-3 text-[#EC4899]" />
-                      <span>Comedy Vault Ammo</span>
-                    </div>
-                    <div className="text-[#4A2D3C] leading-relaxed text-xs">
-                      {data.toolCall.ammo}
-                    </div>
-                  </div>
-                )}
-
-                {data.toolCall.angle && (
-                  <div className="bg-[#FDF2F8] border border-[#FBCFE8] rounded-xl p-2.5 flex items-start gap-2">
-                    <Laugh className="w-4 h-4 text-[#EC4899] shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold text-[#BE185D] uppercase text-[10px] block font-mono">
-                        Crowd-Work Angle:
-                      </span>
-                      <span className="text-[#831843] italic text-xs">
-                        "{data.toolCall.angle}"
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 📄 The Grounding Sources from Aiven pgvector — COMPLETELY HIDDEN until finished speaking */}
         {!isSpeaking && data.ragSources && data.ragSources.length > 0 && (
@@ -741,14 +668,6 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
             severity: 3,
             category: "PDF Ingested",
             suggestion: `Try asking: "Roast the biggest mistake in ${data.fileName}" or "What are the main takeaways in this PDF?".`,
-            toolCall: {
-              tool: "aiven_pgvector_ingest",
-              name: "Aiven pgvector Vault",
-              topic: data.fileName,
-              ammo: `${data.totalChunks} chunks embedded with Gemini (768-dim) and stored in Aiven PostgreSQL (table roastmaster.public.document_chunks).`,
-              angle: "Ready for live semantic search and retrieval crowd work.",
-              status: "INDEXED",
-            },
           },
           isNew: true,
         },
@@ -952,7 +871,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                   </div>
                   <span className="text-xs font-mono font-bold text-[#BE185D] tracking-wider uppercase flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[#E11D48] animate-ping" />
-                    <span>CONSULTING COMEDY VAULT (TOOL CALL: fetch_roast_ammo)...</span>
+                    <span>LIVE HEADLINER PREPARING PUNCHLINE...</span>
                   </span>
                 </div>
               </div>
@@ -1160,9 +1079,7 @@ function EmptyStageState({ user, onShowAuth }) {
         THE MIC IS HOT. DARE TO HECKLE?
       </h2>
       <p className="text-[#836270] text-xs sm:text-sm mb-7 max-w-md leading-relaxed font-sans">
-        RoastMaster is on stage with full access to the real-time{" "}
-        <span className="text-[#BE185D] font-mono font-bold">fetch_roast_ammo</span>{" "}
-        Comedy Vault. Throw your code, tech stack, or bad habits at the stage.
+        RoastMaster is on stage and ready to cook. Throw your code, tech stack, or bad habits at the stage.
       </p>
 
       {/* Front-Row Heckler Coasters (Starter Prompts) */}
