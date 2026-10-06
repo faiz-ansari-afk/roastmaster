@@ -1,6 +1,6 @@
 "use client";
 // components/ChatWindow.jsx — The Live Standup Comedy Roast Stage Deck (Baby Pink Edition + Pure Text-by-Text Reveal)
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   createSession,
@@ -33,6 +33,7 @@ import {
   FileCheck,
   ChevronDown,
   Pencil,
+  Plus,
 } from "lucide-react";
 
 // ── Helpers for structured data parsing & severity metadata ───────────────────
@@ -484,25 +485,211 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
   );
 }
 
-// ── VIP Front-Row Heckler Card (User Message) ─────────────────────────────────
-function UserHecklerCard({ content }) {
+// ── Code Block & Language Detection Helpers ──────────────────────────────────
+function detectLanguage(code) {
+  if (!code) return "code";
+  const trimmed = code.trim();
+  if (/^(import|export|const|let|var|function|async|console\.)/m.test(trimmed) || /=>/.test(trimmed)) {
+    if (/<[a-zA-Z]+/.test(trimmed)) return "jsx";
+    return "javascript";
+  }
+  if (/^(def |class |print\(|elif |import numpy|import pandas)/m.test(trimmed)) return "python";
+  if (/^(public class|System\.out\.println|private void)/m.test(trimmed)) return "java";
+  if (/<(\!DOCTYPE|html|head|body|div|p|span|table)/i.test(trimmed)) return "html";
+  if (/(\{|\})[\s\S]*([a-zA-Z-]+:\s*[^;]+;)/.test(trimmed)) return "css";
+  if (/^(SELECT |INSERT INTO|UPDATE |DELETE FROM|CREATE TABLE)/im.test(trimmed)) return "sql";
+  if (/^(go func|package main|func )/m.test(trimmed)) return "go";
+  if (/^(#include |int main\()/m.test(trimmed)) return "c++";
+  if (/^(docker|FROM |RUN |CMD )/m.test(trimmed)) return "dockerfile";
+  if (/^(\$ |#!\/bin\/bash|npm |yarn |pnpm |git )/m.test(trimmed)) return "bash";
+  if (/^(\{|\}|\[|\])/.test(trimmed) && trimmed.includes(":")) return "json";
+  return "code";
+}
+
+function parseMessageWithCodeBlocks(text) {
+  if (!text || typeof text !== "string") return [];
+
+  // Matches ```lang\ncode``` or unclosed ```lang\ncode at end
+  const regex = /```([a-zA-Z0-9_+#.-]*)\s*\n?([\s\S]*?)(?:```|$)/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      const normalText = text.slice(lastIndex, match.index);
+      if (normalText) {
+        parts.push({ type: "text", content: normalText });
+      }
+    }
+
+    const rawLang = match[1]?.trim() || "";
+    const rawCode = match[2] || "";
+
+    if (match[0].includes("```")) {
+      const trimmedCode = rawCode.replace(/\n$/, "");
+      parts.push({
+        type: "code",
+        language: rawLang || detectLanguage(trimmedCode),
+        code: trimmedCode,
+      });
+    }
+
+    lastIndex = regex.lastIndex;
+    if (!match[0].endsWith("```") && lastIndex === text.length) {
+      break;
+    }
+  }
+
+  if (lastIndex < text.length) {
+    const remaining = text.slice(lastIndex);
+    if (remaining) {
+      parts.push({ type: "text", content: remaining });
+    }
+  }
+
+  if (parts.length === 0 && text) {
+    parts.push({ type: "text", content: text });
+  }
+
+  return parts;
+}
+
+function FormattedTextSegment({ content }) {
+  if (!content) return null;
+  const parts = content.split(/(`[^`\n]+`)/g);
+
   return (
-    <div className="flex items-start gap-2.5 sm:gap-3 flex-row-reverse max-w-2xl sm:max-w-3xl ml-auto my-3">
+    <>
+      {parts.map((part, idx) => {
+        if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+          const inline = part.slice(1, -1);
+          return (
+            <code
+              key={idx}
+              className="px-1.5 py-0.5 mx-0.5 rounded-md bg-black/40 text-[#FFE4E6] font-mono text-[12px] sm:text-[13px] border border-white/20 font-semibold inline-block"
+            >
+              {inline}
+            </code>
+          );
+        }
+        return <span key={idx}>{part}</span>;
+      })}
+    </>
+  );
+}
+
+function CodeBlock({ code, language = "", inBubble = false }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e) => {
+    e?.stopPropagation?.();
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const displayLang = (language || "code").toLowerCase();
+
+  return (
+    <div
+      className={`my-2 w-full max-w-full min-w-0 rounded-xl sm:rounded-2xl overflow-hidden border font-mono text-left shadow-lg transition-all ${inBubble
+          ? "bg-[#181016] border-white/25 shadow-[0_6px_20px_rgba(0,0,0,0.35)]"
+          : "bg-[#1C121A] border-[#F472B6]/30 shadow-[0_4px_16px_rgba(244,114,182,0.15)]"
+        }`}
+    >
+      {/* Code Header Bar */}
+      <div
+        className={`flex items-center justify-between px-3 sm:px-4 py-1.5 border-b text-xs ${inBubble
+            ? "bg-[#251522] border-white/15 text-[#FCE7F3]"
+            : "bg-[#281724] border-[#F472B6]/25 text-[#F9A8D4]"
+          }`}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Code2 className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
+          <span className="text-[11px] font-bold tracking-wider uppercase font-mono text-[#F472B6] truncate">
+            {displayLang}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-black/40 hover:bg-black/60 text-white/90 hover:text-white border border-white/20 text-[10px] font-mono font-medium transition-all cursor-pointer active:scale-95 shrink-0"
+          title="Copy code to clipboard"
+          aria-label="Copy Code"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3 h-3 text-[#34D399]" />
+              <span className="text-[#34D399] font-bold">COPIED</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3 h-3 text-[#F472B6]" />
+              <span>COPY</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Code Body — Smooth Horizontal Scrolling on Mobile */}
+      <pre className="p-3 sm:p-4 overflow-x-auto max-w-full min-w-0 text-xs sm:text-[13px] leading-relaxed text-[#FDF2F8] font-mono selection:bg-[#EC4899] selection:text-white">
+        <code className="block w-max min-w-full font-mono">{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+// ── VIP Front-Row Heckler Card (User Message with Rich Code Block Rendering) ──
+function UserHecklerCard({ content }) {
+  const parts = parseMessageWithCodeBlocks(content);
+  const hasCode = parts.some((p) => p.type === "code");
+
+  return (
+    <div className="flex items-start gap-2 sm:gap-3 flex-row-reverse w-full max-w-[90%] sm:max-w-2xl ml-auto my-3 min-w-0">
       {/* Heckler Badge Icon — Baby Pink */}
-      <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] text-white flex items-center justify-center shrink-0 shadow-[0_2px_10px_rgba(236,72,153,0.3)] mt-0.5">
+      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] text-white flex items-center justify-center shrink-0 shadow-[0_2px_10px_rgba(236,72,153,0.3)] mt-0.5">
         <User className="w-4 h-4 text-white" />
       </div>
 
       {/* Heckler Speech Bubble — Baby Pink */}
-      <div className="flex flex-col items-end">
+      <div className="flex flex-col items-end flex-1 min-w-0 max-w-full">
         <div className="flex items-center gap-1.5 mb-1 px-1">
           <span className="text-[10px] font-mono font-bold tracking-wider text-[#BE185D] uppercase">
             VIP FRONT ROW • TABLE #01
           </span>
           <span className="w-1.5 h-1.5 rounded-full bg-[#EC4899]" />
         </div>
-        <div className="px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl rounded-tr-xs text-sm sm:text-[15px] leading-relaxed bg-gradient-to-tr from-[#F472B6] to-[#EC4899] text-white border border-[#F472B6] shadow-[0_4px_18px_rgba(236,72,153,0.22)] whitespace-pre-wrap break-words font-medium">
-          "{content}"
+        <div className="w-full max-w-full min-w-0 overflow-hidden px-3.5 py-3 sm:px-5 sm:py-3.5 rounded-2xl rounded-tr-xs text-sm sm:text-[15px] leading-relaxed bg-gradient-to-tr from-[#F472B6] to-[#EC4899] text-white border border-[#F472B6] shadow-[0_4px_18px_rgba(236,72,153,0.22)] break-words font-medium">
+          {!hasCode ? (
+            <div className="whitespace-pre-wrap leading-relaxed break-words">
+              <FormattedTextSegment content={content} />
+            </div>
+          ) : (
+            <div className="space-y-2 text-left w-full min-w-0 max-w-full">
+              {parts.map((part, idx) => {
+                if (part.type === "code") {
+                  return (
+                    <CodeBlock
+                      key={idx}
+                      code={part.code}
+                      language={part.language}
+                      inBubble={true}
+                    />
+                  );
+                }
+                const trimmed = part.content?.trim();
+                if (!trimmed) return null;
+                return (
+                  <div key={idx} className="whitespace-pre-wrap leading-relaxed break-words">
+                    <FormattedTextSegment content={part.content} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -546,6 +733,30 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const sessionCreatedLocallyRef = useRef(null);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const mobileToolsRef = useRef(null);
+  const mobileToolsBtnRef = useRef(null);
+
+  // Close mobile action dropdown when clicking outside
+  useEffect(() => {
+    if (!mobileToolsOpen) return;
+    const handleClickOutside = (e) => {
+      if (
+        mobileToolsRef.current &&
+        !mobileToolsRef.current.contains(e.target) &&
+        !mobileToolsBtnRef.current?.contains(e.target)
+      ) {
+        setMobileToolsOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", handleClickOutside);
+    return () => window.removeEventListener("pointerdown", handleClickOutside);
+  }, [mobileToolsOpen]);
+
+  // Check if code block is currently being typed in the textarea
+  const hasCodeBlockInInput = useMemo(() => {
+    return input.includes("```");
+  }, [input]);
 
   const loadHistory = useCallback(async (sidToLoad) => {
     if (!user || isGuest || !sidToLoad) return;
@@ -565,8 +776,12 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         } else if (firstAssistant?.content && typeof firstAssistant.content === "object" && firstAssistant.content.category) {
           setSessionTitle(`${firstAssistant.content.category} Roast Set`);
         } else if (firstUser?.content && typeof firstUser.content === "string") {
-          const clean = firstUser.content.replace(/^(roast|can you roast|please roast|roast my|roast this|what is|how to)\s+/i, "").trim();
-          const derived = clean.length > 36 ? clean.slice(0, 36) + "..." : clean;
+          const clean = firstUser.content
+            .replace(/```[a-zA-Z0-9_-]*/g, "")
+            .replace(/```/g, "")
+            .replace(/^(roast|can you roast|please roast|roast my|roast this|what is|how to)\s+/i, "")
+            .trim();
+          const derived = clean.length > 36 ? clean.slice(0, 36) + "..." : (clean || "Code Roast");
           setSessionTitle(derived ? derived.charAt(0).toUpperCase() + derived.slice(1) : "Standup Roast");
         }
       }
@@ -801,6 +1016,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     const text = input.trim();
     if (!text || loading || isStreaming) return;
     setInput("");
+    setMobileToolsOpen(false);
 
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -816,7 +1032,8 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
     let sid = currentSessionId;
     if (!sid && user && !isGuest) {
-      const preliminaryTitle = text.length > 40 ? text.slice(0, 40) + "..." : text;
+      const cleanForTitle = text.replace(/```[a-zA-Z0-9_-]*/g, "").replace(/```/g, "").trim();
+      const preliminaryTitle = cleanForTitle.length > 40 ? cleanForTitle.slice(0, 40) + "..." : (cleanForTitle || "Code Roast");
       const cleanTitle = preliminaryTitle.charAt(0).toUpperCase() + preliminaryTitle.slice(1);
       setSessionTitle(cleanTitle);
       sid = await createSession(user.uid, cleanTitle);
@@ -874,10 +1091,56 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated, saveExchange]);
 
   const handleKey = (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const nextValue = input.substring(0, start) + "  " + input.substring(end);
+      setInput(nextValue);
+      setTimeout(() => {
+        ta.selectionStart = ta.selectionEnd = start + 2;
+      }, 0);
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!loading && !isStreaming) sendMessage();
     }
+  };
+
+  const handleInsertCodeBlock = () => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = input.substring(start, end);
+
+    let replacement = "";
+    let newCursorPos = 0;
+
+    if (selected) {
+      replacement = `\`\`\`\n${selected}\n\`\`\``;
+      const nextValue = input.substring(0, start) + replacement + input.substring(end);
+      setInput(nextValue);
+      newCursorPos = start + replacement.length;
+    } else {
+      replacement = "```\n\n```";
+      const nextValue = input.substring(0, start) + replacement + input.substring(end);
+      setInput(nextValue);
+      newCursorPos = start + 4;
+    }
+
+    setMobileToolsOpen(false);
+
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(newCursorPos, newCursorPos);
+      ta.style.height = "auto";
+      const maxHeight = 160;
+      ta.style.height = `${Math.min(ta.scrollHeight, maxHeight)}px`;
+    }, 10);
   };
 
   const handleInput = (e) => {
@@ -1047,29 +1310,36 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       {/* The Stage Podium Console (Input Deck) — Baby Pink */}
       <div className="p-2 sm:p-4 mb-2">
         <div className="relative max-w-3xl mx-auto bg-white/95 backdrop-blur-md border border-[#FBCFE8] focus-within:border-[#EC4899] focus-within:ring-2 focus-within:ring-[#F472B6]/25 rounded-2xl sm:rounded-3xl p-2 sm:p-3 shadow-[0_8px_30px_rgba(244,114,182,0.08)] transition-all">
-          {/* Active PDF Badge / Chip */}
+          {/* Active PDF Badge / Chip — Compact & Single-line on Mobile */}
           {attachedDocs.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 border-b border-[#FCE7F3]">
+            <div className="flex flex-wrap items-center gap-1.5 mb-2 pb-1.5 border-b border-[#FCE7F3]">
               {attachedDocs.map((doc, dIdx) => (
                 <div
                   key={dIdx}
-                  className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[#FDF2F8] border border-[#FBCFE8] text-xs font-mono text-[#BE185D] shadow-2xs animate-in fade-in"
+                  className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-xl bg-[#FDF2F8] border border-[#FBCFE8] text-xs font-mono text-[#BE185D] shadow-2xs animate-in fade-in max-w-full"
                 >
-                  <FileText className="w-3.5 h-3.5 text-[#EC4899]" />
-                  <span className="font-bold truncate max-w-[170px] sm:max-w-[240px]">
-                    {doc.fileName}
-                  </span>
-                  <span className="text-[10px] text-[#9D174D] bg-[#FCE7F3] px-1.5 py-0.5 rounded-md font-semibold">
-                    {doc.totalChunks} chunks in Aiven pgvector
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveDoc(doc.fileName)}
-                    className="text-[#9D7889] hover:text-[#E11D48] transition-colors cursor-pointer p-0.5 rounded-md hover:bg-white"
-                    title="Remove document from session"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <FileText className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
+                    <span className="font-bold truncate max-w-[130px] sm:max-w-[220px]">
+                      {doc.fileName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="hidden sm:inline text-[10px] text-[#9D174D] bg-[#FCE7F3] px-1.5 py-0.5 rounded-md font-semibold">
+                      {doc.totalChunks} chunks in Aiven pgvector
+                    </span>
+                    <span className="sm:hidden text-[9px] text-[#9D174D] bg-[#FCE7F3] px-1.5 py-0.2 rounded-md font-semibold">
+                      {doc.totalChunks} chk
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDoc(doc.fileName)}
+                      className="text-[#9D7889] hover:text-[#E11D48] transition-colors cursor-pointer p-0.5 rounded-md hover:bg-white"
+                      title="Remove document from session"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1079,14 +1349,14 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           {uploadingPdf && (
             <div className="mb-2 px-3 py-1.5 rounded-xl bg-[#FDF2F8] border border-[#FBCFE8] text-[#BE185D] text-xs font-mono flex items-center gap-2 animate-pulse">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-[#EC4899]" />
-              <span>Extracting text, chunking & storing 768-dim embeddings in Aiven pgvector...</span>
+              <span className="truncate">Extracting text & storing chunks in Aiven pgvector...</span>
             </div>
           )}
 
           {/* Upload Error Banner */}
           {uploadError && (
             <div className="mb-2 px-3 py-1.5 rounded-xl bg-[#FFF1F2] border border-[#FECDD3] text-[#BE123C] text-xs font-mono flex items-center justify-between">
-              <span>⚠️ {uploadError}</span>
+              <span className="truncate">⚠️ {uploadError}</span>
               <button
                 type="button"
                 onClick={() => setUploadError(null)}
@@ -1097,9 +1367,9 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
             </div>
           )}
 
-          <div className="flex gap-2 sm:gap-3 items-end">
-            {/* Vintage Stage Mic Icon */}
-            <div className="w-10 h-10 rounded-2xl bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center shrink-0 mb-0.5">
+          <div className="relative flex gap-1.5 sm:gap-3 items-end">
+            {/* Desktop Only: Vintage Stage Mic Icon */}
+            <div className="hidden sm:flex w-10 h-10 rounded-2xl bg-[#FCE7F3] border border-[#FBCFE8] items-center justify-center shrink-0 mb-0.5">
               <Mic2 className="w-5 h-5 text-[#EC4899]" />
             </div>
 
@@ -1112,12 +1382,62 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
               className="hidden"
             />
 
-            {/* Paperclip PDF Upload Button */}
+            {/* Mobile Only: Single Action Dropdown Trigger (+) */}
+            <div className="relative sm:hidden shrink-0 mb-0.5">
+              <button
+                ref={mobileToolsBtnRef}
+                type="button"
+                onClick={() => setMobileToolsOpen((prev) => !prev)}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs ${mobileToolsOpen
+                    ? "bg-[#EC4899] text-white rotate-45 shadow-[0_2px_8px_rgba(236,72,153,0.35)]"
+                    : "bg-[#FDF2F8] hover:bg-[#FCE7F3] border border-[#FBCFE8] text-[#BE185D]"
+                  }`}
+                title="Open tools menu"
+                aria-label="Toggle actions"
+              >
+                <Plus className="w-4 h-4 transition-transform" />
+              </button>
+
+              {/* Mobile Action Dropdown Popup */}
+              {mobileToolsOpen && (
+                <div
+                  ref={mobileToolsRef}
+                  className="absolute bottom-11 left-0 z-40 bg-white/95 backdrop-blur-md border border-[#FBCFE8] rounded-2xl p-1.5 shadow-[0_8px_30px_rgba(244,114,182,0.22)] flex flex-col gap-1 min-w-[170px] animate-in fade-in slide-in-from-bottom-2 duration-150"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileToolsOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                    disabled={uploadingPdf || loading || isStreaming}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-mono font-bold text-[#BE185D] hover:bg-[#FDF2F8] rounded-xl transition-colors cursor-pointer text-left disabled:opacity-50"
+                  >
+                    <Paperclip className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
+                    <span>Upload PDF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileToolsOpen(false);
+                      handleInsertCodeBlock();
+                    }}
+                    disabled={loading || isStreaming}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-mono font-bold text-[#BE185D] hover:bg-[#FDF2F8] rounded-xl transition-colors cursor-pointer text-left disabled:opacity-50"
+                  >
+                    <Code2 className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
+                    <span>Insert Code (```)</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Only: Direct Paperclip PDF Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPdf || loading || isStreaming}
-              className="w-10 h-10 rounded-2xl bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#EC4899] text-[#BE185D] flex items-center justify-center shrink-0 mb-0.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-2xs"
+              className="hidden sm:flex w-10 h-10 rounded-2xl bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#EC4899] text-[#BE185D] items-center justify-center shrink-0 mb-0.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-2xs"
               title="Upload PDF for RAG Roast (Aiven pgvector)"
               aria-label="Upload PDF"
             >
@@ -1128,7 +1448,19 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
               )}
             </button>
 
-            {/* Input Textarea */}
+            {/* Desktop Only: Direct Insert Code Block Button */}
+            <button
+              type="button"
+              onClick={handleInsertCodeBlock}
+              disabled={loading || isStreaming}
+              className="hidden sm:flex w-10 h-10 rounded-2xl bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#EC4899] text-[#BE185D] items-center justify-center shrink-0 mb-0.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-2xs"
+              title="Insert or wrap code block (```)"
+              aria-label="Insert Code Block"
+            >
+              <Code2 className="w-4 h-4 text-[#EC4899] group-hover:scale-110 transition-transform" />
+            </button>
+
+            {/* Textarea — Takes Full Available Width on Mobile! */}
             <textarea
               ref={textareaRef}
               value={input}
@@ -1136,19 +1468,22 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
               onKeyDown={handleKey}
               placeholder={
                 attachedDocs.length > 0
-                  ? `Ask about or roast ${attachedDocs[0].fileName}...`
+                  ? `Ask or roast...`
                   : "Step up to the mic..."
               }
               rows={1}
               style={{ maxHeight: "160px" }}
-              className="flex-1 bg-transparent text-[#2D1C24] placeholder-[#9D7889] px-2 py-2 sm:py-2.5 outline-none text-sm sm:text-[15px] resize-none overflow-y-auto leading-normal font-sans"
+              className={`flex-1 min-w-0 bg-transparent text-[#2D1C24] placeholder-[#9D7889] px-2.5 py-2 sm:py-2.5 outline-none text-sm sm:text-[15px] resize-none overflow-y-auto leading-normal ${hasCodeBlockInInput
+                  ? "font-mono text-xs sm:text-sm bg-[#FFF5F8]/90 border border-[#FBCFE8] rounded-xl px-2.5 py-2 shadow-inner"
+                  : "font-sans"
+                }`}
             />
 
             {/* Fire At Stage Send Button */}
             <button
               onClick={sendMessage}
               disabled={loading || isStreaming || !input.trim()}
-              className="w-10 h-10 sm:w-11 sm:h-11 bg-gradient-to-tr from-[#F472B6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#DB2777] disabled:from-[#FCE7F3] disabled:to-[#FCE7F3] disabled:text-[#D1B8C4] text-white font-black rounded-xl sm:rounded-2xl transition-all flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(236,72,153,0.35)] disabled:shadow-none cursor-pointer disabled:cursor-not-allowed active:scale-95"
+              className="w-9 h-9 sm:w-11 sm:h-11 bg-gradient-to-tr from-[#F472B6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#DB2777] disabled:from-[#FCE7F3] disabled:to-[#FCE7F3] disabled:text-[#D1B8C4] text-white font-black rounded-xl sm:rounded-2xl transition-all flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(236,72,153,0.35)] disabled:shadow-none cursor-pointer disabled:cursor-not-allowed active:scale-95 mb-0.5"
               aria-label="Send to stage"
               title="Fire prompt at comedian"
             >
@@ -1161,8 +1496,8 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           </div>
 
           <div className="flex items-center justify-between px-2 pt-2 text-[10px] sm:text-[11px] font-mono text-[#836270] hidden md:block">
-            <span>PRESS ENTER TO HECKLE • SHIFT+ENTER FOR MULTILINE</span>
-            <span className="text-[#EC4899] font-bold ">MIC LIVE 🎙️</span>
+            <span>PRESS ENTER TO HECKLE • SHIFT+ENTER / TAB FOR CODE • MIC LIVE 🎙️</span>
+            <span className="text-[#EC4899] font-bold">VIP CELLAR</span>
           </div>
         </div>
       </div>
@@ -1185,22 +1520,22 @@ function EmptyStageState({ user, onShowAuth }) {
     },
     {
       label: "React useEffect Death Loop",
-      text: "Roast this React code: useEffect(() => { setCount(count + 1); }, [count]);",
+      text: "Roast this React code:\n```jsx\nuseEffect(() => {\n  setCount(count + 1);\n}, [count]);\n```",
       icon: "⚡",
     },
     {
       label: "margin: -9999px Centering",
-      text: "Roast my CSS: .center { position: absolute; margin: -9999px auto; }",
+      text: "Roast my CSS centering technique:\n```css\n.center {\n  position: absolute;\n  margin: -9999px auto;\n}\n```",
       icon: "💣",
     },
     {
       label: "Plaintext Passwords in localStorage",
-      text: "Roast this: localStorage.setItem('user_password', '123456');",
+      text: "Roast this auth implementation:\n```js\nlocalStorage.setItem('user_password', '123456');\n```",
       icon: "🔐",
     },
     {
       label: "500-Line Monster Function",
-      text: "I have a single JavaScript function that is 500 lines long with 12 nested if statements.",
+      text: "Roast this function architecture:\n```javascript\nfunction processEverything(data) {\n  if (data) {\n    if (data.user) {\n      if (data.user.role === 'admin') {\n        // 500 lines of nested logic\n      }\n    }\n  }\n}\n```",
       icon: "📜",
     },
   ];
