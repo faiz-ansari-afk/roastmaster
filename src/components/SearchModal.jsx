@@ -1,6 +1,7 @@
 "use client";
 // components/SearchModal.jsx — Cmd+K / Ctrl+K Semantic Search Command Palette (Baby Pink Edition)
 import { useState, useEffect, useRef, useCallback } from "react";
+import { formatSessionDisplayTitle } from "@/lib/firestore";
 import {
   Search,
   X,
@@ -253,7 +254,7 @@ export default function SearchModal({
                           <Ticket className="w-3.5 h-3.5" />
                         </div>
                         <span className="font-bold text-sm text-[#2D1C24] truncate group-hover/item:text-[#BE185D]">
-                          {item.title || "Untitled Roast Set"}
+                          {formatSessionDisplayTitle(item)}
                         </span>
                       </div>
 
@@ -367,7 +368,7 @@ export default function SearchModal({
                             <Ticket className="w-4 h-4 text-[#EC4899] shrink-0" />
                             <div className="min-w-0">
                               <p className="font-bold text-xs text-[#2D1C24] truncate">
-                                {s.title || "New Roast Session"}
+                                {formatSessionDisplayTitle(s)}
                               </p>
                               {s.snippet && (
                                 <p className="text-[11px] text-[#836270] truncate max-w-md">

@@ -34,12 +34,13 @@ async function withTimeout(promise, ms = 6000) {
 
 // ── SESSIONS ──────────────────────────────────────────────────────────────────
 
-export async function createSession(userId) {
+export async function createSession(userId, initialTitle = null) {
   if (!userId) return null;
   console.log("[Firestore] Creating session for user:", userId);
   try {
+    const title = initialTitle || "New Roast Session";
     const sessionPromise = addDoc(collection(db, "users", userId, "sessions"), {
-      title: "New Roast Session",
+      title,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       messageCount: 0,
@@ -113,7 +114,7 @@ export async function deleteSession(userId, sessionId) {
 export async function updateSessionTitle(userId, sessionId, title) {
   if (!userId || !sessionId) return;
   try {
-    const cleanTitle = title.length > 40 ? title.slice(0, 40) + "..." : title;
+    const cleanTitle = title.length > 50 ? title.slice(0, 50) + "..." : title;
     await setDoc(
       doc(db, "users", userId, "sessions", sessionId),
       {
@@ -124,6 +125,123 @@ export async function updateSessionTitle(userId, sessionId, title) {
     );
   } catch (err) {
     console.error("[Firestore] updateSessionTitle error:", err.code || err.message);
+  }
+}
+
+// Helper to format or derive a punchy display title for any session
+export function formatSessionDisplayTitle(session) {
+  if (!session) return "Standup Roast";
+  const rawTitle = (session.title || "").trim();
+  if (
+    rawTitle &&
+    rawTitle !== "New Roast Session" &&
+    rawTitle !== "Roast Session" &&
+    rawTitle !== "Standup Roast"
+  ) {
+    return rawTitle;
+  }
+
+  // If title has a document emoji prefix, preserve it
+  if (rawTitle && rawTitle.startsWith("📄")) {
+    return rawTitle;
+  }
+
+  // Derive from snippet if available
+  if (session.snippet && typeof session.snippet === "string") {
+    const clean = session.snippet
+      .replace(/^["'\s]+|["'\s]+$/g, "")
+      .replace(/^(Bhai|Bro|Matlab|Look|So|Well|Listen|Aha|Dekh)\s*[,:]?\s*/i, "")
+      .trim();
+    const firstSentence = clean.split(/[.?!]/)[0]?.trim();
+    if (firstSentence && firstSentence.length > 4) {
+      const formatted = firstSentence.length > 38 ? firstSentence.slice(0, 38) + "..." : firstSentence;
+      return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    }
+  }
+
+  // Derive from category if available
+  if (session.category && typeof session.category === "string" && session.category.trim()) {
+    return `${session.category.trim()} Set`;
+  }
+
+  return rawTitle || "Standup Roast";
+}
+
+let isBackfillingTitles = false;
+// Auto-backfills older historical sessions in Firestore that have placeholder titles
+export async function backfillHistoricalSessionTitles(userId, sessions) {
+  if (!userId || !Array.isArray(sessions) || sessions.length === 0 || isBackfillingTitles) return;
+
+  const staleSessions = sessions.filter((s) => {
+    const t = (s.title || "").trim();
+    return !t || t === "New Roast Session" || t === "Roast Session";
+  });
+
+  if (staleSessions.length === 0) return;
+
+  isBackfillingTitles = true;
+  try {
+    for (const session of staleSessions.slice(0, 8)) {
+      let derived = null;
+
+      if (session.snippet) {
+        const clean = session.snippet
+          .replace(/^["'\s]+|["'\s]+$/g, "")
+          .replace(/^(Bhai|Bro|Matlab|Look|So|Well|Listen|Aha|Dekh)\s*[,:]?\s*/i, "")
+          .trim();
+        const firstSentence = clean.split(/[.?!]/)[0]?.trim();
+        if (firstSentence && firstSentence.length > 4) {
+          derived = firstSentence.length > 38 ? firstSentence.slice(0, 38) + "..." : firstSentence;
+        }
+      }
+
+      if (!derived && session.category) {
+        derived = `${session.category} Set`;
+      }
+
+      if (!derived) {
+        try {
+          const msgs = await getMessages(userId, session.id);
+          if (msgs && msgs.length > 0) {
+            const assistantMsg = msgs.find((m) => m.role === "assistant" && m.content);
+            const userMsg = msgs.find((m) => m.role === "user" && m.content);
+
+            if (assistantMsg?.content && typeof assistantMsg.content === "object") {
+              if (assistantMsg.content.title) {
+                derived = assistantMsg.content.title;
+              } else if (assistantMsg.content.category) {
+                derived = `${assistantMsg.content.category} Roast`;
+              } else if (assistantMsg.content.roast) {
+                const clean = assistantMsg.content.roast
+                  .replace(/^["'\s]+|["'\s]+$/g, "")
+                  .replace(/^(Bhai|Bro|Matlab|Look|So|Well|Listen|Aha|Dekh)\s*[,:]?\s*/i, "")
+                  .trim();
+                const first = clean.split(/[.?!]/)[0]?.trim();
+                if (first) derived = first.length > 38 ? first.slice(0, 38) + "..." : first;
+              }
+            }
+
+            if (!derived && userMsg?.content && typeof userMsg.content === "string") {
+              const clean = userMsg.content
+                .replace(/^(roast|can you roast|please roast|roast my|roast this|what is|how to)\s+/i, "")
+                .trim();
+              if (clean) derived = clean.length > 38 ? clean.slice(0, 38) + "..." : clean;
+            }
+          }
+        } catch {
+          // ignore error fetching messages
+        }
+      }
+
+      if (derived && derived.trim()) {
+        const finalTitle = derived.trim().charAt(0).toUpperCase() + derived.trim().slice(1);
+        await updateSessionTitle(userId, session.id, finalTitle);
+      }
+    }
+  } catch (err) {
+    console.error("[Firestore] backfillHistoricalSessionTitles error:", err);
+  } finally {
+    isBackfillingTitles = false;
   }
 }
 
@@ -159,13 +277,46 @@ export async function saveCompletedExchange(userId, sessionId, userMsg, botMsg, 
 
     // Update session metadata safely using setDoc with merge: true
     const sessionRef = doc(db, "users", userId, "sessions", sessionId);
-    const cleanTitle = title && title.length > 40 ? title.slice(0, 40) + "..." : title;
+
+    // Dynamic title preference: AI-generated botMsg.title > custom title > userMsg
+    const rawDynamicTitle =
+      (typeof botMsg === "object" && botMsg?.title) ||
+      title ||
+      (typeof userMsg === "string" ? userMsg : null);
+
+    let cleanTitle = null;
+    if (rawDynamicTitle && typeof rawDynamicTitle === "string" && rawDynamicTitle.trim()) {
+      const t = rawDynamicTitle.trim();
+      cleanTitle = t.length > 50 ? t.slice(0, 50) + "..." : t;
+      cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+    }
 
     const sessionUpdate = {
       updatedAt: serverTimestamp(),
       messageCount: increment(2),
-      ...(isFirstMessage && cleanTitle ? { title: cleanTitle } : {}),
     };
+
+    if (cleanTitle) {
+      if (isFirstMessage) {
+        sessionUpdate.title = cleanTitle;
+      } else {
+        // If not first message, check if current session title was placeholder
+        try {
+          const currentSnap = await withTimeout(getDoc(sessionRef), 2000);
+          const existingTitle = (currentSnap?.data?.()?.title || "").trim();
+          if (
+            !existingTitle ||
+            existingTitle === "New Roast Session" ||
+            existingTitle === "Roast Session" ||
+            existingTitle === "Standup Roast"
+          ) {
+            sessionUpdate.title = cleanTitle;
+          }
+        } catch {
+          // If getDoc failed or timed out, do not block
+        }
+      }
+    }
 
     // Store embedding and snippet on session doc for fast, lightweight vault search
     if (Array.isArray(botMsg?.embedding) && botMsg.embedding.length > 0) {

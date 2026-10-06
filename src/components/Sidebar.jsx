@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { subscribeToSessions, deleteSession } from "@/lib/firestore";
+import {
+  subscribeToSessions,
+  deleteSession,
+  formatSessionDisplayTitle,
+  backfillHistoricalSessionTitles,
+} from "@/lib/firestore";
 import SearchModal from "./SearchModal";
 import {
   Flame,
@@ -81,6 +86,8 @@ export default function Sidebar({
     const unsubscribe = subscribeToSessions(user.uid, (data) => {
       setSessions(data || []);
       setLoadingSessions(false);
+      // Auto-backfill older historical sets with dynamic titles in Firestore
+      backfillHistoricalSessionTitles(user.uid, data);
     });
 
     return () => unsubscribe();
@@ -322,7 +329,7 @@ export default function Sidebar({
                         </span>
                       </div>
                       <p className="text-xs font-bold truncate leading-tight">
-                        {session.title || "Roast Session"}
+                        {formatSessionDisplayTitle(session)}
                       </p>
                       <div className="flex items-center gap-2 mt-1.5 text-[10px] text-[#836270]">
                         <span className="flex items-center gap-1">
@@ -338,7 +345,7 @@ export default function Sidebar({
                         disabled={deletingId === session.id}
                         className="opacity-0 group-hover:opacity-100 text-[#836270] hover:text-[#E11D48] transition-all p-1.5 rounded-lg hover:bg-[#FFE4E6] shrink-0 cursor-pointer"
                         title="Delete set"
-                        aria-label={`Delete set ${session.title}`}
+                        aria-label={`Delete set ${formatSessionDisplayTitle(session)}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

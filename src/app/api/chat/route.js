@@ -36,6 +36,7 @@ CORE COMEDY RULES:
 OUTPUT FORMAT:
 Always return valid JSON:
 {
+  "title": "<Concise 3-5 words punchy title summarizing the exact topic or dilemma, e.g. 'React useEffect Death Loop', 'PHP 2026 SaaS Dilemma', 'Fintech Architecture Review'>",
   "roast": "1-2 short, razor-sharp punchline sentences specifically roasting the user's exact topic",
   "severity": <integer from 1 to 10>,
   "category": "<1-2 words category, e.g. Frontend, Backend, Career, Logic, Food, Lifestyle, Travel, AI>",
@@ -257,7 +258,7 @@ function executeFetchRoastAmmo(topic = "", targetCategory = "general") {
   };
 }
 
-function parseStructuredRoast(text, toolCallData) {
+function parseStructuredRoast(text, toolCallData, fallbackQuery = "") {
   let parsed = {};
   try {
     parsed = JSON.parse(text);
@@ -272,7 +273,24 @@ function parseStructuredRoast(text, toolCallData) {
     }
   }
 
+  // Generate dynamic title
+  let title = parsed.title;
+  if (!title || typeof title !== "string" || !title.trim()) {
+    if (toolCallData?.topic) {
+      title = `${toolCallData.topic} Roast`;
+    } else if (fallbackQuery) {
+      const clean = fallbackQuery.replace(/^(roast|can you roast|please roast|roast my|roast this)\s+/i, "").trim();
+      title = clean.length > 36 ? clean.slice(0, 36) + "..." : clean;
+      title = title ? title.charAt(0).toUpperCase() + title.slice(1) : "Standup Roast";
+    } else if (parsed.category) {
+      title = `${parsed.category} Roast`;
+    } else {
+      title = "Standup Roast";
+    }
+  }
+
   return {
+    title: title.trim(),
     roast:
       parsed.roast ||
       text ||
@@ -448,11 +466,11 @@ RAG RULES:
             toolConfig: { functionCallingConfig: { mode: "NONE" } },
           });
 
-          finalPayload = parseStructuredRoast(res2.response.text(), toolCallInfo);
+          finalPayload = parseStructuredRoast(res2.response.text(), toolCallInfo, lastMessage);
           break;
         } else {
           // Model responded directly (for non-code topics)
-          finalPayload = parseStructuredRoast(res1.response.text(), defaultToolCallInfo);
+          finalPayload = parseStructuredRoast(res1.response.text(), defaultToolCallInfo, lastMessage);
           break;
         }
       } catch (err) {

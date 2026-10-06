@@ -2,7 +2,13 @@
 // components/ChatWindow.jsx — The Live Standup Comedy Roast Stage Deck (Baby Pink Edition + Pure Text-by-Text Reveal)
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { createSession, getMessages, saveCompletedExchange } from "@/lib/firestore";
+import {
+  createSession,
+  getMessages,
+  saveCompletedExchange,
+  updateSessionTitle,
+  formatSessionDisplayTitle,
+} from "@/lib/firestore";
 import {
   Flame,
   User,
@@ -565,6 +571,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const [isStreaming, setIsStreaming] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
+  const [sessionTitle, setSessionTitle] = useState("");
   const [attachedDocs, setAttachedDocs] = useState([]);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [uploadError, setUploadError] = useState(null);
@@ -578,10 +585,28 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     setLoadingHistory(true);
     try {
       const msgs = await getMessages(user.uid, sidToLoad);
-      setMessages((msgs || []).map((m) => ({ ...m, isNew: false })));
+      const loadedMsgs = (msgs || []).map((m) => ({ ...m, isNew: false }));
+      setMessages(loadedMsgs);
+
+      // Infer dynamic title from existing session messages
+      if (loadedMsgs.length > 0) {
+        const firstAssistant = loadedMsgs.find((m) => m.role === "assistant" && m.content);
+        const firstUser = loadedMsgs.find((m) => m.role === "user" && m.content);
+
+        if (firstAssistant?.content && typeof firstAssistant.content === "object" && firstAssistant.content.title) {
+          setSessionTitle(firstAssistant.content.title);
+        } else if (firstAssistant?.content && typeof firstAssistant.content === "object" && firstAssistant.content.category) {
+          setSessionTitle(`${firstAssistant.content.category} Roast Set`);
+        } else if (firstUser?.content && typeof firstUser.content === "string") {
+          const clean = firstUser.content.replace(/^(roast|can you roast|please roast|roast my|roast this|what is|how to)\s+/i, "").trim();
+          const derived = clean.length > 36 ? clean.slice(0, 36) + "..." : clean;
+          setSessionTitle(derived ? derived.charAt(0).toUpperCase() + derived.slice(1) : "Standup Roast");
+        }
+      }
     } catch (e) {
       console.error("loadHistory:", e);
       setMessages([]);
+      setSessionTitle("");
     } finally {
       setLoadingHistory(false);
     }
@@ -599,6 +624,9 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       .then((data) => {
         if (isMounted && Array.isArray(data?.documents)) {
           setAttachedDocs(data.documents);
+          if (data.documents.length > 0) {
+            setSessionTitle((prev) => prev || `📄 ${data.documents[0].fileName}`);
+          }
         }
       })
       .catch((err) => {
@@ -625,6 +653,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     } else {
       setMessages([]);
       setInput("");
+      setSessionTitle("");
     }
   }, [sessionId, user, isGuest, loadHistory]);
 
@@ -647,11 +676,15 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     setUploadError(null);
     setUploadingPdf(true);
 
+    const cleanDocName = file.name.replace(/\.[^/.]+$/, "");
+    const docTitle = `📄 ${cleanDocName}`;
+    setSessionTitle(docTitle);
+
     try {
       let sid = currentSessionId;
       if (!sid) {
         if (user && !isGuest) {
-          sid = await createSession(user.uid);
+          sid = await createSession(user.uid, docTitle);
           if (sid) {
             sessionCreatedLocallyRef.current = sid;
             setCurrentSessionId(sid);
@@ -661,6 +694,8 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           sid = `session_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
           setCurrentSessionId(sid);
         }
+      } else if (user && !isGuest) {
+        await updateSessionTitle(user.uid, sid, docTitle);
       }
 
       if (!sid) {
@@ -742,8 +777,12 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     if (!user || isGuest || !botReply) return;
     try {
       let sid = currentSessionId;
+      const dynamicTitle =
+        botReply?.title ||
+        (userText ? (userText.length > 40 ? userText.slice(0, 40) + "..." : userText) : "Standup Roast");
+
       if (!sid) {
-        sid = await createSession(user.uid);
+        sid = await createSession(user.uid, dynamicTitle);
         if (sid) {
           sessionCreatedLocallyRef.current = sid;
           setCurrentSessionId(sid);
@@ -757,7 +796,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           userText,
           botReply,
           isFirstMsg,
-          isFirstMsg ? userText : null
+          dynamicTitle
         );
       }
     } catch (e) {
@@ -784,7 +823,10 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
     let sid = currentSessionId;
     if (!sid && user && !isGuest) {
-      sid = await createSession(user.uid);
+      const preliminaryTitle = text.length > 40 ? text.slice(0, 40) + "..." : text;
+      const cleanTitle = preliminaryTitle.charAt(0).toUpperCase() + preliminaryTitle.slice(1);
+      setSessionTitle(cleanTitle);
+      sid = await createSession(user.uid, cleanTitle);
       if (sid) {
         sessionCreatedLocallyRef.current = sid;
         setCurrentSessionId(sid);
@@ -816,6 +858,9 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
       const data = await res.json();
       setLoading(false);
+      if (data?.title) {
+        setSessionTitle(data.title);
+      }
       // Mark as isNew: true so the character-by-character reveal triggers
       setMessages((prev) => [...prev, { role: "assistant", content: data, isNew: true }]);
       saveExchange(text, data, isFirst);
@@ -868,14 +913,32 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         ) : messages.length === 0 ? (
           <EmptyStageState onShowAuth={onShowAuth} user={user} isGuest={isGuest} />
         ) : (
-          messages.map((msg, i) => (
-            <MessageBubble
-              key={i}
-              message={msg}
-              isStreaming={isStreaming && i === messages.length - 1}
-              isNew={Boolean(msg.isNew)}
-            />
-          ))
+          <>
+            {sessionTitle && (
+              <div className="flex items-center justify-between px-3.5 py-2 mb-2 bg-white/90 border border-[#FBCFE8] rounded-2xl shadow-2xs backdrop-blur-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FCE7F3] border border-[#FBCFE8] text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0">
+                    <Flame className="w-3 h-3 text-[#EC4899]" />
+                    <span>LIVE SET</span>
+                  </span>
+                  <span className="text-xs sm:text-sm font-extrabold text-[#2D1C24] truncate">
+                    {sessionTitle}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-mono text-[#836270] shrink-0">
+                  <span>{messages.length} {messages.length === 1 ? "EXCHANGE" : "EXCHANGES"}</span>
+                </div>
+              </div>
+            )}
+            {messages.map((msg, i) => (
+              <MessageBubble
+                key={i}
+                message={msg}
+                isStreaming={isStreaming && i === messages.length - 1}
+                isNew={Boolean(msg.isNew)}
+              />
+            ))}
+          </>
         )}
 
         {/* Loading / Comedian Teleprompter State — Baby Pink */}
