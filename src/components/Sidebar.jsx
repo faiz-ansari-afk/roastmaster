@@ -10,6 +10,7 @@ import {
   backfillHistoricalSessionTitles,
 } from "@/lib/firestore";
 import SearchModal from "./SearchModal";
+import SignOutModal from "./SignOutModal";
 import {
   Flame,
   X,
@@ -40,6 +41,7 @@ export default function Sidebar({
   const [deletingId, setDeletingId] = useState(null);
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   // Global Ctrl+K / Cmd+K listener & open-search event
   useEffect(() => {
@@ -63,7 +65,9 @@ export default function Sidebar({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
-        if (sessionToDelete && !deletingId) {
+        if (showSignOutModal) {
+          setShowSignOutModal(false);
+        } else if (sessionToDelete && !deletingId) {
           setSessionToDelete(null);
         } else if (sidebarOpen) {
           onCloseSidebar();
@@ -72,7 +76,7 @@ export default function Sidebar({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [sessionToDelete, deletingId, sidebarOpen, onCloseSidebar]);
+  }, [showSignOutModal, sessionToDelete, deletingId, sidebarOpen, onCloseSidebar]);
 
   // Real-time Firestore listener for user sessions
   useEffect(() => {
@@ -98,6 +102,7 @@ export default function Sidebar({
       await logout();
       setSessions([]);
       onNewSession();
+      onCloseSidebar();
     } catch (err) {
       console.error("Logout error:", err);
     }
@@ -411,7 +416,7 @@ export default function Sidebar({
                 </div>
               </Link>
               <button
-                onClick={handleLogout}
+                onClick={() => setShowSignOutModal(true)}
                 className="text-[#836270] hover:text-[#E11D48] text-xs font-medium transition-colors shrink-0 cursor-pointer flex items-center gap-1 hover:underline p-1.5 rounded-lg hover:bg-white"
                 title="Sign out"
               >
@@ -496,6 +501,14 @@ export default function Sidebar({
           onSelectSession(sid);
           onCloseSidebar();
         }}
+      />
+
+      {/* Sign Out Confirmation Modal */}
+      <SignOutModal
+        isOpen={showSignOutModal}
+        onClose={() => setShowSignOutModal(false)}
+        onConfirm={handleLogout}
+        isGuest={isGuest}
       />
     </>
   );

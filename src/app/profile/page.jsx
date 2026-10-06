@@ -11,6 +11,7 @@ import {
   deleteAllUserSessions,
 } from "@/lib/firestore";
 import AuthModal from "@/components/AuthModal";
+import SignOutModal from "@/components/SignOutModal";
 import {
   Flame,
   ArrowLeft,
@@ -117,6 +118,7 @@ export default function ProfilePage() {
 
   // Delete all chats modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [deletingChats, setDeletingChats] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState("");
@@ -364,7 +366,7 @@ export default function ProfilePage() {
               <span>LIVE ARTIST PASS</span>
             </span>
             <button
-              onClick={handleLogout}
+              onClick={() => setShowSignOutModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#FFE4E6] border border-[#FBCFE8] hover:border-[#FDA4AF] text-[#836270] hover:text-[#E11D48] rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer shadow-2xs"
               title="Sign out of RoastMaster"
             >
@@ -860,6 +862,14 @@ export default function ProfilePage() {
 
       {/* Auth Modal for guest upgrades */}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+
+      {/* Sign Out Confirmation Modal */}
+      <SignOutModal
+        isOpen={showSignOutModal}
+        onClose={() => setShowSignOutModal(false)}
+        onConfirm={handleLogout}
+        isGuest={isGuest}
+      />
     </main>
   );
 }
