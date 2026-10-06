@@ -60,12 +60,12 @@ export default function AuthModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D1C24]/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-white border border-[#FBCFE8] rounded-3xl p-6 sm:p-8 shadow-[0_20px_60px_rgba(236,72,153,0.18)] text-[#2D1C24] max-h-[90dvh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D1C24]/30 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md liquid-glass rounded-3xl p-6 sm:p-8 text-[#2D1C24] max-h-[90dvh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#9D7889] hover:text-[#2D1C24] hover:bg-[#FDF2F8] p-2 rounded-xl transition-colors cursor-pointer"
+          className="absolute top-4 right-4 text-[#9D7889] hover:text-[#2D1C24] liquid-glass-pill p-2 rounded-xl transition-colors cursor-pointer"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" />
@@ -73,10 +73,10 @@ export default function AuthModal({ onClose }) {
 
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] flex items-center justify-center mx-auto mb-3 shadow-[0_4px_16px_rgba(236,72,153,0.3)]">
+          <div className="w-14 h-14 rounded-2xl liquid-glass-pink flex items-center justify-center mx-auto mb-3 shadow-[0_4px_16px_rgba(236,72,153,0.3)]">
             <Ticket className="w-7 h-7 text-white" />
           </div>
-          <div className="inline-block px-2.5 py-0.5 rounded-full bg-[#FDF2F8] border border-[#FBCFE8] text-[#BE185D] text-[10px] font-mono font-bold tracking-widest uppercase mb-1.5">
+          <div className="inline-block px-2.5 py-0.5 rounded-full bg-white/70 border border-white/90 text-[#BE185D] text-[10px] font-mono font-bold tracking-widest uppercase mb-1.5 shadow-2xs">
             VIP BACKSTAGE PASS
           </div>
           <h2 className="text-[#2D1C24] text-xl sm:text-2xl font-black tracking-wide uppercase font-mono">
@@ -99,7 +99,7 @@ export default function AuthModal({ onClose }) {
                 placeholder="Heckler Name / Stage Alias"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full bg-[#FFF8FA] border border-[#FBCFE8] focus:border-[#EC4899] focus:ring-2 focus:ring-[#F472B6]/20 focus:bg-white text-[#2D1C24] placeholder-[#9D7889] pl-10 pr-4 py-3 rounded-xl outline-none transition-colors text-sm font-sans"
+                className="w-full bg-white/70 border border-white/90 focus:border-[#EC4899] focus:ring-2 focus:ring-[#F472B6]/30 focus:bg-white text-[#2D1C24] placeholder-[#9D7889] pl-10 pr-4 py-3 rounded-xl outline-none transition-colors text-sm font-sans"
               />
             </div>
           )}
@@ -112,7 +112,7 @@ export default function AuthModal({ onClose }) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[#FFF8FA] border border-[#FBCFE8] focus:border-[#EC4899] focus:ring-2 focus:ring-[#F472B6]/20 focus:bg-white text-[#2D1C24] placeholder-[#9D7889] pl-10 pr-4 py-3 rounded-xl outline-none transition-colors text-sm font-sans"
+              className="w-full bg-white/70 border border-white/90 focus:border-[#EC4899] focus:ring-2 focus:ring-[#F472B6]/30 focus:bg-white text-[#2D1C24] placeholder-[#9D7889] pl-10 pr-4 py-3 rounded-xl outline-none transition-colors text-sm font-sans"
             />
           </div>
 
@@ -124,12 +124,12 @@ export default function AuthModal({ onClose }) {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#FFF8FA] border border-[#FBCFE8] focus:border-[#EC4899] focus:ring-2 focus:ring-[#F472B6]/20 focus:bg-white text-[#2D1C24] placeholder-[#9D7889] pl-10 pr-4 py-3 rounded-xl outline-none transition-colors text-sm font-sans"
+              className="w-full bg-white/70 border border-white/90 focus:border-[#EC4899] focus:ring-2 focus:ring-[#F472B6]/30 focus:bg-white text-[#2D1C24] placeholder-[#9D7889] pl-10 pr-4 py-3 rounded-xl outline-none transition-colors text-sm font-sans"
             />
           </div>
 
           {error && (
-            <p className="text-[#BE123C] text-xs mt-3 bg-[#FFE4E6] border border-[#FDA4AF] rounded-xl px-3.5 py-2.5 leading-relaxed flex items-center gap-2">
+            <p className="text-[#BE123C] text-xs mt-3 bg-[#FFE4E6]/90 border border-[#FDA4AF] rounded-xl px-3.5 py-2.5 leading-relaxed flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-[#E11D48]" />
               <span>{error}</span>
             </p>
@@ -138,7 +138,7 @@ export default function AuthModal({ onClose }) {
           <button
             type="submit"
             disabled={loading || !email || !password}
-            className="w-full mt-4 bg-gradient-to-r from-[#F472B6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#DB2777] text-white font-black py-3.5 rounded-xl transition-all uppercase tracking-wider text-xs sm:text-sm disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed shadow-[0_4px_16px_rgba(236,72,153,0.35)] active:scale-98 font-mono"
+            className="w-full mt-4 liquid-glass-pink hover:opacity-95 text-white font-black py-3.5 rounded-xl transition-all uppercase tracking-wider text-xs sm:text-sm disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed active:scale-98 font-mono"
           >
             {loading ? "AUTHENTICATING..." : mode === "login" ? "ENTER VIP LOUNGE" : "CLAIM VIP PASS"}
           </button>

@@ -155,8 +155,8 @@ function RagSourcesAccordion({ sources }) {
   if (!sources || sources.length === 0) return null;
 
   return (
-    <div className="mt-3.5 pt-3.5 border-t border-[#FCE7F3] animate-in fade-in duration-400">
-      <div className="bg-[#FFF5F7] text-[#2D1C24] rounded-2xl p-3 sm:p-3.5 border border-[#FBCFE8] transition-all">
+    <div className="mt-3.5 pt-3.5 border-t border-[#FCE7F3]/80 animate-in fade-in duration-400">
+      <div className="liquid-glass-subtle text-[#2D1C24] rounded-2xl p-3 sm:p-3.5 transition-all">
         {/* Accordion Toggle Header — Collapsed by default */}
         <button
           type="button"
@@ -169,7 +169,7 @@ function RagSourcesAccordion({ sources }) {
           title={isExpanded ? "Click to collapse excerpts" : "Click to expand excerpts"}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-5 h-5 rounded-md bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center shrink-0">
+            <div className="w-5 h-5 rounded-md bg-white/80 border border-white/90 flex items-center justify-center shrink-0 shadow-2xs">
               <FileText className="w-3 h-3 text-[#EC4899]" />
             </div>
             <span className="text-[10px] font-black tracking-widest text-[#BE185D] uppercase font-mono truncate">
@@ -178,10 +178,10 @@ function RagSourcesAccordion({ sources }) {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0 ml-2">
-            <span className="text-[10px] font-mono text-[#BE185D] bg-[#FCE7F3] px-2 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] font-mono text-[#BE185D] bg-white/85 border border-white/90 px-2 py-0.5 rounded-full font-bold shadow-2xs">
               {sources.length} EXCERPTS RETRIEVED
             </span>
-            <div className="w-5 h-5 rounded-md flex items-center justify-center text-[#836270] group-hover:text-[#BE185D] group-hover:bg-[#FCE7F3] transition-colors">
+            <div className="w-5 h-5 rounded-md flex items-center justify-center text-[#836270] group-hover:text-[#BE185D] group-hover:bg-white/80 transition-colors">
               <ChevronDown
                 className={`w-3.5 h-3.5 text-[#EC4899] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
                   }`}
@@ -192,11 +192,11 @@ function RagSourcesAccordion({ sources }) {
 
         {/* Collapsible Content — Initially Collapsed */}
         {isExpanded && (
-          <div className="mt-2.5 pt-2.5 border-t border-[#FCE7F3] space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="mt-2.5 pt-2.5 border-t border-white/70 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
             {sources.map((src, sIdx) => (
               <div
                 key={sIdx}
-                className="bg-white p-2.5 rounded-xl border border-[#FCE7F3] text-xs shadow-2xs"
+                className="bg-white/85 backdrop-blur-xs p-2.5 rounded-xl border border-white/90 text-xs shadow-2xs"
               >
                 <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1 text-[#9D174D]">
                   <span className="flex items-center gap-1.5 truncate max-w-[240px] sm:max-w-md">
@@ -206,7 +206,7 @@ function RagSourcesAccordion({ sources }) {
                       (Chunk #{src.chunkIndex + 1})
                     </span>
                   </span>
-                  <span className="bg-[#FDF2F8] text-[#BE185D] border border-[#FBCFE8] px-1.5 py-0.5 rounded shrink-0">
+                  <span className="bg-[#FDF2F8]/90 text-[#BE185D] border border-[#FBCFE8] px-1.5 py-0.5 rounded shrink-0">
                     {(src.similarity * 100).toFixed(0)}% match
                   </span>
                 </div>
@@ -272,16 +272,16 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
         }`}
       title={isSpeaking ? "Click to reveal punchline immediately" : ""}
     >
-      {/* Soft Baby Pink Stage Dais Halo */}
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#F472B6]/20 via-[#EC4899]/15 to-[#FBCFE8]/25 rounded-3xl blur-md opacity-70 group-hover/card:opacity-100 transition duration-500 -z-10" />
+      {/* Soft Baby Pink Stage Dais Halo & Caustic Refraction */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-[#F472B6]/25 via-[#EC4899]/20 to-[#FDA4AF]/25 rounded-3xl blur-xl opacity-80 group-hover/card:opacity-100 transition duration-500 -z-10" />
 
-      {/* Main Stage Card Dais — Crisp White with Baby Pink Accents */}
-      <div className="relative bg-white border border-[#FBCFE8] rounded-3xl p-4 sm:p-6 shadow-[0_4px_25px_rgba(244,114,182,0.07)] text-[#2D1C24] overflow-hidden">
+      {/* Main Stage Card Dais — Liquid Glass Monolith */}
+      <div className="relative liquid-glass rounded-3xl p-4 sm:p-6 text-[#2D1C24] overflow-hidden">
         {/* Stage Header: Audio Frequency Equalizer + Mic Status + Burn Gauge */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3.5 mb-3.5 border-b border-[#FCE7F3]">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3.5 mb-3.5 border-b border-white/70">
           {/* Left: Stage Mic + Live Dancing Audio Waves */}
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-white/80 border border-white/95 flex items-center justify-center shadow-2xs">
               <Mic2 className="w-4 h-4 text-[#EC4899]" />
             </div>
 
@@ -303,8 +303,8 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
                 </span>
               </div>
 
-              {/* 5-Bar Dancing Audio Equalizer Visualizer — Baby Pink */}
-              <div className="flex items-end gap-0.5 h-4 ml-1 px-1.5 py-0.5 bg-[#FDF2F8] rounded-md border border-[#FCE7F3]">
+              {/* 5-Bar Dancing Audio Equalizer Visualizer — Liquid Glass */}
+              <div className="flex items-end gap-0.5 h-4 ml-1 px-1.5 py-0.5 bg-white/60 rounded-md border border-white/80 backdrop-blur-xs">
                 <span
                   className={`w-0.5 bg-[#F472B6] rounded-full ${isSpeaking ? "animate-sound-1" : "h-1"
                     }`}
@@ -329,10 +329,10 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
             </div>
           </div>
 
-          {/* Right: Category Marquee & Heat Badge */}
+          {/* Right: Category Marquee & Heat Badge — Liquid Glass Pills */}
           <div className="flex items-center gap-2 flex-wrap">
             {data.category && (
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FDF2F8] border border-[#FBCFE8] text-[#9D174D] text-[11px] font-mono font-bold">
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg liquid-glass-pill text-[#9D174D] text-[11px] font-mono font-bold">
                 <Tag className="w-3 h-3 text-[#EC4899]" />
                 <span className="uppercase">{data.category}</span>
               </div>
@@ -340,7 +340,7 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
 
             {severityInfo && (
               <div
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-black font-mono tracking-wider ${severityInfo.colorClass}`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-black font-mono tracking-wider liquid-glass-pill ${severityInfo.colorClass}`}
               >
                 <Flame className={`w-3.5 h-3.5 ${severityInfo.flameClass}`} />
                 <span>
@@ -353,7 +353,7 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
 
         {/* Severity Visual Bar — COMPLETELY HIDDEN until speech finishes */}
         {!isSpeaking && severityInfo && (
-          <div className="mb-4 bg-[#FDF2F8] p-2.5 rounded-xl border border-[#FCE7F3] animate-in fade-in duration-300">
+          <div className="mb-4 liquid-glass-subtle p-2.5 rounded-xl border border-white/80 animate-in fade-in duration-300">
             <div className="flex items-center justify-between text-[11px] font-semibold text-[#836270] mb-1.5 font-mono">
               <span className="flex items-center gap-1">
                 <Flame className={`w-3.5 h-3.5 ${severityInfo.flameClass}`} />
@@ -372,7 +372,7 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
                   key={idx}
                   className={`rounded-full transition-all duration-500 ${idx < data.severity
                     ? `${severityInfo.meterClass} shadow-[0_0_6px_rgba(236,72,153,0.35)]`
-                    : "bg-[#FCE7F3]"
+                    : "bg-[#FCE7F3]/70"
                     }`}
                 />
               ))}
@@ -411,10 +411,10 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
           <RagSourcesAccordion sources={data.ragSources} />
         )}
 
-        {/* Backstage Real Talk (Actually Improve) — COMPLETELY HIDDEN until finished speaking */}
+        {/* Backstage Real Talk (Actually Improve) — Liquid Glass Pink Soft */}
         {!isSpeaking && data.suggestion && (
-          <div className="mt-4 pt-3.5 border-t border-[#FCE7F3] animate-in fade-in duration-400">
-            <div className="bg-[#FFF8FA] border border-[#FBCFE8] rounded-2xl p-3.5 sm:p-4">
+          <div className="mt-4 pt-3.5 border-t border-white/70 animate-in fade-in duration-400">
+            <div className="liquid-glass-pink-soft rounded-2xl p-3.5 sm:p-4">
               <div className="flex items-center gap-1.5 text-xs font-black text-[#9D174D] tracking-wider uppercase font-mono mb-1.5">
                 <Lightbulb className="w-4 h-4 text-[#EC4899]" />
                 <span>Backstage Real Talk (Actually Improve):</span>
@@ -426,16 +426,16 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
           </div>
         )}
 
-        {/* Interactive Crowd Reactions Bar — COMPLETELY HIDDEN until finished speaking */}
+        {/* Interactive Crowd Reactions Bar — Liquid Glass Controls */}
         {!isSpeaking && !isStreaming && data.roast && (
-          <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-[#FCE7F3] animate-in fade-in duration-300">
+          <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-white/70 animate-in fade-in duration-300">
             {/* Left: Audience Reactions */}
             <div className="flex items-center gap-2">
               <button
                 onClick={handleApplaud}
-                className={`flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${hasApplauded
-                  ? "bg-[#FCE7F3] border-[#FBCFE8] text-[#BE185D]"
-                  : "bg-white border-[#FCE7F3] text-[#836270] hover:text-[#2D1C24] hover:bg-[#FDF2F8]"
+                className={`flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer ${hasApplauded
+                  ? "liquid-glass-pink text-white shadow-xs"
+                  : "liquid-glass-pill text-[#836270] hover:text-[#2D1C24]"
                   }`}
                 title="Applaud the roast!"
               >
@@ -445,9 +445,9 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
 
               <button
                 onClick={handleTomato}
-                className={`flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${hasThrownTomato
-                  ? "bg-[#FFE4E6] border-[#FDA4AF] text-[#E11D48]"
-                  : "bg-white border-[#FCE7F3] text-[#836270] hover:text-[#2D1C24] hover:bg-[#FDF2F8]"
+                className={`flex items-center gap-1 text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer ${hasThrownTomato
+                  ? "bg-[#FFE4E6] border border-[#FDA4AF] text-[#E11D48] shadow-xs"
+                  : "liquid-glass-pill text-[#836270] hover:text-[#2D1C24]"
                   }`}
                 title="Throw a tomato at the stage!"
               >
@@ -456,10 +456,10 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
               </button>
             </div>
 
-            {/* Right: Steal Joke (Copy) */}
+            {/* Right: Steal Joke (Copy) — Liquid Glass Pill */}
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#836270] hover:text-[#2D1C24] bg-white hover:bg-[#FDF2F8] border border-[#FCE7F3] px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
+              className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#836270] hover:text-[#2D1C24] liquid-glass-pill px-3 py-1.5 rounded-lg transition-all cursor-pointer"
               title="Copy roast & comedian notes"
             >
               {copied ? (
@@ -649,20 +649,20 @@ function UserHecklerCard({ content }) {
 
   return (
     <div className="flex items-start gap-2 sm:gap-3 flex-row-reverse w-full max-w-[90%] sm:max-w-2xl ml-auto my-3 min-w-0">
-      {/* Heckler Badge Icon — Baby Pink */}
-      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] text-white flex items-center justify-center shrink-0 shadow-[0_2px_10px_rgba(236,72,153,0.3)] mt-0.5">
+      {/* Heckler Badge Icon — Liquid Glass Pink */}
+      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl liquid-glass-pink text-white flex items-center justify-center shrink-0 mt-0.5">
         <User className="w-4 h-4 text-white" />
       </div>
 
-      {/* Heckler Speech Bubble — Baby Pink */}
+      {/* Heckler Speech Bubble — Liquid Glass Pink */}
       <div className="flex flex-col items-end flex-1 min-w-0 max-w-full">
         <div className="flex items-center gap-1.5 mb-1 px-1">
-          <span className="text-[10px] font-mono font-bold tracking-wider text-[#BE185D] uppercase">
+          <span className="text-[10px] font-mono font-bold tracking-wider text-[#BE185D] uppercase bg-white/50 backdrop-blur-xs px-2 py-0.5 rounded-full border border-white/80">
             VIP FRONT ROW • TABLE #01
           </span>
-          <span className="w-1.5 h-1.5 rounded-full bg-[#EC4899]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#EC4899] animate-pulse" />
         </div>
-        <div className="w-full max-w-full min-w-0 overflow-hidden px-3.5 py-3 sm:px-5 sm:py-3.5 rounded-2xl rounded-tr-xs text-sm sm:text-[15px] leading-relaxed bg-gradient-to-tr from-[#F472B6] to-[#EC4899] text-white border border-[#F472B6] shadow-[0_4px_18px_rgba(236,72,153,0.22)] break-words font-medium">
+        <div className="w-full max-w-full min-w-0 overflow-hidden px-3.5 py-3 sm:px-5 sm:py-3.5 rounded-2xl rounded-tr-xs text-sm sm:text-[15px] leading-relaxed liquid-glass-pink text-white break-words font-medium">
           {!hasCode ? (
             <div className="whitespace-pre-wrap leading-relaxed break-words">
               <FormattedTextSegment content={content} />
@@ -1156,7 +1156,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#FFF5F7] w-full max-w-4xl mx-auto px-2 sm:px-4">
+    <div className="flex flex-col h-full bg-transparent w-full max-w-4xl mx-auto px-2 sm:px-4">
       {/* Stage Performance Arena Area */}
       <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 sm:py-6 space-y-4">
         {loadingHistory ? (
@@ -1170,13 +1170,13 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           <EmptyStageState onShowAuth={onShowAuth} user={user} isGuest={isGuest} />
         ) : (
           <>
-            {/* Sticky Live Set Marquee & Manual Title Editor */}
+            {/* Sticky Live Set Marquee & Manual Title Editor — Liquid Glass Capsule */}
             {sessionTitle && (
-              <div className="sticky -top-4 md:-top-6 z-20 -mx-2 sm:-mx-4 px-2 sm:px-4 py-2 bg-[#FFF5F7]/95 backdrop-blur-md">
+              <div className="sticky -top-4 md:-top-6 z-20 -mx-2 sm:-mx-4 px-2 sm:px-4 py-2 bg-gradient-to-b from-[#FFF5F7]/85 to-transparent backdrop-blur-md">
                 {isEditingTitle ? (
-                  <div className="flex items-center justify-between px-3 py-1.5 bg-white border border-[#EC4899] ring-2 ring-[#F472B6]/25 rounded-2xl shadow-xs transition-all">
+                  <div className="flex items-center justify-between px-3 py-1.5 liquid-glass !border-[#EC4899] ring-2 ring-[#F472B6]/30 rounded-2xl transition-all">
                     <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FCE7F3] border border-[#FBCFE8] text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0">
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/70 border border-white/90 text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0 shadow-2xs">
                         <Flame className="w-3 h-3 text-[#EC4899]" />
                         <span>EDIT SET</span>
                       </span>
@@ -1196,7 +1196,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                         }}
                         disabled={isSavingTitle}
                         maxLength={60}
-                        className="flex-1 min-w-0 bg-[#FFF5F7] border border-[#FBCFE8] focus:border-[#EC4899] text-xs sm:text-sm font-bold text-[#2D1C24] px-2.5 py-1 rounded-xl outline-none"
+                        className="flex-1 min-w-0 bg-white/60 border border-white/80 focus:border-[#EC4899] text-xs sm:text-sm font-bold text-[#2D1C24] px-2.5 py-1 rounded-xl outline-none"
                         placeholder="Enter set title..."
                       />
                     </div>
@@ -1205,7 +1205,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                         type="button"
                         onClick={handleSaveTitle}
                         disabled={isSavingTitle}
-                        className="p-1.5 text-white bg-[#EC4899] hover:bg-[#DB2777] rounded-xl cursor-pointer transition-colors shadow-2xs"
+                        className="p-1.5 text-white liquid-glass-pink rounded-xl cursor-pointer transition-colors shadow-2xs"
                         title="Save title (Enter)"
                         aria-label="Save title"
                       >
@@ -1215,7 +1215,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                         type="button"
                         onClick={handleCancelEditTitle}
                         disabled={isSavingTitle}
-                        className="p-1.5 text-[#836270] hover:text-[#2D1C24] hover:bg-[#FCE7F3] rounded-xl cursor-pointer transition-colors"
+                        className="p-1.5 text-[#836270] hover:text-[#2D1C24] hover:bg-white/70 rounded-xl cursor-pointer transition-colors"
                         title="Cancel (Esc)"
                         aria-label="Cancel"
                       >
@@ -1224,9 +1224,9 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between px-3.5 py-2 bg-white/95 border border-[#FBCFE8] rounded-2xl shadow-xs backdrop-blur-xs transition-all">
+                  <div className="flex items-center justify-between px-3.5 py-2 liquid-glass rounded-2xl transition-all">
                     <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FCE7F3] border border-[#FBCFE8] text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0">
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/70 border border-white/90 text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0 shadow-2xs">
                         <Flame className="w-3 h-3 text-[#EC4899]" />
                         <span>LIVE SET</span>
                       </span>
@@ -1241,7 +1241,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                         <button
                           type="button"
                           onClick={handleStartEditTitle}
-                          className="opacity-70 group-hover/title:opacity-100 hover:opacity-100 p-1 text-[#836270] hover:text-[#BE185D] hover:bg-[#FCE7F3] rounded-lg transition-all cursor-pointer shrink-0"
+                          className="opacity-70 group-hover/title:opacity-100 hover:opacity-100 p-1 text-[#836270] hover:text-[#BE185D] hover:bg-white/70 rounded-lg transition-all cursor-pointer shrink-0"
                           title="Rename set"
                           aria-label="Rename set"
                         >
@@ -1267,13 +1267,13 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           </>
         )}
 
-        {/* Loading / Comedian Teleprompter State — Baby Pink */}
+        {/* Loading / Comedian Teleprompter State — Liquid Glass */}
         {loading && (
           <div className="w-full max-w-3xl my-3">
-            <div className="bg-white border border-[#FBCFE8] rounded-3xl p-5 shadow-[0_4px_20px_rgba(244,114,182,0.06)] animate-pulse">
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#FCE7F3]">
+            <div className="liquid-glass rounded-3xl p-5 animate-pulse">
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/70">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-xl bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-xl bg-white/80 border border-white/95 flex items-center justify-center shadow-2xs">
                     <Mic2 className="w-4 h-4 text-[#EC4899] animate-bounce" />
                   </div>
                   <span className="text-xs font-mono font-bold text-[#BE185D] tracking-wider uppercase flex items-center gap-1.5">
@@ -1283,9 +1283,9 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                 </div>
               </div>
               <div className="space-y-2.5 py-1">
-                <div className="h-3.5 bg-[#FDF2F8] rounded-full w-4/5 animate-pulse" />
-                <div className="h-3.5 bg-[#FDF2F8] rounded-full w-2/3 animate-pulse [animation-delay:150ms]" />
-                <div className="h-3.5 bg-[#FDF2F8] rounded-full w-1/2 animate-pulse [animation-delay:300ms]" />
+                <div className="h-3.5 bg-white/70 rounded-full w-4/5 animate-pulse" />
+                <div className="h-3.5 bg-white/70 rounded-full w-2/3 animate-pulse [animation-delay:150ms]" />
+                <div className="h-3.5 bg-white/70 rounded-full w-1/2 animate-pulse [animation-delay:300ms]" />
               </div>
             </div>
           </div>
@@ -1293,9 +1293,9 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         <div ref={bottomRef} />
       </div>
 
-      {/* Guest Mode VIP Banner — Baby Pink */}
+      {/* Guest Mode VIP Banner — Liquid Glass */}
       {user && isGuest && (
-        <div className="mx-2 sm:mx-4 mb-2 bg-[#FDF2F8] border border-[#FBCFE8] text-[#BE185D] rounded-2xl px-4 py-2 flex items-center justify-between shadow-2xs">
+        <div className="mx-2 sm:mx-4 mb-2 liquid-glass-subtle text-[#BE185D] rounded-2xl px-4 py-2 flex items-center justify-between">
           <p className="text-xs font-mono">Guest pass active — sets aren't saved to your permanent vault.</p>
           <button
             onClick={onShowAuth}
@@ -1307,16 +1307,16 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         </div>
       )}
 
-      {/* The Stage Podium Console (Input Deck) — Baby Pink */}
+      {/* The Stage Podium Console (Input Deck) — Liquid Glass Dock */}
       <div className="p-2 sm:p-4 mb-2">
-        <div className="relative max-w-3xl mx-auto bg-white/95 backdrop-blur-md border border-[#FBCFE8] focus-within:border-[#EC4899] focus-within:ring-2 focus-within:ring-[#F472B6]/25 rounded-2xl sm:rounded-3xl p-2 sm:p-3 shadow-[0_8px_30px_rgba(244,114,182,0.08)] transition-all">
-          {/* Active PDF Badge / Chip — Compact & Single-line on Mobile */}
+        <div className="relative max-w-3xl mx-auto liquid-glass-dock focus-within:ring-2 focus-within:ring-[#F472B6]/30 rounded-2xl sm:rounded-3xl p-2 sm:p-3 transition-all">
+          {/* Active PDF Badge / Chip — Liquid Glass Pill */}
           {attachedDocs.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 mb-2 pb-1.5 border-b border-[#FCE7F3]">
+            <div className="flex flex-wrap items-center gap-1.5 mb-2 pb-1.5 border-b border-white/70">
               {attachedDocs.map((doc, dIdx) => (
                 <div
                   key={dIdx}
-                  className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-xl bg-[#FDF2F8] border border-[#FBCFE8] text-xs font-mono text-[#BE185D] shadow-2xs animate-in fade-in max-w-full"
+                  className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-xl liquid-glass-pill text-xs font-mono text-[#BE185D] animate-in fade-in max-w-full"
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     <FileText className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
@@ -1325,16 +1325,16 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                     </span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <span className="hidden sm:inline text-[10px] text-[#9D174D] bg-[#FCE7F3] px-1.5 py-0.5 rounded-md font-semibold">
+                    <span className="hidden sm:inline text-[10px] text-[#9D174D] bg-[#FCE7F3]/80 px-1.5 py-0.5 rounded-md font-semibold">
                       {doc.totalChunks} chunks in Aiven pgvector
                     </span>
-                    <span className="sm:hidden text-[9px] text-[#9D174D] bg-[#FCE7F3] px-1.5 py-0.2 rounded-md font-semibold">
+                    <span className="sm:hidden text-[9px] text-[#9D174D] bg-[#FCE7F3]/80 px-1.5 py-0.2 rounded-md font-semibold">
                       {doc.totalChunks} chk
                     </span>
                     <button
                       type="button"
                       onClick={() => handleRemoveDoc(doc.fileName)}
-                      className="text-[#9D7889] hover:text-[#E11D48] transition-colors cursor-pointer p-0.5 rounded-md hover:bg-white"
+                      className="text-[#9D7889] hover:text-[#E11D48] transition-colors cursor-pointer p-0.5 rounded-md hover:bg-white/80"
                       title="Remove document from session"
                     >
                       <X className="w-3 h-3" />
@@ -1347,7 +1347,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
           {/* Upload Progress Indicator */}
           {uploadingPdf && (
-            <div className="mb-2 px-3 py-1.5 rounded-xl bg-[#FDF2F8] border border-[#FBCFE8] text-[#BE185D] text-xs font-mono flex items-center gap-2 animate-pulse">
+            <div className="mb-2 px-3 py-1.5 rounded-xl liquid-glass-subtle text-[#BE185D] text-xs font-mono flex items-center gap-2 animate-pulse">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-[#EC4899]" />
               <span className="truncate">Extracting text & storing chunks in Aiven pgvector...</span>
             </div>
@@ -1355,7 +1355,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
           {/* Upload Error Banner */}
           {uploadError && (
-            <div className="mb-2 px-3 py-1.5 rounded-xl bg-[#FFF1F2] border border-[#FECDD3] text-[#BE123C] text-xs font-mono flex items-center justify-between">
+            <div className="mb-2 px-3 py-1.5 rounded-xl bg-[#FFF1F2]/90 border border-[#FECDD3] text-[#BE123C] text-xs font-mono flex items-center justify-between">
               <span className="truncate">⚠️ {uploadError}</span>
               <button
                 type="button"
@@ -1368,8 +1368,8 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           )}
 
           <div className="relative flex gap-1.5 sm:gap-3 items-end">
-            {/* Desktop Only: Vintage Stage Mic Icon */}
-            <div className="hidden sm:flex w-10 h-10 rounded-2xl bg-[#FCE7F3] border border-[#FBCFE8] items-center justify-center shrink-0 mb-0.5">
+            {/* Desktop Only: Vintage Stage Mic Icon — Liquid Glass Pill */}
+            <div className="hidden sm:flex w-10 h-10 rounded-2xl liquid-glass-subtle items-center justify-center shrink-0 mb-0.5">
               <Mic2 className="w-5 h-5 text-[#EC4899]" />
             </div>
 
@@ -1388,9 +1388,9 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                 ref={mobileToolsBtnRef}
                 type="button"
                 onClick={() => setMobileToolsOpen((prev) => !prev)}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs ${mobileToolsOpen
-                    ? "bg-[#EC4899] text-white rotate-45 shadow-[0_2px_8px_rgba(236,72,153,0.35)]"
-                    : "bg-[#FDF2F8] hover:bg-[#FCE7F3] border border-[#FBCFE8] text-[#BE185D]"
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${mobileToolsOpen
+                    ? "liquid-glass-pink text-white rotate-45"
+                    : "liquid-glass-pill text-[#BE185D]"
                   }`}
                 title="Open tools menu"
                 aria-label="Toggle actions"
@@ -1402,7 +1402,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
               {mobileToolsOpen && (
                 <div
                   ref={mobileToolsRef}
-                  className="absolute bottom-11 left-0 z-40 bg-white/95 backdrop-blur-md border border-[#FBCFE8] rounded-2xl p-1.5 shadow-[0_8px_30px_rgba(244,114,182,0.22)] flex flex-col gap-1 min-w-[170px] animate-in fade-in slide-in-from-bottom-2 duration-150"
+                  className="absolute bottom-11 left-0 z-40 liquid-glass rounded-2xl p-1.5 flex flex-col gap-1 min-w-[170px] animate-in fade-in slide-in-from-bottom-2 duration-150"
                 >
                   <button
                     type="button"
@@ -1411,7 +1411,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                       fileInputRef.current?.click();
                     }}
                     disabled={uploadingPdf || loading || isStreaming}
-                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-mono font-bold text-[#BE185D] hover:bg-[#FDF2F8] rounded-xl transition-colors cursor-pointer text-left disabled:opacity-50"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-mono font-bold text-[#BE185D] hover:bg-white/80 rounded-xl transition-colors cursor-pointer text-left disabled:opacity-50"
                   >
                     <Paperclip className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
                     <span>Upload PDF</span>
@@ -1423,7 +1423,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                       handleInsertCodeBlock();
                     }}
                     disabled={loading || isStreaming}
-                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-mono font-bold text-[#BE185D] hover:bg-[#FDF2F8] rounded-xl transition-colors cursor-pointer text-left disabled:opacity-50"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-mono font-bold text-[#BE185D] hover:bg-white/80 rounded-xl transition-colors cursor-pointer text-left disabled:opacity-50"
                   >
                     <Code2 className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
                     <span>Insert Code (```)</span>
@@ -1432,12 +1432,12 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
               )}
             </div>
 
-            {/* Desktop Only: Direct Paperclip PDF Button */}
+            {/* Desktop Only: Direct Paperclip PDF Button — Liquid Glass Pill */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPdf || loading || isStreaming}
-              className="hidden sm:flex w-10 h-10 rounded-2xl bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#EC4899] text-[#BE185D] items-center justify-center shrink-0 mb-0.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-2xs"
+              className="hidden sm:flex w-10 h-10 rounded-2xl liquid-glass-pill hover:border-[#EC4899] text-[#BE185D] items-center justify-center shrink-0 mb-0.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
               title="Upload PDF for RAG Roast (Aiven pgvector)"
               aria-label="Upload PDF"
             >
@@ -1448,12 +1448,12 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
               )}
             </button>
 
-            {/* Desktop Only: Direct Insert Code Block Button */}
+            {/* Desktop Only: Direct Insert Code Block Button — Liquid Glass Pill */}
             <button
               type="button"
               onClick={handleInsertCodeBlock}
               disabled={loading || isStreaming}
-              className="hidden sm:flex w-10 h-10 rounded-2xl bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#EC4899] text-[#BE185D] items-center justify-center shrink-0 mb-0.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-2xs"
+              className="hidden sm:flex w-10 h-10 rounded-2xl liquid-glass-pill hover:border-[#EC4899] text-[#BE185D] items-center justify-center shrink-0 mb-0.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
               title="Insert or wrap code block (```)"
               aria-label="Insert Code Block"
             >
@@ -1474,16 +1474,16 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
               rows={1}
               style={{ maxHeight: "160px" }}
               className={`flex-1 min-w-0 bg-transparent text-[#2D1C24] placeholder-[#9D7889] px-2.5 py-2 sm:py-2.5 outline-none text-sm sm:text-[15px] resize-none overflow-y-auto leading-normal ${hasCodeBlockInInput
-                  ? "font-mono text-xs sm:text-sm bg-[#FFF5F8]/90 border border-[#FBCFE8] rounded-xl px-2.5 py-2 shadow-inner"
+                  ? "font-mono text-xs sm:text-sm bg-white/70 border border-white/90 rounded-xl px-2.5 py-2 shadow-inner"
                   : "font-sans"
                 }`}
             />
 
-            {/* Fire At Stage Send Button */}
+            {/* Fire At Stage Send Button — Liquid Glass Pink */}
             <button
               onClick={sendMessage}
               disabled={loading || isStreaming || !input.trim()}
-              className="w-9 h-9 sm:w-11 sm:h-11 bg-gradient-to-tr from-[#F472B6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#DB2777] disabled:from-[#FCE7F3] disabled:to-[#FCE7F3] disabled:text-[#D1B8C4] text-white font-black rounded-xl sm:rounded-2xl transition-all flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(236,72,153,0.35)] disabled:shadow-none cursor-pointer disabled:cursor-not-allowed active:scale-95 mb-0.5"
+              className="w-9 h-9 sm:w-11 sm:h-11 liquid-glass-pink disabled:opacity-40 disabled:pointer-events-none text-white font-black rounded-xl sm:rounded-2xl transition-all flex items-center justify-center shrink-0 cursor-pointer disabled:cursor-not-allowed active:scale-95 mb-0.5"
               aria-label="Send to stage"
               title="Fire prompt at comedian"
             >
@@ -1505,7 +1505,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   );
 }
 
-// ── The Empty Stage State (Baby Pink Edition) ─────────────────────────────────
+// ── The Empty Stage State (Liquid Glass Edition) ─────────────────────────
 function EmptyStageState({ user, onShowAuth }) {
   const coasters = [
     {
@@ -1542,9 +1542,9 @@ function EmptyStageState({ user, onShowAuth }) {
 
   return (
     <div className="flex flex-col items-center justify-center h-[97%] min-h-[420px] text-center px-4 py-8">
-      {/* Solitary Stage Spotlight on Vintage Mic */}
+      {/* Solitary Stage Spotlight on Vintage Mic — Liquid Glass Pink */}
       <div className="relative mb-6">
-        <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] flex items-center justify-center shadow-[0_0_30px_rgba(244,114,182,0.35)]">
+        <div className="w-20 h-20 rounded-3xl liquid-glass-pink flex items-center justify-center shadow-[0_0_35px_rgba(244,114,182,0.4)]">
           <Mic2 className="w-10 h-10 text-white" />
         </div>
         <div className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
@@ -1561,7 +1561,7 @@ function EmptyStageState({ user, onShowAuth }) {
         RoastMaster is on stage and ready to cook. Throw your code, tech stack, or bad habits at the stage.
       </p>
 
-      {/* Front-Row Heckler Coasters (Starter Prompts) */}
+      {/* Front-Row Heckler Coasters (Starter Prompts) — Liquid Glass Coasters */}
       <div className="flex flex-wrap gap-2.5 justify-center max-w-2xl mb-8">
         {coasters.map((c, idx) => (
           <button
@@ -1571,7 +1571,7 @@ function EmptyStageState({ user, onShowAuth }) {
                 new CustomEvent("roast-starter", { detail: c.text })
               )
             }
-            className="px-3.5 py-2.5 bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#EC4899] text-[#2D1C24] hover:text-[#BE185D] rounded-2xl text-xs font-mono font-semibold shadow-2xs transition-all cursor-pointer active:scale-95 flex items-center gap-2"
+            className="px-3.5 py-2.5 liquid-glass-pill hover:liquid-glass text-[#2D1C24] hover:text-[#BE185D] rounded-2xl text-xs font-mono font-semibold transition-all cursor-pointer active:scale-95 flex items-center gap-2"
           >
             <span>{c.icon}</span>
             <span>{c.label}</span>

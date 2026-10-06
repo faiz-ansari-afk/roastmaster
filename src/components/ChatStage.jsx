@@ -117,17 +117,29 @@ export default function ChatStage({ initialSessionId }) {
 
       {/* The Main Roast Stage */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Soft Baby Pink Spotlight Glow */}
-        <div className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-[700px] h-[280px] bg-[radial-gradient(ellipse_at_top,_rgba(244,114,182,0.18)_0%,_rgba(236,72,153,0.04)_50%,_transparent_75%)] blur-2xl z-0" />
+        {/* Animated Liquid Glass Background Blobs & Caustic Refraction Engine */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+          {/* Primary Top-Center Spotlight Glow */}
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[800px] h-[340px] bg-[radial-gradient(ellipse_at_top,_rgba(244,114,182,0.22)_0%,_rgba(236,72,153,0.06)_50%,_transparent_75%)] blur-3xl" />
 
-        {/* Theatrical Stage Top Marquee Bar — Baby Pink Theme */}
-        <header className="relative z-10 flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-6 py-2.5 sm:py-3 border-b border-[#FBCFE8] bg-white/85 backdrop-blur-md shrink-0 shadow-[0_2px_14px_rgba(244,114,182,0.06)]">
+          {/* Morphing Liquid Pink Blob 1 (Top-Left) */}
+          <div className="absolute -top-16 -left-16 w-96 h-96 bg-gradient-to-tr from-[#F472B6]/25 via-[#EC4899]/18 to-[#FDA4AF]/25 blur-3xl animate-liquid-1" />
+
+          {/* Morphing Liquid Rose Blob 2 (Bottom-Right) */}
+          <div className="absolute -bottom-20 -right-20 w-[420px] h-[420px] bg-gradient-to-bl from-[#EC4899]/20 via-[#F472B6]/22 to-[#FBCFE8]/30 blur-3xl animate-liquid-2" />
+
+          {/* Floating Liquid Highlight Blob 3 (Center Ambient) */}
+          <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-gradient-to-r from-white/40 via-[#FCE7F3]/25 to-[#F472B6]/15 blur-2xl animate-liquid-3" />
+        </div>
+
+        {/* Theatrical Stage Top Marquee Bar — Liquid Glass Ribbon */}
+        <header className="relative z-20 flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-6 py-2.5 sm:py-3 liquid-glass shrink-0 !border-x-0 !border-t-0 !rounded-none">
           {/* Left: Sets Trigger & Marquee Brand */}
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            {/* Backstage Drawer Trigger Button */}
+            {/* Backstage Drawer Trigger Button — Liquid Glass Pill */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-[#FDF2F8] hover:bg-[#FCE7F3] border border-[#FBCFE8] hover:border-[#F472B6] text-[#BE185D] hover:text-[#9D174D] rounded-xl text-xs font-bold font-mono transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 liquid-glass-pill hover:liquid-glass text-[#BE185D] hover:text-[#9D174D] rounded-xl text-xs font-bold font-mono cursor-pointer active:scale-95 shrink-0"
               title="Open Backstage Green Room & Past Sets"
               aria-label="Open Backstage Sets"
             >
@@ -136,23 +148,23 @@ export default function ChatStage({ initialSessionId }) {
               <span className="sm:hidden font-mono text-[11px]">SETS</span>
             </button>
 
-            {/* Semantic Search Quick Trigger Button — Desktop only */}
+            {/* Semantic Search Quick Trigger Button — Liquid Glass Pill */}
             <button
               onClick={() => window.dispatchEvent(new Event("open-search"))}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-[#FFF0F4] hover:bg-[#FCE7F3] border border-[#FBCFE8] hover:border-[#F472B6] text-[#BE185D] hover:text-[#9D174D] rounded-xl text-xs font-bold font-mono transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 liquid-glass-pill hover:liquid-glass text-[#BE185D] hover:text-[#9D174D] rounded-xl text-xs font-bold font-mono cursor-pointer active:scale-95 shrink-0"
               title="Semantic Search Roast Sets (Ctrl + K)"
               aria-label="Search Roast Sets"
             >
               <Search className="w-3.5 h-3.5 text-[#EC4899]" />
               <span className="hidden md:inline">SEARCH</span>
-              <kbd className="hidden lg:inline-flex items-center px-1 py-0.2 text-[9px] bg-white border border-[#FBCFE8] rounded text-[#BE185D]">
+              <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 text-[9px] bg-white/80 border border-white/90 shadow-2xs rounded-md text-[#BE185D] font-bold">
                 Ctrl K
               </kbd>
             </button>
 
             {/* Marquee Brand */}
             <Link href="/" className="flex items-center gap-1.5 sm:gap-2 min-w-0 group cursor-pointer" title="Back to Arena Entrance">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] flex items-center justify-center shadow-[0_0_12px_rgba(244,114,182,0.3)] shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl liquid-glass-pink flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <Flame className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
               </div>
               <div className="flex flex-col min-w-0">
@@ -160,7 +172,7 @@ export default function ChatStage({ initialSessionId }) {
                   <span className="font-black tracking-wider text-xs sm:text-sm text-[#2D1C24] uppercase font-mono truncate">
                     ROASTMASTER
                   </span>
-                  <div className="hidden sm:flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-[#FFE4E6] border border-[#FDA4AF] text-[#E11D48] text-[9px] font-black tracking-widest uppercase shrink-0">
+                  <div className="hidden sm:flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-[#FFE4E6]/80 border border-[#FDA4AF]/60 text-[#E11D48] text-[9px] font-black tracking-widest uppercase shrink-0 backdrop-blur-xs">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#E11D48] animate-pulse" />
                     <span>ON AIR</span>
                   </div>
@@ -172,8 +184,8 @@ export default function ChatStage({ initialSessionId }) {
             </Link>
           </div>
 
-          {/* Center: Stage Crowd Heat Indicator (Desktop) */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-[#FDF2F8] border border-[#FBCFE8] text-xs">
+          {/* Center: Stage Crowd Heat Indicator (Desktop) — Liquid Glass Pill */}
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full liquid-glass-pill text-xs">
             <Radio className="w-3.5 h-3.5 text-[#EC4899] animate-pulse" />
             <span className="text-[#836270] text-[11px] font-medium">Stage Heat:</span>
             <span className="text-[#BE185D] font-mono font-bold text-xs">9.8/10 BRUTAL</span>
@@ -181,10 +193,10 @@ export default function ChatStage({ initialSessionId }) {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* New Set button */}
+            {/* New Set button — Glowing Liquid Pink Glass */}
             <button
               onClick={handleNewSession}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-[#F472B6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#DB2777] rounded-xl shadow-[0_2px_12px_rgba(236,72,153,0.3)] transition-all cursor-pointer active:scale-95 font-mono uppercase tracking-wider"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-white liquid-glass-pink hover:opacity-95 rounded-xl cursor-pointer active:scale-95 font-mono uppercase tracking-wider"
               title="Start a new live set on stage"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -195,17 +207,17 @@ export default function ChatStage({ initialSessionId }) {
             {!user ? (
               <button
                 onClick={() => setShowAuth(true)}
-                className="hidden sm:inline-flex text-xs font-bold text-[#BE185D] hover:text-[#9D174D] bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] px-3.5 py-1.5 rounded-xl transition-all cursor-pointer font-mono shadow-2xs"
+                className="hidden sm:inline-flex text-xs font-bold text-[#BE185D] hover:text-[#9D174D] liquid-glass-pill px-3.5 py-1.5 rounded-xl cursor-pointer font-mono"
               >
                 VIP Pass
               </button>
             ) : (
               <Link
                 href="/profile"
-                className="hidden sm:flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-xl bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#F472B6] transition-all shadow-2xs group cursor-pointer"
+                className="hidden sm:flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-xl liquid-glass-pill group cursor-pointer"
                 title="View & Edit VIP Heckler Profile"
               >
-                <div className="w-7 h-7 rounded-lg bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center text-xs font-bold text-[#BE185D] shadow-2xs overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
+                <div className="w-7 h-7 rounded-lg bg-[#FCE7F3] border border-white/80 flex items-center justify-center text-xs font-bold text-[#BE185D] shadow-2xs overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
                   {user.photoURL ? (
                     <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
                   ) : (

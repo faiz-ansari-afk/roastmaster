@@ -34,21 +34,21 @@ export default function SignOutModal({ isOpen, onClose, onConfirm, isGuest = fal
 
   return (
     <div
-      className="fixed inset-0 bg-[#2D1C24]/40 backdrop-blur-xs z-[110] flex items-center justify-center p-4 transition-all"
+      className="fixed inset-0 bg-[#2D1C24]/30 backdrop-blur-sm z-[110] flex items-center justify-center p-4 transition-all"
       onClick={() => !submitting && onClose()}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="signout-modal-title"
-        className="relative w-full max-w-sm bg-white border border-[#FBCFE8] rounded-3xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(236,72,153,0.18)] text-[#2D1C24]"
+        className="relative w-full max-w-sm liquid-glass rounded-3xl p-6 sm:p-7 text-[#2D1C24]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close X Button */}
         <button
           onClick={onClose}
           disabled={submitting}
-          className="absolute top-4 right-4 p-1.5 text-[#836270] hover:text-[#2D1C24] hover:bg-[#FCE7F3] rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+          className="absolute top-4 right-4 p-1.5 text-[#836270] hover:text-[#2D1C24] liquid-glass-pill rounded-xl transition-colors cursor-pointer disabled:opacity-50"
           aria-label="Close modal"
         >
           <X className="w-4 h-4" />
@@ -87,7 +87,7 @@ export default function SignOutModal({ isOpen, onClose, onConfirm, isGuest = fal
             type="button"
             disabled={submitting}
             onClick={onClose}
-            className="flex-1 py-2.5 px-3 border border-[#FBCFE8] hover:bg-[#FDF2F8] text-[#836270] hover:text-[#2D1C24] font-semibold rounded-xl text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
+            className="flex-1 py-2.5 px-3 liquid-glass-pill text-[#836270] hover:text-[#2D1C24] font-semibold rounded-xl text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
           >
             Stay On Stage
           </button>

@@ -143,19 +143,19 @@ export default function Sidebar({
         />
       )}
 
-      {/* Backstage Green Room Slide-Out Drawer — Baby Pink Theme */}
+      {/* Backstage Green Room Slide-Out Drawer — Liquid Glass Panel */}
       <aside
         className={`
           fixed top-0 left-0 h-[100dvh] w-80 sm:w-96
-          bg-[#FFF5F7] text-[#2D1C24] border-r border-[#FBCFE8]
-          flex flex-col z-50 transition-transform duration-300 ease-out shadow-[0_10px_40px_rgba(236,72,153,0.1)]
+          bg-[#FFF5F7]/85 backdrop-blur-2xl text-[#2D1C24] border-r border-white/80
+          flex flex-col z-50 transition-transform duration-300 ease-out shadow-[0_12px_45px_rgba(236,72,153,0.18)]
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        {/* Backstage Header */}
-        <div className="p-4 sm:p-5 border-b border-[#FBCFE8] bg-[#FDF2F8] flex items-center justify-between">
+        {/* Backstage Header — Liquid Glass */}
+        <div className="p-4 sm:p-5 border-b border-white/70 liquid-glass-subtle flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-xl liquid-glass-pink flex items-center justify-center shadow-xs">
               <Ticket className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -172,15 +172,15 @@ export default function Sidebar({
           </div>
           <button
             onClick={onCloseSidebar}
-            className="p-2 text-[#836270] hover:text-[#2D1C24] hover:bg-[#FCE7F3] rounded-xl transition-colors cursor-pointer"
+            className="p-2 text-[#836270] hover:text-[#2D1C24] liquid-glass-pill rounded-xl transition-colors cursor-pointer"
             aria-label="Close Green Room"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Mobile View Only: Live Broadcast & Stage Heat Status (Moved from Navbar) */}
-        <div className="sm:hidden px-4 py-2 bg-[#FFF0F4] border-b border-[#FBCFE8] flex items-center justify-between">
+        {/* Mobile View Only: Live Broadcast & Stage Heat Status — Liquid Glass */}
+        <div className="sm:hidden px-4 py-2 liquid-glass-subtle border-b border-white/70 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#E11D48] animate-pulse" />
             <span className="font-mono text-[10px] font-black tracking-widest text-[#E11D48] uppercase">
@@ -188,31 +188,31 @@ export default function Sidebar({
             </span>
             <span className="text-[10px] text-[#836270] font-medium font-mono">• CELLAR STAGE</span>
           </div>
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FFE4E6] border border-[#FDA4AF] text-[10px] font-mono font-bold text-[#BE185D]">
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FFE4E6]/80 border border-[#FDA4AF]/70 text-[10px] font-mono font-bold text-[#BE185D]">
             <Flame className="w-3 h-3 text-[#EC4899]" />
             <span>HEAT 9.8/10</span>
           </div>
         </div>
 
-        {/* Take The Stage Button (New Set) */}
-        <div className="p-3.5 bg-[#FFF0F4] border-b border-[#FBCFE8]">
+        {/* Take The Stage Button (New Set) — Liquid Glass Pink */}
+        <div className="p-3.5 liquid-glass-subtle border-b border-white/70">
           <button
             onClick={() => {
               onNewSession();
               onCloseSidebar();
             }}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#F472B6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#DB2777] text-white font-bold py-3 px-4 rounded-xl shadow-[0_2px_12px_rgba(236,72,153,0.25)] hover:shadow-[0_4px_16px_rgba(236,72,153,0.35)] transition-all text-xs tracking-wider uppercase cursor-pointer active:scale-98 font-mono"
+            className="w-full flex items-center justify-center gap-2 liquid-glass-pink hover:opacity-95 text-white font-bold py-3 px-4 rounded-xl transition-all text-xs tracking-wider uppercase cursor-pointer active:scale-98 font-mono"
           >
             <Plus className="w-4 h-4" />
             <span>Take The Stage (New Set)</span>
           </button>
         </div>
 
-        {/* Semantic Search Quick Bar (Docs Style - Ctrl + K) */}
-        <div className="p-3 bg-[#FFF8FA] border-b border-[#FBCFE8]">
+        {/* Semantic Search Quick Bar (Docs Style - Ctrl + K) — Liquid Glass Pill */}
+        <div className="p-3 liquid-glass-subtle border-b border-white/70">
           <button
             onClick={() => setSearchOpen(true)}
-            className="w-full flex items-center justify-between px-3 py-2.5 bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#F472B6] rounded-xl text-xs text-[#836270] hover:text-[#2D1C24] transition-all shadow-2xs group cursor-pointer"
+            className="w-full flex items-center justify-between px-3 py-2.5 liquid-glass-pill hover:liquid-glass rounded-xl text-xs text-[#836270] hover:text-[#2D1C24] transition-all group cursor-pointer"
             title="Search sets & past roasts with Semantic AI (Ctrl + K)"
           >
             <div className="flex items-center gap-2 min-w-0">
@@ -221,10 +221,10 @@ export default function Sidebar({
                 Search sets & roasts...
               </span>
             </div>
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#BE185D] bg-[#FCE7F3] border border-[#FBCFE8] rounded-md shadow-2xs shrink-0">
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#BE185D] bg-white/80 border border-white/90 rounded-md shadow-2xs shrink-0">
               <span className="text-[9px]">Ctrl</span> K
             </kbd>
-            <span className="sm:hidden inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-bold text-[#BE185D] bg-[#FCE7F3] border border-[#FBCFE8] rounded-md shadow-2xs shrink-0">
+            <span className="sm:hidden inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-bold text-[#BE185D] bg-white/80 border border-white/90 rounded-md shadow-2xs shrink-0">
               <Sparkles className="w-2.5 h-2.5 text-[#EC4899]" /> AI SEARCH
             </span>
           </button>
@@ -241,9 +241,9 @@ export default function Sidebar({
           </div>
 
           {!user ? (
-            <div className="text-center text-[#836270] text-xs mt-8 px-4 py-8 rounded-2xl bg-white border border-[#FBCFE8] shadow-2xs">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center shadow-2xs">
-                <Ticket className="w-6 h-6 text-[#EC4899]" />
+            <div className="text-center text-[#836270] text-xs mt-8 px-4 py-8 rounded-2xl liquid-glass shadow-2xs">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl liquid-glass-pink flex items-center justify-center text-white">
+                <Ticket className="w-6 h-6 text-white" />
               </div>
               <p className="font-bold text-[#2D1C24] mb-1">VIP Passes Required</p>
               <p className="text-[11px] text-[#836270] mb-4">
@@ -254,14 +254,14 @@ export default function Sidebar({
                   onShowAuth();
                   onCloseSidebar();
                 }}
-                className="w-full bg-[#EC4899] hover:bg-[#DB2777] text-white font-extrabold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs font-mono"
+                className="w-full liquid-glass-pink text-white font-extrabold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer font-mono"
               >
                 Claim VIP Pass →
               </button>
             </div>
           ) : isGuest ? (
-            <div className="text-center text-[#836270] text-xs mt-6 px-4 py-6 rounded-2xl bg-white border border-[#FBCFE8] shadow-2xs">
-              <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#FCE7F3] border border-[#FBCFE8] text-[#BE185D] text-[10px] font-bold uppercase tracking-wider mb-2 font-mono">
+            <div className="text-center text-[#836270] text-xs mt-6 px-4 py-6 rounded-2xl liquid-glass shadow-2xs">
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-white/80 border border-white/90 text-[#BE185D] text-[10px] font-bold uppercase tracking-wider mb-2 font-mono">
                 Guest Pass
               </span>
               <p className="text-xs text-[#2D1C24] font-semibold mb-1">
@@ -282,12 +282,12 @@ export default function Sidebar({
             </div>
           ) : loadingSessions ? (
             <div className="text-[#9D7889] text-xs text-center mt-12 space-y-2 animate-pulse">
-              <div className="h-14 bg-white rounded-xl border border-[#FBCFE8]" />
-              <div className="h-14 bg-white rounded-xl border border-[#FBCFE8]" />
+              <div className="h-14 liquid-glass-subtle rounded-xl" />
+              <div className="h-14 liquid-glass-subtle rounded-xl" />
               <p className="pt-2 text-[11px]">Unlocking Green Room sets...</p>
             </div>
           ) : sessions.length === 0 ? (
-            <div className="text-center text-[#836270] text-xs mt-8 px-4 py-8 rounded-2xl bg-white border border-[#FBCFE8] shadow-2xs">
+            <div className="text-center text-[#836270] text-xs mt-8 px-4 py-8 rounded-2xl liquid-glass shadow-2xs">
               <Flame className="w-8 h-8 text-[#F472B6]/60 mx-auto mb-2" />
               <p className="text-[#2D1C24] font-semibold text-xs">No Past Sets Yet</p>
               <p className="text-[11px] text-[#9D7889] mt-1">
@@ -316,8 +316,8 @@ export default function Sidebar({
                     relative group w-full text-left p-3 rounded-xl transition-all cursor-pointer border
                     ${
                       isActive
-                        ? "bg-[#FDF2F8] border-[#EC4899] text-[#9D174D] shadow-[0_2px_12px_rgba(236,72,153,0.15)]"
-                        : "bg-white hover:bg-[#FDF2F8] border-[#FCE7F3] hover:border-[#FBCFE8] text-[#2D1C24] hover:text-[#9D174D]"
+                        ? "liquid-glass-pink-soft !border-[#EC4899] text-[#9D174D] shadow-xs"
+                        : "liquid-glass-pill hover:liquid-glass text-[#2D1C24] hover:text-[#9D174D]"
                     }
                   `}
                 >
@@ -369,15 +369,15 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* VIP Lounge Footer */}
-        <div className="p-3.5 border-t border-[#FBCFE8] bg-[#FDF2F8]">
+        {/* VIP Lounge Footer — Liquid Glass */}
+        <div className="p-3.5 border-t border-white/70 liquid-glass-subtle">
           {!user ? (
             <button
               onClick={() => {
                 onShowAuth();
                 onCloseSidebar();
               }}
-              className="w-full flex items-center justify-center gap-2 bg-[#EC4899] hover:bg-[#DB2777] text-white font-black py-2.5 px-3 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs font-mono"
+              className="w-full flex items-center justify-center gap-2 liquid-glass-pink text-white font-black py-2.5 px-3 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer font-mono"
             >
               <User className="w-4 h-4" />
               <span>Sign In • VIP Lounge Pass</span>
@@ -390,7 +390,7 @@ export default function Sidebar({
                 className="flex items-center gap-2.5 flex-1 min-w-0 group hover:opacity-90 transition-opacity cursor-pointer"
                 title="Open VIP Heckler Profile & Settings"
               >
-                <div className="w-9 h-9 rounded-xl bg-[#FCE7F3] border border-[#FBCFE8] flex items-center justify-center text-xs font-black text-[#BE185D] shrink-0 overflow-hidden shadow-2xs group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-xl bg-white/80 border border-white/95 flex items-center justify-center text-xs font-black text-[#BE185D] shrink-0 overflow-hidden shadow-2xs group-hover:scale-105 transition-transform">
                   {user.photoURL ? (
                     <img
                       src={user.photoURL}
@@ -417,7 +417,7 @@ export default function Sidebar({
               </Link>
               <button
                 onClick={() => setShowSignOutModal(true)}
-                className="text-[#836270] hover:text-[#E11D48] text-xs font-medium transition-colors shrink-0 cursor-pointer flex items-center gap-1 hover:underline p-1.5 rounded-lg hover:bg-white"
+                className="text-[#836270] hover:text-[#E11D48] text-xs font-medium transition-colors shrink-0 cursor-pointer flex items-center gap-1 hover:underline p-1.5 rounded-lg hover:bg-white/70"
                 title="Sign out"
               >
                 <LogOut className="w-4 h-4" />
@@ -430,14 +430,14 @@ export default function Sidebar({
       {/* Delete Set Confirmation Modal */}
       {sessionToDelete && (
         <div
-          className="fixed inset-0 bg-[#2D1C24]/40 backdrop-blur-xs z-[100] flex items-center justify-center p-4 transition-all"
+          className="fixed inset-0 bg-[#2D1C24]/30 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-all"
           onClick={() => !deletingId && setSessionToDelete(null)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-modal-title"
-            className="relative w-full max-w-sm bg-white border border-[#FBCFE8] rounded-3xl p-6 shadow-[0_20px_50px_rgba(236,72,153,0.15)] text-[#2D1C24]"
+            className="relative w-full max-w-sm liquid-glass rounded-3xl p-6 text-[#2D1C24]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-12 rounded-2xl bg-[#FFE4E6] border border-[#FDA4AF] flex items-center justify-center mx-auto mb-3.5 text-[#E11D48] shadow-2xs">
@@ -465,7 +465,7 @@ export default function Sidebar({
                 type="button"
                 disabled={!!deletingId}
                 onClick={() => setSessionToDelete(null)}
-                className="flex-1 py-2.5 px-3 border border-[#FBCFE8] hover:bg-[#FDF2F8] text-[#836270] hover:text-[#2D1C24] font-semibold rounded-xl text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
+                className="flex-1 py-2.5 px-3 liquid-glass-pill text-[#836270] hover:text-[#2D1C24] font-semibold rounded-xl text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>

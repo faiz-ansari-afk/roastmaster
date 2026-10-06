@@ -345,29 +345,33 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen w-full bg-[#FFF5F7] text-[#2D1C24] pt-6 pb-28 px-3 sm:px-6 relative selection:bg-[#FCE7F3] selection:text-[#BE185D]">
-      {/* Background Ambient Glow */}
-      <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-[radial-gradient(ellipse_at_top,_rgba(244,114,182,0.16)_0%,_rgba(236,72,153,0.03)_60%,_transparent_75%)] blur-2xl z-0" />
+    <main className="min-h-screen w-full bg-[#FFF5F7] text-[#2D1C24] pt-6 pb-28 px-3 sm:px-6 relative selection:bg-[#FCE7F3] selection:text-[#BE185D] overflow-hidden">
+      {/* Background Animated Liquid Glass Blobs & Caustic Refraction */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-[radial-gradient(ellipse_at_top,_rgba(244,114,182,0.22)_0%,_rgba(236,72,153,0.05)_60%,_transparent_75%)] blur-3xl animate-spotlight" />
+        <div className="absolute -top-16 -left-16 w-96 h-96 bg-gradient-to-tr from-[#F472B6]/28 via-[#EC4899]/18 to-[#FDA4AF]/25 blur-3xl animate-liquid-1" />
+        <div className="absolute -bottom-24 -right-24 w-[450px] h-[450px] bg-gradient-to-bl from-[#EC4899]/20 via-[#F472B6]/24 to-[#FBCFE8]/32 blur-3xl animate-liquid-2" />
+      </div>
 
       <div className="max-w-4xl mx-auto relative z-10">
         {/* Navigation Bar */}
         <div className="flex items-center justify-between gap-3 mb-6">
           <Link
             href="/chat"
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8] hover:border-[#F472B6] text-[#BE185D] hover:text-[#9D174D] rounded-xl text-xs font-mono font-bold transition-all shadow-2xs group cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 liquid-glass-pill hover:liquid-glass text-[#BE185D] hover:text-[#9D174D] rounded-xl text-xs font-mono font-bold transition-all group cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
             <span>Return To Roast Stage</span>
           </Link>
 
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFE4E6] border border-[#FDA4AF] text-[#E11D48] text-[10px] font-mono font-black tracking-wider uppercase">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFE4E6]/80 border border-[#FDA4AF]/70 text-[#E11D48] text-[10px] font-mono font-black tracking-wider uppercase backdrop-blur-xs">
               <Radio className="w-3 h-3 text-[#E11D48] animate-pulse" />
               <span>LIVE ARTIST PASS</span>
             </span>
             <button
               onClick={() => setShowSignOutModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#FFE4E6] border border-[#FBCFE8] hover:border-[#FDA4AF] text-[#836270] hover:text-[#E11D48] rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3 py-2 liquid-glass-pill text-[#836270] hover:text-[#E11D48] rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer"
               title="Sign out of RoastMaster"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -378,7 +382,7 @@ export default function ProfilePage() {
 
         {/* Guest Banner if Anonymous */}
         {isGuest && (
-          <div className="mb-6 p-4 bg-[#FFF8FA] border border-[#FDA4AF] rounded-2xl flex items-center justify-between gap-4 shadow-2xs">
+          <div className="mb-6 p-4 liquid-glass-subtle border border-[#FDA4AF] rounded-2xl flex items-center justify-between gap-4 shadow-2xs">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#FFE4E6] border border-[#FDA4AF] flex items-center justify-center shrink-0 text-[#E11D48]">
                 <Ticket className="w-5 h-5" />
@@ -394,7 +398,7 @@ export default function ProfilePage() {
             </div>
             <button
               onClick={() => setShowAuthModal(true)}
-              className="shrink-0 px-3.5 py-1.5 bg-[#EC4899] hover:bg-[#DB2777] text-white text-xs font-mono font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+              className="shrink-0 px-3.5 py-1.5 liquid-glass-pink text-white text-xs font-mono font-bold rounded-xl transition-all cursor-pointer"
             >
               Upgrade Pass
             </button>
@@ -403,7 +407,7 @@ export default function ProfilePage() {
 
         {/* Toast / Notification Banners */}
         {saveSuccess && (
-          <div className="mb-6 p-3.5 bg-[#ECFDF5] border border-[#A7F3D0] rounded-2xl flex items-center gap-2.5 text-[#065F46] animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="mb-6 p-3.5 bg-[#ECFDF5]/90 border border-[#A7F3D0] rounded-2xl flex items-center gap-2.5 text-[#065F46] animate-in fade-in slide-in-from-top-2 duration-200">
             <CheckCircle2 className="w-5 h-5 text-[#10B981] shrink-0" />
             <span className="text-xs font-bold font-mono">
               VIP Heckler Pass saved to database! Your stage persona and photo are active.
@@ -412,7 +416,7 @@ export default function ProfilePage() {
         )}
 
         {deleteSuccessMsg && (
-          <div className="mb-6 p-3.5 bg-[#FFF1F2] border border-[#FECDD3] rounded-2xl flex items-center gap-2.5 text-[#9F1239] animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="mb-6 p-3.5 bg-[#FFF1F2]/90 border border-[#FECDD3] rounded-2xl flex items-center gap-2.5 text-[#9F1239] animate-in fade-in slide-in-from-top-2 duration-200">
             <Trash2 className="w-5 h-5 text-[#E11D48] shrink-0" />
             <span className="text-xs font-bold font-mono">{deleteSuccessMsg}</span>
           </div>
@@ -422,20 +426,20 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Live VIP Artist Laminate Card & Stats (Sticky on desktop) */}
           <div className="lg:col-span-4 lg:sticky lg:top-6 self-start space-y-5">
-            {/* VIP Pass Card Visualizer */}
-            <div className="relative bg-gradient-to-b from-[#FFF0F4] via-white to-[#FDF2F8] border-2 border-[#FBCFE8] rounded-3xl p-5 shadow-[0_12px_40px_rgba(236,72,153,0.12)] text-center overflow-hidden">
+            {/* VIP Pass Card Visualizer — Liquid Glass Monolith */}
+            <div className="relative liquid-glass rounded-3xl p-5 text-center overflow-hidden">
               {/* Lanyard Hole */}
-              <div className="w-12 h-2.5 rounded-full bg-[#FCE7F3] border border-[#FBCFE8] mx-auto mb-4 shadow-inner" />
+              <div className="w-12 h-2.5 rounded-full bg-white/70 border border-white/90 mx-auto mb-4 shadow-inner" />
 
               {/* Club Header */}
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[#FBCFE8] text-[9px] font-mono font-black text-[#BE185D] tracking-widest uppercase mb-4 shadow-2xs">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-white/95 text-[9px] font-mono font-black text-[#BE185D] tracking-widest uppercase mb-4 shadow-2xs">
                 <Flame className="w-3 h-3 text-[#EC4899]" />
                 <span>ROASTMASTER VIP ACCESS</span>
               </div>
 
               {/* Avatar Preview */}
               <div className="relative w-24 h-24 mx-auto mb-3.5">
-                <div className="w-full h-full rounded-2xl bg-gradient-to-tr from-[#F472B6] to-[#EC4899] p-1 shadow-[0_6px_20px_rgba(236,72,153,0.3)] overflow-hidden">
+                <div className="w-full h-full rounded-2xl liquid-glass-pink p-1 shadow-[0_6px_20px_rgba(236,72,153,0.3)] overflow-hidden">
                   <div className="w-full h-full rounded-xl bg-white flex items-center justify-center overflow-hidden">
                     {photoURL && !imgError ? (
                       <img
@@ -465,13 +469,13 @@ export default function ProfilePage() {
               </p>
 
               {bio && (
-                <p className="text-xs text-[#836270] mt-3 px-2 italic line-clamp-3 leading-relaxed font-sans bg-white/60 py-2 rounded-xl border border-[#FCE7F3]">
+                <p className="text-xs text-[#836270] mt-3 px-2 italic line-clamp-3 leading-relaxed font-sans bg-white/60 py-2 rounded-xl border border-white/80">
                   "{bio}"
                 </p>
               )}
 
               {/* Decorative Holographic Barcode */}
-              <div className="mt-5 pt-4 border-t border-[#FBCFE8] flex items-center justify-between text-[9px] font-mono text-[#9D7889]">
+              <div className="mt-5 pt-4 border-t border-white/70 flex items-center justify-between text-[9px] font-mono text-[#9D7889]">
                 <span>TABLE #01 • FRONT ROW</span>
                 <span className="font-bold text-[#BE185D]">
                   {isGuest ? "GUEST PASS" : "AUTHENTICATED"}
@@ -479,21 +483,21 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Stage Activity Stats Card */}
-            <div className="bg-white border border-[#FBCFE8] rounded-3xl p-5 shadow-2xs space-y-3">
+            {/* Stage Activity Stats Card — Liquid Glass */}
+            <div className="liquid-glass rounded-3xl p-5 space-y-3">
               <h4 className="text-xs font-mono font-black text-[#BE185D] uppercase tracking-wider flex items-center gap-1.5">
                 <Mic2 className="w-3.5 h-3.5 text-[#EC4899]" />
                 <span>Heckler Stats</span>
               </h4>
 
               <div className="grid grid-cols-2 gap-2.5 font-mono">
-                <div className="p-3 bg-[#FDF2F8] border border-[#FCE7F3] rounded-2xl">
+                <div className="p-3 liquid-glass-subtle rounded-2xl">
                   <span className="text-[10px] text-[#836270] font-semibold block uppercase">
                     Saved Sets
                   </span>
                   <span className="text-lg font-black text-[#2D1C24]">{sessionsCount}</span>
                 </div>
-                <div className="p-3 bg-[#FDF2F8] border border-[#FCE7F3] rounded-2xl">
+                <div className="p-3 liquid-glass-subtle rounded-2xl">
                   <span className="text-[10px] text-[#836270] font-semibold block uppercase">
                     Stage Heat
                   </span>
@@ -512,7 +516,7 @@ export default function ProfilePage() {
 
           {/* Right Column: Profile Edit Form & Danger Zone */}
           <div className="lg:col-span-8 space-y-6">
-            <form onSubmit={handleSave} className="bg-white border border-[#FBCFE8] rounded-3xl p-5 sm:p-7 shadow-xs space-y-6">
+            <form onSubmit={handleSave} className="liquid-glass rounded-3xl p-5 sm:p-7 space-y-6">
               <div>
                 <h3 className="text-base sm:text-lg font-black text-[#2D1C24] font-mono uppercase tracking-tight flex items-center gap-2">
                   <User className="w-5 h-5 text-[#EC4899]" />
@@ -738,7 +742,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={saving || !displayName.trim()}
-                  className="px-6 py-3 bg-gradient-to-r from-[#F472B6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#DB2777] disabled:opacity-50 text-white font-mono font-bold text-xs uppercase tracking-wider rounded-xl shadow-[0_2px_12px_rgba(236,72,153,0.3)] transition-all cursor-pointer flex items-center gap-2 active:scale-98"
+                  className="px-6 py-3 liquid-glass-pink hover:opacity-95 disabled:opacity-50 text-white font-mono font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-2 active:scale-98"
                 >
                   {saving ? (
                     <>
@@ -756,7 +760,7 @@ export default function ProfilePage() {
             </form>
 
             {/* Danger Zone: Shred All Comedy Sets */}
-            <div className="bg-[#FFF1F2] border border-[#FECDD3] rounded-3xl p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="liquid-glass-subtle !border-[#FECDD3] rounded-3xl p-5 sm:p-6 space-y-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-[#FFE4E6] border border-[#FDA4AF] flex items-center justify-center shrink-0 text-[#E11D48]">
                   <AlertTriangle className="w-5 h-5" />
@@ -795,11 +799,11 @@ export default function ProfilePage() {
 
       {/* Delete All Chats Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D1C24]/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D1C24]/30 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md bg-white border border-[#FBCFE8] rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(225,29,72,0.2)] text-[#2D1C24]"
+            className="w-full max-w-md liquid-glass rounded-3xl p-6 sm:p-8 text-[#2D1C24]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-14 h-14 rounded-2xl bg-[#FFE4E6] border border-[#FDA4AF] flex items-center justify-center mx-auto mb-4 text-[#E11D48] shadow-xs">
@@ -815,7 +819,7 @@ export default function ProfilePage() {
               </p>
             </div>
 
-            <div className="mb-5 p-3 bg-[#FFF5F7] border border-[#FBCFE8] rounded-2xl">
+            <div className="mb-5 p-3 bg-white/70 border border-[#FDA4AF]/70 rounded-2xl">
               <label className="block text-[11px] font-mono font-bold text-[#836270] uppercase mb-1.5">
                 Type <span className="text-[#E11D48]">SHRED</span> to confirm:
               </label>
@@ -833,7 +837,7 @@ export default function ProfilePage() {
                 type="button"
                 disabled={deletingChats}
                 onClick={() => setShowDeleteModal(false)}
-                className="flex-1 py-2.5 px-3 border border-[#FBCFE8] hover:bg-[#FDF2F8] text-[#836270] font-mono font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+                className="flex-1 py-2.5 px-3 liquid-glass-pill text-[#836270] font-mono font-semibold rounded-xl text-xs transition-colors cursor-pointer"
               >
                 Cancel
               </button>
