@@ -157,7 +157,7 @@ export async function getMessages(userId, sessionId) {
 /**
  * Saves a completed user + bot message exchange in PostgreSQL
  */
-export async function saveCompletedExchange(userId, sessionId, userMsg, botMsg, isFirstMessage, title) {
+export async function saveCompletedExchange(userId, sessionId, userMsg, botMsg, isFirstMessage, title, embedding = null) {
   if (!userId || !sessionId) return false;
   try {
     const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
@@ -169,6 +169,7 @@ export async function saveCompletedExchange(userId, sessionId, userMsg, botMsg, 
         botMsg,
         isFirstMessage: Boolean(isFirstMessage),
         title: title || null,
+        embedding: embedding || botMsg?.embedding || null,
       }),
     });
     triggerSessionsUpdate();

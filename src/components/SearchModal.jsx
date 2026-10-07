@@ -293,7 +293,11 @@ export default function SearchModal({
                           <span>{item.messageCount} roasts in set</span>
                         )}
                         <span className="text-[10px] uppercase font-bold text-[#EC4899]">
-                          {item.matchType === "hybrid" ? "🔥 Hybrid Match" : "🎯 Semantic Match"}
+                          {item.matchType === "hybrid"
+                            ? "🔥 Hybrid Match"
+                            : item.matchType === "keyword"
+                            ? "⚡ Keyword Match"
+                            : "🎯 Semantic Match"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 text-[#BE185D] opacity-0 group-hover/item:opacity-100 transition-opacity">

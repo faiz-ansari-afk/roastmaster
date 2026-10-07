@@ -257,6 +257,18 @@ export async function upsertSessionEmbedding({
 
   try {
     const res = await db.query(query, [sessionId, userId, title, snippet, category, vectorLiteral]);
+    // Synchronize vector embedding to primary sessions table as well
+    await db.query(
+      `UPDATE sessions
+       SET embedding = $1::vector,
+           title = COALESCE($2, title),
+           snippet = COALESCE($3, snippet),
+           category = COALESCE($4, category),
+           updated_at = NOW()
+       WHERE id = $5`,
+      [vectorLiteral, title, snippet, category, sessionId]
+    ).catch((syncErr) => console.warn("[DB] Session table embedding sync notice:", syncErr.message));
+
     return res.rows[0];
   } catch (err) {
     console.error("[DB] Error upserting session embedding:", err.message);
@@ -267,6 +279,7 @@ export async function upsertSessionEmbedding({
 /**
  * Batch upserts multiple session vectors into PostgreSQL session_embeddings.
  * @param {Array<object>} sessions
+ * @param {string} [defaultUserId]
  * @returns {Promise<number>}
  */
 export async function upsertBatchSessionEmbeddings(sessions, defaultUserId = null) {
@@ -292,16 +305,33 @@ export async function upsertBatchSessionEmbeddings(sessions, defaultUserId = nul
         embedding = EXCLUDED.embedding,
         updated_at = NOW();
     `;
+    const syncSessionQuery = `
+      UPDATE sessions
+      SET embedding = $1::vector,
+          title = COALESCE($2, title),
+          snippet = COALESCE($3, snippet),
+          category = COALESCE($4, category),
+          updated_at = NOW()
+      WHERE id = $5;
+    `;
     for (const s of valid) {
       const sid = s.id || s.sessionId;
       const vectorLiteral = formatVectorForPg(s.embedding);
+      const uid = s.userId || defaultUserId || null;
       await client.query(query, [
         sid,
-        s.userId || defaultUserId || null,
+        uid,
         s.title || null,
         s.snippet || null,
         s.category || null,
         vectorLiteral,
+      ]);
+      await client.query(syncSessionQuery, [
+        vectorLiteral,
+        s.title || null,
+        s.snippet || null,
+        s.category || null,
+        sid,
       ]);
     }
     await client.query("COMMIT");
@@ -316,32 +346,40 @@ export async function upsertBatchSessionEmbeddings(sessions, defaultUserId = nul
 }
 
 /**
- * Real Retrieval Engine: Executes semantic vector retrieval directly in PostgreSQL via pgvector.
- * Uses HNSW index with cosine distance operator (<=>) and returns the top LIMIT results.
+ * Real Retrieval Engine: Executes hybrid semantic vector + keyword retrieval directly in PostgreSQL.
+ * Uses HNSW index with cosine distance operator (<=>) combined with ILIKE keyword & normalization matching.
  *
  * Query flow:
- *   User query -> Gemini embedding -> queryVector -> PostgreSQL + pgvector
- *   ORDER BY embedding <=> queryVector LIMIT 5
+ *   User query -> Gemini embedding (queryVector) + text (queryText) -> PostgreSQL
+ *   Calculates GREATEST(vector cosine similarity, text keyword matches)
  *
  * @param {object} params
- * @param {number[]} params.queryVector
+ * @param {number[]} [params.queryVector]
+ * @param {string} [params.queryText=""]
  * @param {string} [params.userId]
  * @param {number} [params.limit=5]
- * @param {number} [params.minSimilarity=0.35]
+ * @param {number} [params.minSimilarity=0.28]
  * @returns {Promise<Array<object>>}
  */
 export async function searchSimilarSessions({
-  queryVector,
+  queryVector = null,
+  queryText = "",
   userId = null,
   limit = 5,
-  minSimilarity = 0.35,
+  minSimilarity = 0.28,
 }) {
   const db = getDbPool();
-  if (!db || !Array.isArray(queryVector) || queryVector.length === 0) {
+  if (!db) return [];
+
+  const hasVector = Array.isArray(queryVector) && queryVector.length > 0;
+  const rawText = (queryText || "").trim();
+  const normalizedText = rawText.replace(/[-\s]/g, "");
+
+  if (!hasVector && !rawText) {
     return [];
   }
 
-  const vectorLiteral = formatVectorForPg(queryVector);
+  const vectorLiteral = hasVector ? formatVectorForPg(queryVector) : null;
 
   const query = `
     SELECT 
@@ -350,22 +388,47 @@ export async function searchSimilarSessions({
       title,
       snippet,
       category,
-      1 - (embedding <=> $1::vector) AS "similarityScore",
-      embedding <=> $1::vector AS distance
+      message_count AS "messageCount",
+      ROUND(GREATEST(
+        CASE WHEN $1::text IS NOT NULL AND embedding IS NOT NULL THEN (1 - (embedding <=> $1::vector)) ELSE 0 END,
+        CASE WHEN $2::text <> '' AND title ILIKE '%' || $2 || '%' THEN 0.88 ELSE 0 END,
+        CASE WHEN $2::text <> '' AND $6::text <> '' AND REPLACE(REPLACE(title, '-', ''), ' ', '') ILIKE '%' || $6 || '%' THEN 0.86 ELSE 0 END,
+        CASE WHEN $2::text <> '' AND snippet ILIKE '%' || $2 || '%' THEN 0.78 ELSE 0 END,
+        CASE WHEN $2::text <> '' AND $6::text <> '' AND REPLACE(REPLACE(snippet, '-', ''), ' ', '') ILIKE '%' || $6 || '%' THEN 0.76 ELSE 0 END,
+        CASE WHEN $2::text <> '' AND category ILIKE '%' || $2 || '%' THEN 0.68 ELSE 0 END
+      )::numeric, 4) AS "similarityScore",
+      CASE 
+        WHEN $2::text <> '' AND (title ILIKE '%' || $2 || '%' OR snippet ILIKE '%' || $2 || '%' OR ($6::text <> '' AND REPLACE(REPLACE(snippet, '-', ''), ' ', '') ILIKE '%' || $6 || '%')) 
+          AND $1::text IS NOT NULL AND embedding IS NOT NULL AND (1 - (embedding <=> $1::vector)) >= 0.35
+        THEN 'hybrid'
+        WHEN $2::text <> '' AND (title ILIKE '%' || $2 || '%' OR snippet ILIKE '%' || $2 || '%' OR ($6::text <> '' AND REPLACE(REPLACE(snippet, '-', ''), ' ', '') ILIKE '%' || $6 || '%'))
+        THEN 'keyword'
+        ELSE 'semantic'
+      END AS "matchType"
     FROM sessions
-    WHERE (($2::text IS NOT NULL AND user_id = $2::text) OR ($2::text IS NULL AND user_id IS NULL))
-      AND embedding IS NOT NULL
-      AND (1 - (embedding <=> $1::vector)) >= $3
-    ORDER BY embedding <=> $1::vector ASC
-    LIMIT $4;
+    WHERE ($3::text IS NULL OR user_id = $3::text OR user_id IS NULL)
+      AND (
+        ($1::text IS NOT NULL AND embedding IS NOT NULL AND (1 - (embedding <=> $1::vector)) >= $4)
+        OR ($2::text <> '' AND (
+          title ILIKE '%' || $2 || '%'
+          OR ($6::text <> '' AND REPLACE(REPLACE(title, '-', ''), ' ', '') ILIKE '%' || $6 || '%')
+          OR snippet ILIKE '%' || $2 || '%'
+          OR ($6::text <> '' AND REPLACE(REPLACE(snippet, '-', ''), ' ', '') ILIKE '%' || $6 || '%')
+          OR category ILIKE '%' || $2 || '%'
+        ))
+      )
+    ORDER BY "similarityScore" DESC
+    LIMIT $5;
   `;
 
   try {
     const res = await db.query(query, [
       vectorLiteral,
+      rawText,
       userId,
       minSimilarity,
       limit,
+      normalizedText,
     ]);
 
     return res.rows.map((row) => ({
@@ -374,10 +437,12 @@ export async function searchSimilarSessions({
       title: row.title,
       snippet: row.snippet,
       category: row.category,
+      messageCount: row.messageCount,
       similarityScore: Number(parseFloat(row.similarityScore).toFixed(4)),
+      matchType: row.matchType || "semantic",
     }));
   } catch (err) {
-    console.error("[DB] Error executing PostgreSQL pgvector session retrieval:", err.message);
+    console.error("[DB] Error executing PostgreSQL hybrid session retrieval:", err.message);
     return [];
   }
 }
@@ -664,6 +729,28 @@ export async function saveCompletedExchangeInDb({
     );
 
     await client.query("COMMIT");
+
+    if (!vectorLiteral && (cleanTitle || snippet)) {
+      import("@/lib/embeddings")
+        .then(({ getEmbedding }) => {
+          const textToEmbed = `Title: ${cleanTitle || ""}. Snippet: ${snippet || ""}. Category: ${category || ""}`;
+          return getEmbedding(textToEmbed);
+        })
+        .then((vec) => {
+          if (vec && vec.length > 0) {
+            upsertSessionEmbedding({
+              sessionId,
+              userId,
+              title: cleanTitle,
+              snippet,
+              category,
+              embedding: vec,
+            });
+          }
+        })
+        .catch((e) => console.warn("[DB] Background embedding sync notice:", e?.message));
+    }
+
     return true;
   } catch (err) {
     await client.query("ROLLBACK");

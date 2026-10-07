@@ -23,22 +23,17 @@ export async function POST(req) {
     }
 
     const effectiveLimit = typeof limit === "number" ? Math.min(20, Math.max(1, limit)) : 5;
-    const effectiveMinScore = typeof minScore === "number" ? minScore : 0.35;
+    const effectiveMinScore = typeof minScore === "number" ? minScore : 0.28;
 
     // 1. User query -> Gemini embedding -> query vector
-    const queryVector = await getEmbedding(trimmedQuery);
-
-    if (!queryVector || queryVector.length === 0) {
-      console.warn("[Search API] Embedding generation unavailable");
-      return NextResponse.json({
-        query: trimmedQuery,
-        count: 0,
-        results: [],
-        engine: "gemini_unavailable",
-      });
+    let queryVector = null;
+    try {
+      queryVector = await getEmbedding(trimmedQuery);
+    } catch (e) {
+      console.warn("[Search API] Embedding generation notice:", e?.message);
     }
 
-    // 2. If client provided session candidates with embeddings, sync them to PostgreSQL session_embeddings
+    // 2. If client provided session candidates with embeddings, sync them to PostgreSQL
     if (Array.isArray(candidates) && candidates.length > 0) {
       const validEmbeddings = candidates.filter(
         (c) => Array.isArray(c?.embedding) && c.embedding.length > 0
@@ -50,23 +45,23 @@ export async function POST(req) {
       }
     }
 
-    // 3. PostgreSQL + pgvector is the real retrieval engine:
-    //    ORDER BY embedding <=> queryVector LIMIT 5
+    // 3. PostgreSQL hybrid search: Vector cosine similarity + ILIKE keyword & concept matching
     const pgResults = await searchSimilarSessions({
       queryVector,
+      queryText: trimmedQuery,
       userId,
       limit: effectiveLimit,
       minSimilarity: effectiveMinScore,
     });
 
-    console.log(`[Search API] pgvector retrieval returned ${pgResults.length} matches for query: "${trimmedQuery}"`);
+    console.log(`[Search API] Hybrid retrieval returned ${pgResults.length} matches for query: "${trimmedQuery}"`);
 
     return NextResponse.json({
       query: trimmedQuery,
       count: pgResults.length,
       results: pgResults,
-      engine: "postgresql_pgvector",
-      mode: "hnsw_cosine",
+      engine: "postgresql_hybrid_pgvector",
+      mode: "hnsw_cosine_keyword_augmented",
     });
   } catch (error) {
     console.error("[Search API] Error executing pgvector retrieval:", error);

@@ -1,7 +1,7 @@
 "use client";
 // components/ChatStage.jsx — The Live Standup Comedy Roast Stage (Baby Pink Edition)
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
 import AuthModal from "@/components/AuthModal";
@@ -20,15 +20,15 @@ export default function ChatStage({ initialSessionId }) {
   const { user, isGuest } = useAuth();
   const router = useRouter();
   const params = useParams();
-
+  const pathname = usePathname();
   const routeSessionId =
     initialSessionId !== undefined
       ? initialSessionId
       : params?.chat_id
-      ? Array.isArray(params.chat_id)
-        ? params.chat_id[0]
-        : params.chat_id
-      : null;
+        ? Array.isArray(params.chat_id)
+          ? params.chat_id[0]
+          : params.chat_id
+        : null;
 
   const [currentSessionId, setCurrentSessionId] = useState(routeSessionId);
   const [chatResetKey, setChatResetKey] = useState(0);
@@ -94,11 +94,13 @@ export default function ChatStage({ initialSessionId }) {
   }, []);
 
   const handleNewSession = () => {
+    if (pathname === '/chat') return;
     setCurrentSessionId(null);
     setChatResetKey((k) => k + 1);
     if (typeof window !== "undefined") {
       window.history.pushState(null, "", "/chat");
     }
+
     router.push("/chat");
   };
 

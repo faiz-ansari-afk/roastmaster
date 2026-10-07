@@ -1032,11 +1032,12 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           userText,
           botReply,
           isFirstMsg,
-          dynamicTitle
+          dynamicTitle,
+          botReply?.embedding || null
         );
       }
     } catch (e) {
-      console.error("[Firestore] saveExchange error:", e?.code, e?.message);
+      console.error("[PostgreSQL] saveExchange error:", e?.message);
     }
   };
 

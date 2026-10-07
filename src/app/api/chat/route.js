@@ -283,6 +283,7 @@ RAG RULES:
         const textToEmbed = `Topic: ${lastMessage}. Subject: ${lastMessage}. Category: ${categoryText}. Roast: ${roastText}. Backstage: ${suggestionText}`.trim();
         const embedding = await getEmbedding(textToEmbed);
         if (embedding && embedding.length > 0) {
+          finalPayload.embedding = embedding;
           // Real Retrieval Engine: Persist session embedding directly in PostgreSQL pgvector
           if (sessionId) {
             await upsertSessionEmbedding({
