@@ -75,27 +75,33 @@
     @apply border-border outline-ring/50;
     box-sizing: border-box;
   }
+
   html {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
+
   body {
     background-color: #FFF5F7;
     color: #2D1C24;
     min-height: 100dvh;
   }
+
   /* Custom baby pink scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     background: #FBCFE8;
     border-radius: 9999px;
   }
+
   ::-webkit-scrollbar-thumb:hover {
     background: #F472B6;
   }
@@ -103,89 +109,143 @@
 
 /* Comedy Club Stage Animations */
 @keyframes soundWave {
-  0%, 100% { height: 4px; }
-  50% { height: 16px; }
+
+  0%,
+  100% {
+    height: 4px;
+  }
+
+  50% {
+    height: 16px;
+  }
 }
 
 @keyframes neonGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     text-shadow: 0 0 4px rgba(244, 114, 182, 0.6), 0 0 12px rgba(236, 72, 153, 0.4);
   }
+
   50% {
     text-shadow: 0 0 8px rgba(244, 114, 182, 0.9), 0 0 20px rgba(236, 72, 153, 0.7);
   }
 }
 
 @keyframes onAirPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.6);
   }
+
   50% {
     box-shadow: 0 0 0 8px rgba(225, 29, 72, 0);
   }
 }
 
 @keyframes spotlightSway {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.85;
     transform: scale(1);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.03);
   }
 }
 
-.animate-sound-1 { animation: soundWave 0.8s ease-in-out infinite; }
-.animate-sound-2 { animation: soundWave 0.6s ease-in-out infinite 0.15s; }
-.animate-sound-3 { animation: soundWave 0.9s ease-in-out infinite 0.3s; }
-.animate-sound-4 { animation: soundWave 0.5s ease-in-out infinite 0.1s; }
-.animate-sound-5 { animation: soundWave 0.7s ease-in-out infinite 0.25s; }
-.animate-neon { animation: neonGlow 2.5s ease-in-out infinite; }
-.animate-onair { animation: onAirPulse 1.8s infinite; }
-.animate-spotlight { animation: spotlightSway 8s ease-in-out infinite; }
+.animate-sound-1 {
+  animation: soundWave 0.8s ease-in-out infinite;
+}
+
+.animate-sound-2 {
+  animation: soundWave 0.6s ease-in-out infinite 0.15s;
+}
+
+.animate-sound-3 {
+  animation: soundWave 0.9s ease-in-out infinite 0.3s;
+}
+
+.animate-sound-4 {
+  animation: soundWave 0.5s ease-in-out infinite 0.1s;
+}
+
+.animate-sound-5 {
+  animation: soundWave 0.7s ease-in-out infinite 0.25s;
+}
+
+.animate-neon {
+  animation: neonGlow 2.5s ease-in-out infinite;
+}
+
+.animate-onair {
+  animation: onAirPulse 1.8s infinite;
+}
+
+.animate-spotlight {
+  animation: spotlightSway 8s ease-in-out infinite;
+}
 
 /* ── Liquid Glass Engine (Pink Comedy Club Edition) ───────────────────────── */
 @keyframes liquidFloat1 {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1) rotate(0deg);
   }
+
   33% {
     transform: translate(35px, -30px) scale(1.08) rotate(5deg);
   }
+
   66% {
     transform: translate(-25px, 20px) scale(0.95) rotate(-3deg);
   }
 }
 
 @keyframes liquidFloat2 {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1) rotate(0deg);
   }
+
   33% {
     transform: translate(-40px, 25px) scale(1.06) rotate(-4deg);
   }
+
   66% {
     transform: translate(30px, -20px) scale(0.96) rotate(6deg);
   }
 }
 
 @keyframes liquidFloat3 {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
   }
+
   50% {
     transform: translate(20px, 35px) scale(1.12);
   }
 }
 
 @keyframes liquidMorph {
-  0%, 100% {
+
+  0%,
+  100% {
     border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
   }
+
   33% {
     border-radius: 60% 40% 30% 70% / 55% 30% 70% 45%;
   }
+
   66% {
     border-radius: 35% 65% 55% 45% / 65% 55% 45% 35%;
   }
@@ -283,58 +343,77 @@
 
 /* ── Venom Goo Physics Engine (Blackish-Pink Symbiote Flow) ─────────────────── */
 @keyframes venomFlow1 {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1) rotate(0deg);
   }
+
   33% {
     transform: translate(70px, -50px) scale(1.18, 0.85) rotate(14deg);
   }
+
   66% {
     transform: translate(-50px, 40px) scale(0.88, 1.15) rotate(-10deg);
   }
 }
 
 @keyframes venomFlow2 {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1) rotate(0deg);
   }
+
   33% {
     transform: translate(-65px, 60px) scale(0.9, 1.2) rotate(-16deg);
   }
+
   66% {
     transform: translate(55px, -35px) scale(1.16, 0.88) rotate(12deg);
   }
 }
 
 @keyframes venomFlow3 {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
   }
+
   50% {
     transform: translate(-35px, -60px) scale(1.22, 0.82);
   }
 }
 
 @keyframes venomGooMorph {
-  0%, 100% {
+
+  0%,
+  100% {
     border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
   }
+
   25% {
     border-radius: 65% 35% 38% 62% / 58% 34% 66% 42%;
   }
+
   50% {
     border-radius: 32% 68% 62% 38% / 48% 65% 35% 52%;
   }
+
   75% {
     border-radius: 55% 45% 40% 60% / 38% 52% 48% 62%;
   }
 }
 
 @keyframes venomPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.82;
     filter: drop-shadow(0 0 55px rgba(236, 72, 153, 0.5));
   }
+
   50% {
     opacity: 0.98;
     filter: drop-shadow(0 0 90px rgba(244, 63, 94, 0.75));
@@ -342,9 +421,12 @@
 }
 
 @keyframes venomTendril {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scaleY(1) translateY(0);
   }
+
   50% {
     transform: scaleY(1.4) translateY(20px);
   }
@@ -409,7 +491,3 @@
     inset 0 1px 1px 0 rgba(255, 255, 255, 0.2),
     0 4px 14px 0 rgba(0, 0, 0, 0.4);
 }
-
-
-
-
