@@ -2,6 +2,7 @@
 // components/SearchModal.jsx — Cmd+K / Ctrl+K Semantic Search Command Palette (Baby Pink Edition)
 import { useState, useEffect, useRef, useCallback } from "react";
 import { formatSessionDisplayTitle } from "@/lib/firestore";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Search,
   X,
@@ -30,6 +31,7 @@ export default function SearchModal({
   sessions = [],
   onSelectSession,
 }) {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -88,7 +90,7 @@ export default function SearchModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose, results, sessions, selectedIndex]);
 
-  // Debounced semantic search query to /api/search
+  // Debounced semantic search query directly to PostgreSQL pgvector retrieval engine
   const executeSearch = useCallback(
     async (searchQuery) => {
       const trimmed = searchQuery.trim();
@@ -105,8 +107,9 @@ export default function SearchModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             query: trimmed,
+            userId: user?.uid || null,
+            limit: 5,
             candidates: sessions,
-            limit: 8,
           }),
         });
 
@@ -116,12 +119,12 @@ export default function SearchModal({
           setSelectedIndex(0);
         }
       } catch (err) {
-        console.error("Semantic search failed:", err);
+        console.error("PostgreSQL pgvector search failed:", err);
       } finally {
         setLoading(false);
       }
     },
-    [sessions]
+    [sessions, user]
   );
 
   const handleInputChange = (e) => {
@@ -210,8 +213,8 @@ export default function SearchModal({
         <div className="flex items-center justify-between px-4 sm:px-6 py-2 liquid-glass-subtle border-b border-white/70 text-[11px] font-mono text-[#836270]">
           <div className="flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-[#EC4899] animate-pulse" />
-            <span className="font-semibold text-[#BE185D]">Gemini Vector Semantic Search</span>
-            <span className="text-[#A47F90] hidden sm:inline">• 768-dim embeddings</span>
+            <span className="font-semibold text-[#BE185D]">Aiven PostgreSQL + pgvector Engine</span>
+            <span className="text-[#A47F90] hidden sm:inline">• HNSW Cosine Index (<kbd className="font-mono text-[10px]">&lt;=&gt;</kbd>)</span>
           </div>
           <div className="flex items-center gap-2 text-[10px] text-[#A47F90]">
             <span>↑↓ navigate</span>

@@ -2,7 +2,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { getEmbedding } from "@/lib/embeddings";
-import { searchSimilarChunks } from "@/lib/db";
+import { searchSimilarChunks, upsertSessionEmbedding } from "@/lib/db";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -87,7 +87,7 @@ function parseStructuredRoast(text, fallbackQuery = "") {
 
 export async function POST(req) {
   try {
-    const { messages, sessionId, userProfile } = await req.json();
+    const { messages, sessionId, userId, userProfile } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Invalid messages" }, { status: 400 });
@@ -125,7 +125,7 @@ export async function POST(req) {
           retrievedDocs = await searchSimilarChunks({
             sessionId,
             queryVector,
-            limit: 4,
+            limit: 5,
             minSimilarity: 0.30,
           });
 
@@ -186,7 +186,7 @@ PROFILE ROAST RULES:
     if (ragContext) {
       activeSystemPrompt += `
 
-DOCUMENT CONTEXT (from user's uploaded reference PDF via Aiven pgvector):
+DOCUMENT CONTEXT (from user's uploaded reference PDF via pgvector):
 ======================================================================
 ${ragContext}
 ======================================================================
@@ -284,9 +284,23 @@ RAG RULES:
         const embedding = await getEmbedding(textToEmbed);
         if (embedding && embedding.length > 0) {
           finalPayload.embedding = embedding;
+
+          // Real Retrieval Engine: Persist session embedding directly in PostgreSQL pgvector
+          if (sessionId) {
+            await upsertSessionEmbedding({
+              sessionId,
+              userId: userId || userProfile?.userId || null,
+              title: finalPayload.title || null,
+              snippet: roastText.slice(0, 160),
+              category: categoryText,
+              embedding,
+            }).catch((pgErr) =>
+              console.warn("[Chat API] Warning upserting session vector in pgvector:", pgErr?.message)
+            );
+          }
         }
       } catch (embErr) {
-        console.warn("[Chat API] Failed to generate embedding for exchange:", embErr?.message || embErr);
+        console.warn("[Chat API] Failed to generate/store embedding for exchange:", embErr?.message || embErr);
       }
     }
 

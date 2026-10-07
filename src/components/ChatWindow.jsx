@@ -1078,6 +1078,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: activeSid || null,
+          userId: user?.uid || null,
           userProfile: profilePayload,
           messages: updatedMessages.map((m) => {
             let contentText = "";

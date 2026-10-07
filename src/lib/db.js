@@ -122,8 +122,8 @@ export async function insertDocumentChunks({ sessionId, userId = null, fileName,
 export async function searchSimilarChunks({
   sessionId,
   queryVector,
-  limit = 4,
-  minSimilarity = 0.35,
+  limit = 5,
+  minSimilarity = 0.30,
 }) {
   const db = getDbPool();
   if (!db) {
@@ -217,5 +217,166 @@ export async function deleteSessionDocuments(sessionId) {
     await db.query("DELETE FROM document_chunks WHERE session_id = $1", [sessionId]);
   } catch (err) {
     console.error("[DB] Error deleting session documents:", err.message);
+  }
+}
+
+/**
+ * Upserts a chat session vector into PostgreSQL session_embeddings.
+ * @param {object} params
+ * @param {string} params.sessionId
+ * @param {string} [params.userId]
+ * @param {string} [params.title]
+ * @param {string} [params.snippet]
+ * @param {string} [params.category]
+ * @param {number[]} params.embedding
+ */
+export async function upsertSessionEmbedding({
+  sessionId,
+  userId = null,
+  title = null,
+  snippet = null,
+  category = null,
+  embedding,
+}) {
+  const db = getDbPool();
+  if (!db || !sessionId || !Array.isArray(embedding) || embedding.length === 0) return null;
+
+  const vectorLiteral = formatVectorForPg(embedding);
+  const query = `
+    INSERT INTO session_embeddings (session_id, user_id, title, snippet, category, embedding, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6::vector, NOW())
+    ON CONFLICT (session_id) DO UPDATE SET
+      user_id = COALESCE(EXCLUDED.user_id, session_embeddings.user_id),
+      title = COALESCE(EXCLUDED.title, session_embeddings.title),
+      snippet = COALESCE(EXCLUDED.snippet, session_embeddings.snippet),
+      category = COALESCE(EXCLUDED.category, session_embeddings.category),
+      embedding = EXCLUDED.embedding,
+      updated_at = NOW()
+    RETURNING id, session_id AS "sessionId";
+  `;
+
+  try {
+    const res = await db.query(query, [sessionId, userId, title, snippet, category, vectorLiteral]);
+    return res.rows[0];
+  } catch (err) {
+    console.error("[DB] Error upserting session embedding:", err.message);
+    return null;
+  }
+}
+
+/**
+ * Batch upserts multiple session vectors into PostgreSQL session_embeddings.
+ * @param {Array<object>} sessions
+ * @returns {Promise<number>}
+ */
+export async function upsertBatchSessionEmbeddings(sessions) {
+  const db = getDbPool();
+  if (!db || !Array.isArray(sessions) || sessions.length === 0) return 0;
+
+  const valid = sessions.filter(
+    (s) => (s?.id || s?.sessionId) && Array.isArray(s?.embedding) && s.embedding.length > 0
+  );
+  if (valid.length === 0) return 0;
+
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    const query = `
+      INSERT INTO session_embeddings (session_id, user_id, title, snippet, category, embedding, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6::vector, NOW())
+      ON CONFLICT (session_id) DO UPDATE SET
+        user_id = COALESCE(EXCLUDED.user_id, session_embeddings.user_id),
+        title = COALESCE(EXCLUDED.title, session_embeddings.title),
+        snippet = COALESCE(EXCLUDED.snippet, session_embeddings.snippet),
+        category = COALESCE(EXCLUDED.category, session_embeddings.category),
+        embedding = EXCLUDED.embedding,
+        updated_at = NOW();
+    `;
+    for (const s of valid) {
+      const sid = s.id || s.sessionId;
+      const vectorLiteral = formatVectorForPg(s.embedding);
+      await client.query(query, [
+        sid,
+        s.userId || null,
+        s.title || null,
+        s.snippet || null,
+        s.category || null,
+        vectorLiteral,
+      ]);
+    }
+    await client.query("COMMIT");
+    return valid.length;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("[DB] Error batch upserting session embeddings:", err.message);
+    return 0;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Real Retrieval Engine: Executes semantic vector retrieval directly in PostgreSQL via pgvector.
+ * Uses HNSW index with cosine distance operator (<=>) and returns the top LIMIT results.
+ *
+ * Query flow:
+ *   User query -> Gemini embedding -> queryVector -> PostgreSQL + pgvector
+ *   ORDER BY embedding <=> queryVector LIMIT 5
+ *
+ * @param {object} params
+ * @param {number[]} params.queryVector
+ * @param {string} [params.userId]
+ * @param {number} [params.limit=5]
+ * @param {number} [params.minSimilarity=0.35]
+ * @returns {Promise<Array<object>>}
+ */
+export async function searchSimilarSessions({
+  queryVector,
+  userId = null,
+  limit = 5,
+  minSimilarity = 0.35,
+}) {
+  const db = getDbPool();
+  if (!db || !Array.isArray(queryVector) || queryVector.length === 0) {
+    return [];
+  }
+
+  const vectorLiteral = formatVectorForPg(queryVector);
+
+  const query = `
+    SELECT 
+      session_id AS id,
+      session_id AS "sessionId",
+      title,
+      snippet,
+      category,
+      1 - (embedding <=> $1::vector) AS "similarityScore",
+      embedding <=> $1::vector AS distance
+    FROM session_embeddings
+    WHERE ($2::text IS NULL OR user_id = $2::text OR user_id IS NULL)
+      AND (1 - (embedding <=> $1::vector)) >= $3
+    ORDER BY embedding <=> $1::vector ASC
+    LIMIT $4;
+  `;
+
+  try {
+    const res = await db.query(query, [
+      vectorLiteral,
+      userId,
+      minSimilarity,
+      limit,
+    ]);
+
+    return res.rows.map((row) => ({
+      id: row.id,
+      sessionId: row.sessionId,
+      title: row.title,
+      snippet: row.snippet,
+      category: row.category,
+      similarityScore: Number(parseFloat(row.similarityScore).toFixed(4)),
+    }));
+  } catch (err) {
+    console.error("[DB] Error executing PostgreSQL pgvector session retrieval:", err.message);
+    return [];
   }
 }
