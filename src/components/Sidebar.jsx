@@ -9,7 +9,7 @@ import {
   formatSessionDisplayTitle,
   backfillHistoricalSessionTitles,
   cleanEmptyOrphanSessions,
-} from "@/lib/firestore";
+} from "@/lib/api";
 import SearchModal from "./SearchModal";
 import SignOutModal from "./SignOutModal";
 import {

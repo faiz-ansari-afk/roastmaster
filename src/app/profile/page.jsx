@@ -9,7 +9,7 @@ import {
   saveUserProfile,
   getSessions,
   deleteAllUserSessions,
-} from "@/lib/firestore";
+} from "@/lib/api";
 import AuthModal from "@/components/AuthModal";
 import SignOutModal from "@/components/SignOutModal";
 import {

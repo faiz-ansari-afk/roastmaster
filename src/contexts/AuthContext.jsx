@@ -6,7 +6,7 @@ import {
   signInAnonymously, signOut, updateProfile,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getUserProfile } from "@/lib/firestore";
+import { getUserProfile } from "@/lib/api";
 
 const AuthContext = createContext({});
 

@@ -1,7 +1,7 @@
 "use client";
 // components/SearchModal.jsx — Cmd+K / Ctrl+K Semantic Search Command Palette (Baby Pink Edition)
 import { useState, useEffect, useRef, useCallback } from "react";
-import { formatSessionDisplayTitle } from "@/lib/firestore";
+import { formatSessionDisplayTitle } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Search,

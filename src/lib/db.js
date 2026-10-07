@@ -345,15 +345,16 @@ export async function searchSimilarSessions({
 
   const query = `
     SELECT 
-      session_id AS id,
-      session_id AS "sessionId",
+      id,
+      id AS "sessionId",
       title,
       snippet,
       category,
       1 - (embedding <=> $1::vector) AS "similarityScore",
       embedding <=> $1::vector AS distance
-    FROM session_embeddings
+    FROM sessions
     WHERE (($2::text IS NOT NULL AND user_id = $2::text) OR ($2::text IS NULL AND user_id IS NULL))
+      AND embedding IS NOT NULL
       AND (1 - (embedding <=> $1::vector)) >= $3
     ORDER BY embedding <=> $1::vector ASC
     LIMIT $4;
@@ -389,6 +390,7 @@ export async function deleteSessionFromPostgres(sessionId) {
   const db = getDbPool();
   if (!db || !sessionId) return;
   try {
+    await db.query("DELETE FROM sessions WHERE id = $1", [sessionId]);
     await db.query("DELETE FROM session_embeddings WHERE session_id = $1", [sessionId]);
     await db.query("DELETE FROM document_chunks WHERE session_id = $1", [sessionId]);
   } catch (err) {
@@ -408,18 +410,23 @@ export async function deleteAllUserPostgresData(userId = null) {
     let deletedChunks = 0;
     if (userId) {
       const res1 = await db.query(
-        "DELETE FROM session_embeddings WHERE user_id = $1 OR user_id IS NULL",
+        "DELETE FROM sessions WHERE user_id = $1 OR user_id IS NULL",
         [userId]
       );
       deletedSessions = res1.rowCount;
+      await db.query(
+        "DELETE FROM session_embeddings WHERE user_id = $1 OR user_id IS NULL",
+        [userId]
+      );
       const res2 = await db.query(
         "DELETE FROM document_chunks WHERE user_id = $1 OR user_id IS NULL",
         [userId]
       );
       deletedChunks = res2.rowCount;
     } else {
-      const res1 = await db.query("DELETE FROM session_embeddings");
+      const res1 = await db.query("DELETE FROM sessions");
       deletedSessions = res1.rowCount;
+      await db.query("DELETE FROM session_embeddings");
       const res2 = await db.query("DELETE FROM document_chunks");
       deletedChunks = res2.rowCount;
     }
@@ -427,6 +434,243 @@ export async function deleteAllUserPostgresData(userId = null) {
   } catch (err) {
     console.error("[DB] Error shredding all user data from PostgreSQL:", err.message);
     return { success: false, error: err.message };
+  }
+}
+
+// ── USER PROFILES ────────────────────────────────────────────────────────────
+
+export async function getUserProfileFromDb(userId) {
+  const db = getDbPool();
+  if (!db || !userId) return null;
+  try {
+    const res = await db.query(
+      `SELECT user_id, display_name, photo_url, stage_title, bio, roast_level, favorite_topic, updated_at
+       FROM user_profiles WHERE user_id = $1`,
+      [userId]
+    );
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    return {
+      userId: r.user_id,
+      displayName: r.display_name,
+      photoURL: r.photo_url,
+      stageTitle: r.stage_title,
+      bio: r.bio,
+      roastLevel: r.roast_level,
+      favoriteTopic: r.favorite_topic,
+      updatedAt: r.updated_at,
+    };
+  } catch (err) {
+    console.error("[DB] getUserProfileFromDb error:", err.message);
+    return null;
+  }
+}
+
+export async function upsertUserProfileInDb({
+  userId,
+  displayName,
+  photoURL,
+  stageTitle,
+  bio,
+  roastLevel,
+  favoriteTopic,
+}) {
+  const db = getDbPool();
+  if (!db || !userId) return false;
+  try {
+    await db.query(
+      `INSERT INTO user_profiles (user_id, display_name, photo_url, stage_title, bio, roast_level, favorite_topic, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET
+         display_name = COALESCE(EXCLUDED.display_name, user_profiles.display_name),
+         photo_url = COALESCE(EXCLUDED.photo_url, user_profiles.photo_url),
+         stage_title = COALESCE(EXCLUDED.stage_title, user_profiles.stage_title),
+         bio = COALESCE(EXCLUDED.bio, user_profiles.bio),
+         roast_level = COALESCE(EXCLUDED.roast_level, user_profiles.roast_level),
+         favorite_topic = COALESCE(EXCLUDED.favorite_topic, user_profiles.favorite_topic),
+         updated_at = NOW()`,
+      [
+        userId,
+        displayName || null,
+        photoURL || null,
+        stageTitle || null,
+        bio || null,
+        roastLevel || "sarcastic",
+        favoriteTopic || null,
+      ]
+    );
+    return true;
+  } catch (err) {
+    console.error("[DB] upsertUserProfileInDb error:", err.message);
+    return false;
+  }
+}
+
+// ── SESSIONS ──────────────────────────────────────────────────────────────────
+
+export async function getUserSessionsFromDb(userId) {
+  const db = getDbPool();
+  if (!db || !userId) return [];
+  try {
+    const res = await db.query(
+      `SELECT id, user_id, title, snippet, category, message_count, created_at, updated_at
+       FROM sessions
+       WHERE user_id = $1
+       ORDER BY updated_at DESC`,
+      [userId]
+    );
+    return res.rows.map((r) => ({
+      id: r.id,
+      userId: r.user_id,
+      title: r.title,
+      snippet: r.snippet,
+      category: r.category,
+      messageCount: r.message_count,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }));
+  } catch (err) {
+    console.error("[DB] getUserSessionsFromDb error:", err.message);
+    return [];
+  }
+}
+
+export async function createSessionInDb({ sessionId, userId, title = null }) {
+  const db = getDbPool();
+  if (!db || !sessionId || !userId) return null;
+  try {
+    const res = await db.query(
+      `INSERT INTO sessions (id, user_id, title, message_count, created_at, updated_at)
+       VALUES ($1, $2, $3, 0, NOW(), NOW())
+       ON CONFLICT (id) DO UPDATE SET updated_at = NOW()
+       RETURNING id, title`,
+      [sessionId, userId, title || "New Roast Session"]
+    );
+    return res.rows[0]?.id || sessionId;
+  } catch (err) {
+    console.error("[DB] createSessionInDb error:", err.message);
+    return null;
+  }
+}
+
+export async function updateSessionTitleInDb(sessionId, title) {
+  const db = getDbPool();
+  if (!db || !sessionId || !title) return false;
+  try {
+    const cleanTitle = title.length > 60 ? title.slice(0, 60) + "..." : title;
+    await db.query(
+      `UPDATE sessions SET title = $2, updated_at = NOW() WHERE id = $1`,
+      [sessionId, cleanTitle]
+    );
+    return true;
+  } catch (err) {
+    console.error("[DB] updateSessionTitleInDb error:", err.message);
+    return false;
+  }
+}
+
+// ── MESSAGES ──────────────────────────────────────────────────────────────────
+
+export async function getSessionMessagesFromDb(sessionId) {
+  const db = getDbPool();
+  if (!db || !sessionId) return [];
+  try {
+    const res = await db.query(
+      `SELECT id, role, content, created_at
+       FROM messages
+       WHERE session_id = $1
+       ORDER BY created_at ASC`,
+      [sessionId]
+    );
+    return res.rows.map((r) => ({
+      id: String(r.id),
+      role: r.role,
+      content: r.content,
+      createdAt: r.created_at,
+    }));
+  } catch (err) {
+    console.error("[DB] getSessionMessagesFromDb error:", err.message);
+    return [];
+  }
+}
+
+export async function saveCompletedExchangeInDb({
+  sessionId,
+  userId,
+  userMsg,
+  botMsg,
+  title = null,
+  isFirstMessage = false,
+  embedding = null,
+}) {
+  const db = getDbPool();
+  if (!db || !sessionId || !userId) return false;
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Clean bot content to avoid storing embedding inside JSON
+    let cleanBotContent = botMsg;
+    if (botMsg && typeof botMsg === "object") {
+      const { embedding: _ignored, ...rest } = botMsg;
+      cleanBotContent = rest;
+    }
+
+    // 1. Insert user message
+    await client.query(
+      `INSERT INTO messages (session_id, user_id, role, content, created_at)
+       VALUES ($1, $2, 'user', $3, NOW())`,
+      [sessionId, userId, JSON.stringify(userMsg)]
+    );
+
+    // 2. Insert assistant message
+    await client.query(
+      `INSERT INTO messages (session_id, user_id, role, content, created_at)
+       VALUES ($1, $2, 'assistant', $3, NOW())`,
+      [sessionId, userId, JSON.stringify(cleanBotContent)]
+    );
+
+    // 3. Derive dynamic title if appropriate
+    const rawTitle = (typeof botMsg === "object" && botMsg?.title) || title;
+    let cleanTitle = null;
+    if (rawTitle && typeof rawTitle === "string" && rawTitle.trim()) {
+      cleanTitle = rawTitle.trim().length > 60 ? rawTitle.trim().slice(0, 60) + "..." : rawTitle.trim();
+    }
+
+    const snippet =
+      typeof botMsg === "object"
+        ? (botMsg?.roast || "").slice(0, 160)
+        : String(botMsg || "").slice(0, 160);
+
+    const category = typeof botMsg === "object" ? botMsg?.category || null : null;
+    const vectorLiteral = Array.isArray(embedding) && embedding.length > 0 ? formatVectorForPg(embedding) : null;
+
+    // 4. Upsert session summary in sessions table
+    await client.query(
+      `INSERT INTO sessions (id, user_id, title, snippet, category, message_count, embedding, created_at, updated_at)
+       VALUES ($1, $2, COALESCE($3, 'New Roast Session'), $4, $5, 2, $6::vector, NOW(), NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         user_id = COALESCE(sessions.user_id, EXCLUDED.user_id),
+         title = CASE 
+           WHEN $3::text IS NOT NULL AND ($7::boolean = true OR sessions.title = 'New Roast Session') THEN $3::text 
+           ELSE sessions.title 
+         END,
+         snippet = COALESCE(EXCLUDED.snippet, sessions.snippet),
+         category = COALESCE(EXCLUDED.category, sessions.category),
+         message_count = sessions.message_count + 2,
+         embedding = COALESCE(EXCLUDED.embedding, sessions.embedding),
+         updated_at = NOW()`,
+      [sessionId, userId, cleanTitle, snippet, category, vectorLiteral, isFirstMessage]
+    );
+
+    await client.query("COMMIT");
+    return true;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("[DB] saveCompletedExchangeInDb error:", err.message);
+    return false;
+  } finally {
+    client.release();
   }
 }
 

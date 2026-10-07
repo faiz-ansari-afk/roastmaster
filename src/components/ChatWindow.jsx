@@ -9,7 +9,7 @@ import {
   updateSessionTitle,
   formatSessionDisplayTitle,
   getUserProfile,
-} from "@/lib/firestore";
+} from "@/lib/api";
 import {
   Flame,
   User,
