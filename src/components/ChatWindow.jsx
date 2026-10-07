@@ -39,7 +39,7 @@ import {
 
 // ── Helpers for structured data parsing & severity metadata ───────────────────
 function parseRoastData(raw) {
-  if (!raw) return { roast: "", severity: null, category: null, suggestion: "", ragSources: null };
+  if (!raw) return { roast: "", severity: null, category: null, suggestion: "", ragSources: null, source: null };
 
   if (typeof raw === "object") {
     return {
@@ -48,6 +48,7 @@ function parseRoastData(raw) {
       category: raw.category || null,
       suggestion: raw.suggestion || "",
       ragSources: Array.isArray(raw.ragSources) ? raw.ragSources : null,
+      source: raw.source || null,
     };
   }
 
@@ -63,6 +64,7 @@ function parseRoastData(raw) {
             category: parsed.category || null,
             suggestion: parsed.suggestion || "",
             ragSources: Array.isArray(parsed.ragSources) ? parsed.ragSources : null,
+            source: parsed.source || null,
           };
         }
       } catch {
@@ -75,10 +77,11 @@ function parseRoastData(raw) {
       category: null,
       suggestion: "",
       ragSources: null,
+      source: null,
     };
   }
 
-  return { roast: String(raw), severity: null, category: null, suggestion: "", ragSources: null };
+  return { roast: String(raw), severity: null, category: null, suggestion: "", ragSources: null, source: null };
 }
 
 function getSeverityBadge(severity) {
@@ -202,9 +205,9 @@ function RagSourcesAccordion({ sources }) {
                 <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1 text-[#9D174D]">
                   <span className="flex items-center gap-1.5 truncate max-w-[240px] sm:max-w-md">
                     <FileCheck className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
-                    <span className="truncate">{src.fileName}</span>
-                    <span className="text-[#836270] font-normal shrink-0">
-                      (Chunk #{src.chunkIndex + 1})
+                    <span className="truncate font-semibold">{src.fileName}</span>
+                    <span className="text-[#BE185D] font-bold shrink-0 bg-[#FCE7F3]/80 border border-[#FBCFE8] px-1.5 py-0.2 rounded-md text-[10px]">
+                      Page {src.pageNumber || 1}
                     </span>
                   </span>
                   <span className="bg-[#FDF2F8]/90 text-[#BE185D] border border-[#FBCFE8] px-1.5 py-0.5 rounded shrink-0">
@@ -977,7 +980,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         {
           role: "assistant",
           content: {
-            roast: `Aha! You uploaded "${data.fileName}" onto the stage (${data.totalPages} pages, ${data.totalChunks} chunks indexed in Aiven pgvector). The mic is hot — roast me, ask me for bugs, or let's critique this document!`,
+            roast: `Aha! You uploaded "${data.fileName}" onto the stage (${data.totalPages} pages, ${data.totalChunks} chunks indexed in Aiven pgvector with page tracking). The mic is hot — roast me, ask me for bugs, or let's critique this document!`,
             severity: 3,
             category: "PDF Ingested",
             suggestion: `Try asking: "Roast the biggest mistake in ${data.fileName}" or "What are the main takeaways in this PDF?".`,
@@ -1355,10 +1358,10 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <span className="hidden sm:inline text-[10px] text-[#9D174D] bg-[#FCE7F3]/80 px-1.5 py-0.5 rounded-md font-semibold">
-                      {doc.totalChunks} chunks in Aiven pgvector
+                      {doc.totalPages ? `${doc.totalPages}p • ` : ""}{doc.totalChunks} chunks in Aiven pgvector
                     </span>
                     <span className="sm:hidden text-[9px] text-[#9D174D] bg-[#FCE7F3]/80 px-1.5 py-0.2 rounded-md font-semibold">
-                      {doc.totalChunks} chk
+                      {doc.totalPages ? `${doc.totalPages}p • ` : ""}{doc.totalChunks} chk
                     </span>
                     <button
                       type="button"

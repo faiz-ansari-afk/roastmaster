@@ -12,7 +12,12 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
  * @returns {Array<{ chunkIndex: number, content: string }>}
  */
 export function splitTextIntoSentenceChunks(text, options = {}) {
-  const { targetChunkSize = 700, sentenceOverlap = 1 } = options;
+  const {
+    targetChunkSize = 700,
+    sentenceOverlap = 1,
+    pageNumber = 1,
+    startIndex = 0,
+  } = options;
   if (!text || typeof text !== "string") return [];
 
   // Normalize line breaks & strip weird null bytes
@@ -65,7 +70,7 @@ export function splitTextIntoSentenceChunks(text, options = {}) {
   const chunks = [];
   let currentGroup = [];
   let currentLength = 0;
-  let chunkIndex = 0;
+  let chunkIndex = typeof startIndex === "number" ? startIndex : 0;
 
   for (let i = 0; i < atomicUnits.length; i++) {
     const unit = atomicUnits[i];
@@ -76,6 +81,7 @@ export function splitTextIntoSentenceChunks(text, options = {}) {
       if (currentGroup.length > 0) {
         chunks.push({
           chunkIndex: chunkIndex++,
+          pageNumber,
           content: currentGroup.join(" "),
         });
         currentGroup = [];
@@ -91,6 +97,7 @@ export function splitTextIntoSentenceChunks(text, options = {}) {
         if (clauseLen + clause.length > targetChunkSize && clauseBuf.length > 0) {
           chunks.push({
             chunkIndex: chunkIndex++,
+            pageNumber,
             content: clauseBuf.join(" "),
           });
           clauseBuf = [];
@@ -103,6 +110,7 @@ export function splitTextIntoSentenceChunks(text, options = {}) {
       if (clauseBuf.length > 0) {
         chunks.push({
           chunkIndex: chunkIndex++,
+          pageNumber,
           content: clauseBuf.join(" "),
         });
       }
@@ -113,6 +121,7 @@ export function splitTextIntoSentenceChunks(text, options = {}) {
     if (currentLength + unitLen > targetChunkSize && currentGroup.length > 0) {
       chunks.push({
         chunkIndex: chunkIndex++,
+        pageNumber,
         content: currentGroup.join(" "),
       });
 
@@ -133,6 +142,7 @@ export function splitTextIntoSentenceChunks(text, options = {}) {
   if (currentGroup.length > 0) {
     chunks.push({
       chunkIndex: chunkIndex++,
+      pageNumber,
       content: currentGroup.join(" "),
     });
   }
@@ -147,10 +157,11 @@ export function splitTextIntoSentenceChunks(text, options = {}) {
  * @param {object} [options]
  * @param {number} [options.chunkSize=750]
  * @param {number} [options.chunkOverlap=120]
- * @returns {Promise<Array<{ chunkIndex: number, content: string }>>}
+ * @param {number} [options.pageNumber=1]
+ * @returns {Promise<Array<{ chunkIndex: number, pageNumber: number, content: string }>>}
  */
 export async function splitTextWithLangChain(text, options = {}) {
-  const { chunkSize = 750, chunkOverlap = 120 } = options;
+  const { chunkSize = 750, chunkOverlap = 120, pageNumber = 1 } = options;
   if (!text || typeof text !== "string") return [];
 
   const splitter = new RecursiveCharacterTextSplitter({
@@ -163,21 +174,68 @@ export async function splitTextWithLangChain(text, options = {}) {
   return rawChunks
     .map((content, idx) => ({
       chunkIndex: idx,
+      pageNumber,
       content: content.trim(),
     }))
     .filter((c) => c.content.length > 20);
 }
 
 /**
+ * Splits an array of page texts (one entry per page) into page-attributed sentence chunks.
+ * Ensures chunks NEVER merge text across page boundaries, strictly preserving exact page numbers.
+ *
+ * @param {Array<string | { text: string, pageNumber: number }>} pages - Array of page texts or page objects.
+ * @param {object} [options]
+ * @param {number} [options.targetChunkSize=700]
+ * @param {number} [options.sentenceOverlap=1]
+ * @returns {Array<{ chunkIndex: number, pageNumber: number, content: string }>}
+ */
+export function splitPagesIntoChunks(pages, options = {}) {
+  if (!Array.isArray(pages) || pages.length === 0) return [];
+
+  const allChunks = [];
+  let currentChunkIndex = 0;
+
+  pages.forEach((pageItem, index) => {
+    let pageText = "";
+    let pageNumber = index + 1;
+
+    if (typeof pageItem === "string") {
+      pageText = pageItem;
+    } else if (pageItem && typeof pageItem === "object") {
+      pageText = pageItem.text || "";
+      pageNumber = typeof pageItem.pageNumber === "number" ? pageItem.pageNumber : index + 1;
+    }
+
+    const clean = (pageText || "").trim();
+    if (!clean) return;
+
+    const pageChunks = splitTextIntoSentenceChunks(clean, {
+      ...options,
+      pageNumber,
+      startIndex: currentChunkIndex,
+    });
+
+    for (const chunk of pageChunks) {
+      allChunks.push(chunk);
+      currentChunkIndex++;
+    }
+  });
+
+  return allChunks;
+}
+
+/**
  * Main chunker function used by RAG upload pipeline.
  * Defaults to sentence-level chunking so no chunk ever breaks in the middle of a sentence.
+ * If given an array of page texts, chunks each page independently, preserving page numbers.
  *
- * @param {string} text - Raw document text.
+ * @param {string | string[]} textOrPages - Raw document text or array of page texts.
  * @param {object|number} [optionsOrSize] - Options object or legacy chunkSize number.
  * @param {number} [legacyOverlap] - Legacy overlap number.
- * @returns {Array<{ chunkIndex: number, content: string }>}
+ * @returns {Array<{ chunkIndex: number, pageNumber: number, content: string }>}
  */
-export function splitTextIntoChunks(text, optionsOrSize = 700, legacyOverlap = 1) {
+export function splitTextIntoChunks(textOrPages, optionsOrSize = 700, legacyOverlap = 1) {
   let options = {};
   if (typeof optionsOrSize === "number") {
     options = {
@@ -188,5 +246,9 @@ export function splitTextIntoChunks(text, optionsOrSize = 700, legacyOverlap = 1
     options = optionsOrSize;
   }
 
-  return splitTextIntoSentenceChunks(text, options);
+  if (Array.isArray(textOrPages)) {
+    return splitPagesIntoChunks(textOrPages, options);
+  }
+
+  return splitTextIntoSentenceChunks(textOrPages, options);
 }

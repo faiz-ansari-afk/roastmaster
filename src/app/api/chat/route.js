@@ -133,10 +133,10 @@ export async function POST(req) {
             ragContext = retrievedDocs
               .map(
                 (c, idx) =>
-                  `[Excerpt ${idx + 1} from "${c.fileName}" (Relevance: ${(c.similarity * 100).toFixed(0)}%)]:\n"${c.content}"`
+                  `[Excerpt ${idx + 1} | File: ${c.fileName} | Page: ${c.pageNumber || 1} (Relevance: ${(c.similarity * 100).toFixed(0)}%)]:\n"${c.content}"`
               )
               .join("\n\n");
-            console.log(`[Chat API RAG] Retrieved ${retrievedDocs.length} chunks from Aiven pgvector for session: ${sessionId}`);
+            console.log(`[Chat API RAG] Retrieved ${retrievedDocs.length} chunks with page numbers from Aiven pgvector for session: ${sessionId}`);
           }
         }
       } catch (ragErr) {
@@ -195,6 +195,14 @@ RAG RULES:
 1. Ground your roast and advice directly in the facts, claims, code, or context of the document excerpts above.
 2. In "roast", mock or roast their document, ideas, or questions with razor-sharp standup comedy punchlines (1-2 sentences).
 3. In "suggestion" (Backstage Real Talk), answer the user's specific query with genuine facts and constructive advice from the document.
+4. STRICT CITATION OF REAL PAGE NUMBERS (MANDATORY):
+   - Whenever answering questions or stating facts from the document excerpts, provide the exact source citation at the end of the answer in this exact format:
+     Source: <fileName>, Page <pageNumber>
+   - Example:
+     Employees are entitled to 30 days of annual leave.
+
+     Source: employee-handbook.pdf, Page 17
+   - NEVER invent or hallucinate page numbers. ONLY cite the exact Page number provided in the excerpt header above. The retrieval layer has provided the true page number.
 `;
     }
 
@@ -237,9 +245,35 @@ RAG RULES:
         finalPayload.ragSources = retrievedDocs.map((d) => ({
           fileName: d.fileName,
           chunkIndex: d.chunkIndex,
+          pageNumber: d.pageNumber || 1,
           similarity: d.similarity,
           snippet: d.content.slice(0, 160) + (d.content.length > 160 ? "..." : ""),
         }));
+
+        // Determine top verified source and page number from retrieval layer
+        const topDoc = retrievedDocs[0];
+        const primarySource = `Source: ${topDoc.fileName}, Page ${topDoc.pageNumber || 1}`;
+        finalPayload.source = primarySource;
+
+        // If the answer in suggestion does not cite the source or hallucinated an invalid page number,
+        // guarantee accuracy by verifying against retrieved chunks
+        if (finalPayload.suggestion && typeof finalPayload.suggestion === "string") {
+          const sourceMatch = finalPayload.suggestion.match(/Source:\s*([^,\n]+),\s*Page\s*(\d+)/i);
+          if (sourceMatch) {
+            const citedPage = parseInt(sourceMatch[2], 10);
+            const validPages = retrievedDocs.map((d) => d.pageNumber || 1);
+            if (!validPages.includes(citedPage)) {
+              // Replace hallucinated page number with the actual page number from the retrieval layer
+              finalPayload.suggestion = finalPayload.suggestion.replace(
+                sourceMatch[0],
+                `Source: ${topDoc.fileName}, Page ${topDoc.pageNumber || 1}`
+              );
+            }
+          } else if (!finalPayload.suggestion.toLowerCase().includes("source:")) {
+            // Append the true source and page citation from the retrieval layer
+            finalPayload.suggestion = `${finalPayload.suggestion.trim()}\n\nSource: ${topDoc.fileName}, Page ${topDoc.pageNumber || 1}`;
+          }
+        }
       }
 
       try {

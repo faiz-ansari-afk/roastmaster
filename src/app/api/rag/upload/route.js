@@ -59,17 +59,17 @@ export async function POST(req) {
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
 
-    // Extract text using unpdf (pure workerless build designed for Next.js / serverless)
-    let rawText = "";
+    // Extract text page-by-page using unpdf (mergePages: false) to preserve exact page numbers
+    let pageTexts = [];
     let totalPages = 1;
     try {
-      const result = await extractText(uint8Array, { mergePages: true });
-      rawText = typeof result?.text === "string"
-        ? result.text
-        : Array.isArray(result?.text)
-          ? result.text.join("\n\n")
-          : "";
+      const result = await extractText(uint8Array, { mergePages: false });
       totalPages = result?.totalPages || 1;
+      if (Array.isArray(result?.text)) {
+        pageTexts = result.text;
+      } else if (typeof result?.text === "string") {
+        pageTexts = [result.text];
+      }
     } catch (parseErr) {
       console.error("[RAG Upload] Failed to parse PDF:", parseErr);
       return NextResponse.json(
@@ -78,7 +78,8 @@ export async function POST(req) {
       );
     }
 
-    if (!rawText || rawText.trim().length < 30) {
+    const totalExtractedLength = pageTexts.reduce((sum, p) => sum + (p ? p.trim().length : 0), 0);
+    if (totalExtractedLength < 30) {
       return NextResponse.json(
         {
           error:
@@ -88,8 +89,8 @@ export async function POST(req) {
       );
     }
 
-    // Split raw text strictly at complete sentence boundaries with 1-sentence overlap
-    const textChunks = splitTextIntoChunks(rawText, {
+    // Split text strictly per page at complete sentence boundaries, preserving exact page numbers
+    const textChunks = splitTextIntoChunks(pageTexts, {
       targetChunkSize: 700,
       sentenceOverlap: 1,
     });
@@ -101,7 +102,7 @@ export async function POST(req) {
       );
     }
 
-    console.log(`[RAG Upload] Generated ${textChunks.length} chunks across ${totalPages} pages. Generating embeddings...`);
+    console.log(`[RAG Upload] Generated ${textChunks.length} page-attributed chunks across ${totalPages} pages. Generating embeddings...`);
 
     // Batch embedding generation (Gemini embedding API)
     // To avoid rate-limit spikes on large PDFs, process in batches of 10
@@ -119,6 +120,7 @@ export async function POST(req) {
         if (Array.isArray(emb) && emb.length > 0) {
           chunksWithEmbeddings.push({
             chunkIndex: chunk.chunkIndex,
+            pageNumber: chunk.pageNumber || 1,
             content: chunk.content,
             embedding: emb,
           });

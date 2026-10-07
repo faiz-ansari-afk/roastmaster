@@ -59,7 +59,7 @@ export function formatVectorForPg(vector) {
  * @param {string} params.sessionId
  * @param {string} [params.userId]
  * @param {string} params.fileName
- * @param {Array<{ content: string, chunkIndex: number, embedding: number[] }>} params.chunks
+ * @param {Array<{ content: string, chunkIndex: number, pageNumber?: number, embedding: number[] }>} params.chunks
  */
 export async function insertDocumentChunks({ sessionId, userId = null, fileName, chunks }) {
   const db = getDbPool();
@@ -82,8 +82,8 @@ export async function insertDocumentChunks({ sessionId, userId = null, fileName,
     );
 
     const insertQuery = `
-      INSERT INTO document_chunks (session_id, user_id, file_name, chunk_index, content, embedding)
-      VALUES ($1, $2, $3, $4, $5, $6::vector)
+      INSERT INTO document_chunks (session_id, user_id, file_name, chunk_index, page_number, content, embedding)
+      VALUES ($1, $2, $3, $4, $5, $6, $7::vector)
     `;
 
     for (const chunk of chunks) {
@@ -93,6 +93,7 @@ export async function insertDocumentChunks({ sessionId, userId = null, fileName,
         userId,
         fileName,
         chunk.chunkIndex,
+        chunk.pageNumber || 1,
         chunk.content,
         vectorLiteral,
       ]);
@@ -116,7 +117,7 @@ export async function insertDocumentChunks({ sessionId, userId = null, fileName,
  * @param {number[]} params.queryVector
  * @param {number} [params.limit=4]
  * @param {number} [params.minSimilarity=0.35]
- * @returns {Promise<Array<{ id: number, fileName: string, chunkIndex: number, content: string, similarity: number }>>}
+ * @returns {Promise<Array<{ id: number, fileName: string, chunkIndex: number, pageNumber: number, content: string, similarity: number }>>}
  */
 export async function searchSimilarChunks({
   sessionId,
@@ -142,6 +143,7 @@ export async function searchSimilarChunks({
       id,
       file_name AS "fileName",
       chunk_index AS "chunkIndex",
+      page_number AS "pageNumber",
       content,
       1 - (embedding <=> $1::vector) AS similarity
     FROM document_chunks
@@ -161,6 +163,7 @@ export async function searchSimilarChunks({
 
     return res.rows.map((row) => ({
       ...row,
+      pageNumber: row.pageNumber || 1,
       similarity: Number(parseFloat(row.similarity).toFixed(4)),
     }));
   } catch (err) {
@@ -172,14 +175,17 @@ export async function searchSimilarChunks({
 /**
  * Retrieves the list of documents indexed for a specific chat session.
  * @param {string} sessionId
- * @returns {Promise<Array<{ fileName: string, totalChunks: number }>>}
+ * @returns {Promise<Array<{ fileName: string, totalChunks: number, totalPages: number }>>}
  */
 export async function getSessionDocuments(sessionId) {
   const db = getDbPool();
   if (!db || !sessionId) return [];
 
   const query = `
-    SELECT file_name AS "fileName", COUNT(*) AS "totalChunks"
+    SELECT 
+      file_name AS "fileName", 
+      COUNT(*) AS "totalChunks",
+      COALESCE(MAX(page_number), 1) AS "totalPages"
     FROM document_chunks
     WHERE session_id = $1
     GROUP BY file_name
@@ -191,6 +197,7 @@ export async function getSessionDocuments(sessionId) {
     return res.rows.map((r) => ({
       fileName: r.fileName,
       totalChunks: parseInt(r.totalChunks, 10),
+      totalPages: parseInt(r.totalPages, 10) || 1,
     }));
   } catch (err) {
     console.error("[DB] Error fetching session documents:", err.message);
