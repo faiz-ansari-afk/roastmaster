@@ -5,7 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 const BASE_URL = "https://roastmaster-phi.vercel.app";
 
 export const viewport: Viewport = {
-  themeColor: "#12030C",
+  themeColor: "#FFF5F7",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -149,7 +149,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="bg-[#12030C] text-[#FCE7F3] antialiased selection:bg-[#BE185D] selection:text-white">
+      <body className="bg-[#FFF5F7] text-[#2D1C24] antialiased selection:bg-[#FCE7F3] selection:text-[#BE185D]">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
