@@ -8,6 +8,7 @@ import {
   deleteSession,
   formatSessionDisplayTitle,
   backfillHistoricalSessionTitles,
+  cleanEmptyOrphanSessions,
 } from "@/lib/firestore";
 import SearchModal from "./SearchModal";
 import SignOutModal from "./SignOutModal";
@@ -92,6 +93,8 @@ export default function Sidebar({
       setLoadingSessions(false);
       // Auto-backfill older historical sets with dynamic titles in Firestore
       backfillHistoricalSessionTitles(user.uid, data);
+      // Auto-purge any empty ghost sessions left behind
+      cleanEmptyOrphanSessions(user.uid, data);
     });
 
     return () => unsubscribe();
@@ -286,7 +289,7 @@ export default function Sidebar({
               <div className="h-14 liquid-glass-subtle rounded-xl" />
               <p className="pt-2 text-[11px]">Unlocking Green Room sets...</p>
             </div>
-          ) : sessions.length === 0 ? (
+          ) : sessions.filter((s) => s.id === activeSessionId || (typeof s.messageCount === "number" && s.messageCount > 0) || s.title?.startsWith("📄")).length === 0 ? (
             <div className="text-center text-[#836270] text-xs mt-8 px-4 py-8 rounded-2xl liquid-glass shadow-2xs">
               <Flame className="w-8 h-8 text-[#F472B6]/60 mx-auto mb-2" />
               <p className="text-[#2D1C24] font-semibold text-xs">No Past Sets Yet</p>
@@ -295,8 +298,10 @@ export default function Sidebar({
               </p>
             </div>
           ) : (
-            sessions.map((session) => {
-              const isActive = activeSessionId === session.id;
+            sessions
+              .filter((s) => s.id === activeSessionId || (typeof s.messageCount === "number" && s.messageCount > 0) || s.title?.startsWith("📄"))
+              .map((session) => {
+                const isActive = activeSessionId === session.id;
               return (
                 <div
                   key={session.id}

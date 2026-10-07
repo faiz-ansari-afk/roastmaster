@@ -731,6 +731,8 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const [uploadError, setUploadError] = useState(null);
   const fileInputRef = useRef(null);
   const sessionCreatedLocallyRef = useRef(null);
+  const currentSessionIdRef = useRef(sessionId);
+  const isSendingRef = useRef(false);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
@@ -820,6 +822,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   }, [currentSessionId]);
 
   useEffect(() => {
+    currentSessionIdRef.current = sessionId;
     if (sessionId && sessionCreatedLocallyRef.current === sessionId) {
       sessionCreatedLocallyRef.current = null;
       setCurrentSessionId(sessionId);
@@ -897,17 +900,19 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     setSessionTitle(docTitle);
 
     try {
-      let sid = currentSessionId;
+      let sid = currentSessionIdRef.current || currentSessionId;
       if (!sid) {
         if (user && !isGuest) {
           sid = await createSession(user.uid, docTitle);
           if (sid) {
             sessionCreatedLocallyRef.current = sid;
+            currentSessionIdRef.current = sid;
             setCurrentSessionId(sid);
             onSessionCreated?.(sid);
           }
         } else {
           sid = `session_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+          currentSessionIdRef.current = sid;
           setCurrentSessionId(sid);
         }
       } else if (user && !isGuest) {
@@ -981,10 +986,10 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     }
   };
 
-  const saveExchange = async (userText, botReply, isFirstMsg) => {
+  const saveExchange = async (userText, botReply, isFirstMsg, targetSessionId = null) => {
     if (!user || isGuest || !botReply) return;
     try {
-      let sid = currentSessionId;
+      let sid = targetSessionId || currentSessionIdRef.current || currentSessionId;
       const dynamicTitle =
         botReply?.title ||
         (userText ? (userText.length > 40 ? userText.slice(0, 40) + "..." : userText) : "Standup Roast");
@@ -993,6 +998,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         sid = await createSession(user.uid, dynamicTitle);
         if (sid) {
           sessionCreatedLocallyRef.current = sid;
+          currentSessionIdRef.current = sid;
           setCurrentSessionId(sid);
           onSessionCreated?.(sid);
         }
@@ -1014,7 +1020,8 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
-    if (!text || loading || isStreaming) return;
+    if (!text || loading || isStreaming || isSendingRef.current) return;
+    isSendingRef.current = true;
     setInput("");
     setMobileToolsOpen(false);
 
@@ -1029,27 +1036,14 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     setLoading(true);
 
     const isFirst = messages.length === 0;
-
-    let sid = currentSessionId;
-    if (!sid && user && !isGuest) {
-      const cleanForTitle = text.replace(/```[a-zA-Z0-9_-]*/g, "").replace(/```/g, "").trim();
-      const preliminaryTitle = cleanForTitle.length > 40 ? cleanForTitle.slice(0, 40) + "..." : (cleanForTitle || "Code Roast");
-      const cleanTitle = preliminaryTitle.charAt(0).toUpperCase() + preliminaryTitle.slice(1);
-      setSessionTitle(cleanTitle);
-      sid = await createSession(user.uid, cleanTitle);
-      if (sid) {
-        sessionCreatedLocallyRef.current = sid;
-        setCurrentSessionId(sid);
-        onSessionCreated?.(sid);
-      }
-    }
+    const activeSid = currentSessionIdRef.current || currentSessionId;
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId: sid || currentSessionId,
+          sessionId: activeSid || null,
           messages: updatedMessages.map((m) => {
             let contentText = "";
             if (typeof m.content === "object" && m.content !== null) {
@@ -1073,7 +1067,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       }
       // Mark as isNew: true so the character-by-character reveal triggers
       setMessages((prev) => [...prev, { role: "assistant", content: data, isNew: true }]);
-      saveExchange(text, data, isFirst);
+      await saveExchange(text, data, isFirst, activeSid);
     } catch (err) {
       console.error("sendMessage:", err);
       setLoading(false);
@@ -1087,8 +1081,11 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       };
 
       setMessages((prev) => [...prev, { role: "assistant", content: fallbackError, isNew: true }]);
+    } finally {
+      setLoading(false);
+      isSendingRef.current = false;
     }
-  }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated, saveExchange]);
+  }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated]);
 
   const handleKey = (e) => {
     if (e.key === "Tab") {

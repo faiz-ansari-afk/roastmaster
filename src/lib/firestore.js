@@ -245,6 +245,37 @@ export async function backfillHistoricalSessionTitles(userId, sessions) {
   }
 }
 
+let isCleaningOrphans = false;
+// Auto-purges empty ghost sessions that have 0 messages and were left behind
+export async function cleanEmptyOrphanSessions(userId, sessions) {
+  if (!userId || !Array.isArray(sessions) || sessions.length === 0 || isCleaningOrphans) return;
+
+  const emptySessions = sessions.filter((s) => {
+    const count = typeof s.messageCount === "number" ? s.messageCount : 0;
+    const isDocSession = typeof s.title === "string" && s.title.startsWith("📄");
+    return count === 0 && !isDocSession;
+  });
+
+  if (emptySessions.length === 0) return;
+
+  isCleaningOrphans = true;
+  try {
+    for (const session of emptySessions) {
+      try {
+        const msgs = await getMessages(userId, session.id);
+        if (!msgs || msgs.length === 0) {
+          console.log("[Firestore] Auto-purging empty orphan session:", session.id, session.title);
+          await deleteDoc(doc(db, "users", userId, "sessions", session.id));
+        }
+      } catch (e) {
+        console.warn("[Firestore] cleanEmptyOrphanSessions error:", e?.message);
+      }
+    }
+  } finally {
+    isCleaningOrphans = false;
+  }
+}
+
 // ── MESSAGES ──────────────────────────────────────────────────────────────────
 
 // Saves both user + bot message after an exchange
