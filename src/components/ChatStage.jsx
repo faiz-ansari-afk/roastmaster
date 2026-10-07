@@ -1,6 +1,6 @@
 "use client";
 // components/ChatStage.jsx — The Live Standup Comedy Roast Stage (Baby Pink Edition)
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
@@ -34,11 +34,35 @@ export default function ChatStage({ initialSessionId }) {
   const [chatResetKey, setChatResetKey] = useState(0);
   const [showAuth, setShowAuth] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const prevRouteSessionIdRef = useRef(routeSessionId);
 
-  // Sync state if route parameter changes (e.g. from sidebar clicks or back button)
+  // Sync state if route parameter changes (e.g. from sidebar clicks, Next router navigation, or direct navigation)
   useEffect(() => {
-    setCurrentSessionId(routeSessionId);
+    if (prevRouteSessionIdRef.current !== routeSessionId) {
+      prevRouteSessionIdRef.current = routeSessionId;
+      setCurrentSessionId(routeSessionId);
+      setChatResetKey((k) => k + 1);
+    }
   }, [routeSessionId]);
+
+  // Listen for browser navigation (back/forward) to keep stage in sync
+  useEffect(() => {
+    const handlePopState = () => {
+      const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+      if (pathname === "/chat" || pathname === "/chat/") {
+        setCurrentSessionId(null);
+        setChatResetKey((k) => k + 1);
+      } else if (pathname.startsWith("/chat/")) {
+        const sid = pathname.replace(/^\/chat\//, "").split("/")[0];
+        if (sid) {
+          setCurrentSessionId(sid);
+          setChatResetKey((k) => k + 1);
+        }
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Reset session on logout
   useEffect(() => {
@@ -46,6 +70,7 @@ export default function ChatStage({ initialSessionId }) {
       if (currentSessionId) {
         router.push("/chat");
       }
+      setCurrentSessionId(null);
       setChatResetKey((k) => k + 1);
     }
   }, [user, currentSessionId, router]);
@@ -69,25 +94,27 @@ export default function ChatStage({ initialSessionId }) {
   }, []);
 
   const handleNewSession = () => {
-    if (typeof window !== "undefined" && window.location.pathname === "/chat" && !currentSessionId) {
-      setChatResetKey((k) => k + 1);
-    } else {
-      router.push("/chat");
+    setCurrentSessionId(null);
+    setChatResetKey((k) => k + 1);
+    if (typeof window !== "undefined") {
+      window.history.pushState(null, "", "/chat");
     }
+    router.push("/chat");
   };
 
   const handleSelectSession = (sid) => {
     if (!sid) {
-      router.push("/chat");
+      handleNewSession();
     } else {
+      setCurrentSessionId(sid);
+      setChatResetKey((k) => k + 1);
       router.push(`/chat/${sid}`);
     }
   };
 
   const handleDeleteSession = (deletedId) => {
     if (currentSessionId === deletedId || !currentSessionId) {
-      router.push("/chat");
-      setChatResetKey((k) => k + 1);
+      handleNewSession();
     }
   };
 
