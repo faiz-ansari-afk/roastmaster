@@ -26,6 +26,9 @@ export function AuthProvider({ children }) {
               displayName: profile.displayName || u.displayName,
               photoURL: profile.photoURL || u.photoURL,
               stageTitle: profile.stageTitle || null,
+              bio: profile.bio || null,
+              favoriteTopic: profile.favoriteTopic || null,
+              roastLevel: profile.roastLevel || null,
             };
           }
         } catch (profileErr) {
@@ -56,7 +59,7 @@ export function AuthProvider({ children }) {
     return cred;
   };
 
-  const updateUserProfile = async ({ displayName, photoURL }) => {
+  const updateUserProfile = async ({ displayName, photoURL, stageTitle, bio, roastLevel, favoriteTopic }) => {
     if (!auth.currentUser) return;
     const authUpdates = {};
     if (displayName !== undefined && displayName !== null) {
@@ -83,6 +86,10 @@ export function AuthProvider({ children }) {
       ...(prev || {}),
       displayName: displayName !== undefined ? displayName : prev?.displayName,
       photoURL: photoURL !== undefined ? photoURL : prev?.photoURL,
+      stageTitle: stageTitle !== undefined ? stageTitle : prev?.stageTitle,
+      bio: bio !== undefined ? bio : prev?.bio,
+      roastLevel: roastLevel !== undefined ? roastLevel : prev?.roastLevel,
+      favoriteTopic: favoriteTopic !== undefined ? favoriteTopic : prev?.favoriteTopic,
     }));
   };
 

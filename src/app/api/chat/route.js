@@ -87,7 +87,7 @@ function parseStructuredRoast(text, fallbackQuery = "") {
 
 export async function POST(req) {
   try {
-    const { messages, sessionId } = await req.json();
+    const { messages, sessionId, userProfile } = await req.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Invalid messages" }, { status: 400 });
@@ -145,6 +145,44 @@ export async function POST(req) {
     }
 
     let activeSystemPrompt = SYSTEM_PROMPT;
+
+    // ── VIP Front-Row Audience Profile Context (for Personalized Roasting) ──
+    if (userProfile && typeof userProfile === "object") {
+      const profileItems = [];
+      if (userProfile.displayName && typeof userProfile.displayName === "string") {
+        profileItems.push(`- Heckler Name / Handle: "${userProfile.displayName.trim()}"`);
+      }
+      if (userProfile.stageTitle && typeof userProfile.stageTitle === "string") {
+        profileItems.push(`- Persona / Stage Title: "${userProfile.stageTitle.trim()}"`);
+      }
+      if (userProfile.bio && typeof userProfile.bio === "string" && userProfile.bio.trim()) {
+        profileItems.push(`- Bio / Self-Confession: "${userProfile.bio.trim()}"`);
+      }
+      if (userProfile.favoriteTopic && typeof userProfile.favoriteTopic === "string" && userProfile.favoriteTopic.trim()) {
+        profileItems.push(`- Favorite Tech / Coding Habit: "${userProfile.favoriteTopic.trim()}"`);
+      }
+      if (userProfile.roastLevel && typeof userProfile.roastLevel === "string") {
+        profileItems.push(`- Requested Roast Intensity: "${userProfile.roastLevel.trim()}"`);
+      }
+
+      if (profileItems.length > 0) {
+        activeSystemPrompt += `
+
+VIP FRONT-ROW HECKLER PROFILE (Audience Member Context):
+======================================================
+${profileItems.join("\n")}
+======================================================
+
+PROFILE ROAST RULES:
+1. When the user asks "roast me", "roast my profile", asks about their persona/habits, or when making comedic crowd work callbacks, roast their specific profile traits (their declared persona, stage title, bio quirks, favorite tech, or coding sins)!
+2. Calibrate your comedy punchlines to their requested roast intensity:
+   - "mild" (3/10): light, witty teasing; friendly ego checks.
+   - "sarcastic" (7/10): sharp, punchy comedy club crowd work.
+   - "incineration" (9.8/10): savage, ruthless technical humiliation. Zero mercy.
+3. NEVER mention, invent, or ask for passwords, secret tokens, or private authentication credentials. Focus 100% on their public comedy persona, coding quirks, and bio.
+`;
+      }
+    }
     if (ragContext) {
       activeSystemPrompt += `
 

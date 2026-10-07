@@ -243,6 +243,10 @@ export default function ProfilePage() {
       await updateUserProfile({
         displayName: trimmedName,
         photoURL: cleanPhoto || null,
+        stageTitle: stageTitle.trim(),
+        bio: bio.trim(),
+        roastLevel,
+        favoriteTopic: favoriteTopic.trim(),
       });
 
       if (savedToFirestore) {

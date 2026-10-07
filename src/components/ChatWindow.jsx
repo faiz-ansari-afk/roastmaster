@@ -8,6 +8,7 @@ import {
   saveCompletedExchange,
   updateSessionTitle,
   formatSessionDisplayTitle,
+  getUserProfile,
 } from "@/lib/firestore";
 import {
   Flame,
@@ -738,6 +739,24 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const mobileToolsRef = useRef(null);
   const mobileToolsBtnRef = useRef(null);
+  const [userProfile, setUserProfile] = useState(null);
+
+  // Load logged-in user profile details for personalized roasts
+  useEffect(() => {
+    if (!user || isGuest) {
+      setUserProfile(null);
+      return;
+    }
+    let isMounted = true;
+    getUserProfile(user.uid)
+      .then((p) => {
+        if (isMounted && p) setUserProfile(p);
+      })
+      .catch((err) => console.warn("[ChatWindow] Profile fetch warning:", err));
+    return () => {
+      isMounted = false;
+    };
+  }, [user, isGuest]);
 
   // Close mobile action dropdown when clicking outside
   useEffect(() => {
@@ -1038,12 +1057,25 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     const isFirst = messages.length === 0;
     const activeSid = currentSessionIdRef.current || currentSessionId;
 
+    // Securely assemble public profile persona for comedy crowd work (never pass passwords or tokens)
+    const profilePayload =
+      user && !isGuest
+        ? {
+            displayName: userProfile?.displayName || user?.displayName || null,
+            stageTitle: userProfile?.stageTitle || user?.stageTitle || null,
+            bio: userProfile?.bio || user?.bio || null,
+            favoriteTopic: userProfile?.favoriteTopic || user?.favoriteTopic || null,
+            roastLevel: userProfile?.roastLevel || user?.roastLevel || null,
+          }
+        : null;
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: activeSid || null,
+          userProfile: profilePayload,
           messages: updatedMessages.map((m) => {
             let contentText = "";
             if (typeof m.content === "object" && m.content !== null) {
@@ -1085,7 +1117,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       setLoading(false);
       isSendingRef.current = false;
     }
-  }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated]);
+  }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated, userProfile]);
 
   const handleKey = (e) => {
     if (e.key === "Tab") {
