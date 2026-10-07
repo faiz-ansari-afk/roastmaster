@@ -1,6 +1,6 @@
 "use client";
 // app/page.jsx — Roastmaster Developer Portal & Live Roast Arena Entrance
-// Featuring Blackish-Pink Venom Goo Liquid Symbiote Background & Glassmorphism UI
+// Featuring Blackish-Pink Venom Goo Liquid Symbiote Background, Glassmorphism UI & Interactive Real CLI Simulator
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -21,88 +21,110 @@ import {
   FileText,
   ShieldAlert,
   Zap,
+  GitCommit,
+  GitPullRequest,
+  PackageCheck,
+  Download,
 } from "lucide-react";
 
-// Interactive Code Snippet Previews to entice developers
-const CODE_PREVIEWS = [
+// Real CLI Terminal Scenarios based on actual screenshots
+const CLI_SCENARIOS = [
   {
-    id: "react-loop",
-    title: "useEffect.tsx",
-    language: "typescript",
-    label: "Frontend State Trap",
-    severity: 9.8,
-    category: "React / Architecture",
-    code: `// Junior's "clean" reactive dashboard
-useEffect(() => {
-  fetchDashboardMetrics().then(data => {
-    setMetrics(data);
-    setRefreshCount(refreshCount + 1); // 💀 Infinite re-render loop
-  });
-}, [refreshCount]);`,
+    id: "roast-repo",
+    tabTitle: "roastmaster -r",
+    badge: "Repository Audit",
+    command: "roastmaster -r",
+    subtitle: "📦 Scanning Repository Context...",
+    scannedDetails:
+      'Project "roastmaster-ai" v1.0.0. Dependencies (18): [@anthropic-ai/sdk, @google/generative-ai, @langchain/textsplitters, @phosphor-icons/react, class-variance-authority, clsx, firebase, lucide-react, next, pdf-parse, pg, radix-ui, react, react-dom, shadcn...]. DevDependencies (8): [@tailwindcss/postcss, @types/node, @types/react, @types/react-dom, eslint, eslint-config-next, tailwindcss, typescript]. Scripts: [dev, build, start, lint].\nRecent commit: UI basic change (be14337)',
+    cardTitle: "DUAL ICON SET IDENTITY CRISIS",
+    category: "Frontend",
+    severity: 6,
+    severityBar: "██████░░░░",
     roast:
-      "You put `refreshCount` in the dependency array of a `useEffect` that increments `refreshCount`? That's not reactive architecture, that's a DDOS attack on your own browser dressed up in TypeScript.",
+      "“Importing both Phosphor and Lucide icons in the same project is like wearing two different wristwatches to tell the exact same wrong time. Your bundle size thanks you for the extra weight.”",
     realTalk:
-      "Use a functional state updater `setRefreshCount(prev => prev + 1)` with an empty dependency array or extract the trigger to an explicit user event handler instead of coupling side effects.",
+      "Pick a single icon library (Lucide is plenty) and tree-shake your imports. Keeping redundant icon suites wastes precious bundle budget and slows initial load times.",
   },
   {
-    id: "go-error",
-    title: "billing_worker.go",
-    language: "go",
-    label: "Silent Payment Failure",
-    severity: 10.0,
-    category: "Backend / Golang",
-    code: `func ProcessStripeCharge(ctx context.Context, order Order) error {
-    res, err := stripe.Charges.Create(order.Payload)
-    if err != nil {
-        // TODO: fix in prod before Monday standup
-        return nil // 💸 Money vanished into the void
-    }
-    return nil
-}`,
+    id: "roast-diff",
+    tabTitle: "roastmaster --diff",
+    badge: "Git Diff Pre-Commit",
+    command: "roastmaster --diff",
+    subtitle: "🔍 Analyzing Git Diff: 3 files touched",
+    scannedDetails: null,
+    cardTitle: "MARKDOWN OVER-ENGINEERING PANIC",
+    category: "Git Sins",
+    severity: 4,
+    severityBar: "████░░░░░░",
     roast:
-      "Returning `nil` on a failed Stripe charge with a `// TODO: fix in prod` comment? You didn't write defensive backend code, you just committed accidental corporate embezzlement.",
+      "“Bro spent more time styling README badges than writing code, treating GitHub like a digital beauty pageant. Even your documentation has an identity crisis.”",
     realTalk:
-      "Wrap errors with `fmt.Errorf('stripe charge failed: %w', err)` and implement an idempotent dead-letter retry queue instead of swallowing exceptions into the void.",
+      "Keep the README concise with quick install instructions and actual architecture diagrams instead of inflating badge counts.",
   },
   {
-    id: "microservices",
-    title: "docker-compose.yml",
-    language: "yaml",
-    label: "Microservice Overkill",
-    severity: 9.2,
-    category: "DevOps / Infra",
-    code: `# Single-user personal todo app
-services:
-  auth-microservice:
-    image: node:20
-  todo-crud-service:
-    image: rust:latest
-  kafka-event-bus:
-    image: confluentinc/cp-kafka:7.4.0
-  k8s-istio-mesh:
-    image: istio/proxyv2:1.20`,
+    id: "roast-file",
+    tabTitle: "roastmaster -f package.json",
+    badge: "Single File Inspect",
+    command: "roastmaster -f package.json",
+    subtitle: "📂 Inspecting file: package.json (65 lines)",
+    scannedDetails: null,
+    cardTitle: "NEXT.JS CLI IDENTITY CRISIS",
+    category: "Dependencies",
+    severity: 8,
+    severityBar: "████████░░",
     roast:
-      "Four microservices, Apache Kafka, and an Istio service mesh for a personal todo app with 1 active user? You're not scaling for enterprise, you're cosplaying as Netflix with negative revenue.",
+      "“Bro crammed a Next.js web framework, Firebase, and a CLI binary into one package.json like he's stuffing a suitcase with bricks for a spirit airline flight.”",
     realTalk:
-      "Start with a boring SQLite monolith. You cannot out-architect an absence of users with distributed tracing overhead.",
+      "Separate your Next.js frontend and your CLI tool into a monorepo or two independent packages so your CLI users aren't downloading a massive React UI library just to run a terminal command.",
+  },
+  {
+    id: "roast-jwt",
+    tabTitle: "npx roastmaster [prompt]",
+    badge: "Freestyle Query",
+    command: 'npx roastmaster "I store plain text JWTs in localStorage"',
+    subtitle: '🎯 Topic: "I store plain text JWTs in localStorage"',
+    scannedDetails: null,
+    cardTitle: "LOCAL STORAGE SESSION SUICIDE",
+    category: "Security",
+    severity: 9,
+    severityBar: "█████████░",
+    roast:
+      "“Storing raw JWTs in localStorage is basically hanging your house keys with your home address on the front gate. Even a junior XSS script is going to treat your session tokens like a free buffet.”",
+    realTalk:
+      "Move your tokens to httpOnly, secure cookies so client-side JavaScript can't touch them, preventing catastrophic XSS credential theft.",
+  },
+  {
+    id: "roast-help",
+    tabTitle: "roastmaster --help",
+    badge: "CLI Manual",
+    command: "roastmaster --help",
+    isManual: true,
   },
 ];
 
 export default function HomePage() {
   const router = useRouter();
-  const [activeSnippetIndex, setActiveSnippetIndex] = useState(0);
+  const [activeCliIndex, setActiveCliIndex] = useState(0);
   const [copiedCli, setCopiedCli] = useState(false);
+  const [copiedNpx, setCopiedNpx] = useState(false);
 
-  const activeSnippet = CODE_PREVIEWS[activeSnippetIndex];
+  const activeScenario = CLI_SCENARIOS[activeCliIndex];
 
   const handleEnterStage = () => {
     router.push("/chat");
   };
 
-  const handleCopyCli = () => {
-    navigator.clipboard?.writeText("npx roastmaster-ai --roast-repo");
-    setCopiedCli(true);
-    setTimeout(() => setCopiedCli(false), 2200);
+  const handleCopyCommand = (cmdText, setFn) => {
+    navigator.clipboard?.writeText(cmdText);
+    setFn(true);
+    setTimeout(() => setFn(false), 2200);
+  };
+
+  const scrollToTerminal = () => {
+    document
+      .getElementById("cli-terminal-section")
+      ?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -170,7 +192,7 @@ export default function HomePage() {
                   ROASTMASTER
                 </span>
                 <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#EC4899]/20 text-[#F472B6] border border-[#EC4899]/30">
-                  v2.5 LIVE
+                  v2.5 CLI &amp; WEB
                 </span>
               </div>
               <p className="text-[10px] font-mono text-[#F472B6]/80 tracking-widest uppercase">
@@ -182,16 +204,16 @@ export default function HomePage() {
           {/* Tech Stack Indicator Pills (Desktop) */}
           <div className="hidden lg:flex items-center gap-2 font-mono text-[11px]">
             <span className="px-3 py-1 rounded-full dark-liquid-glass-pill text-[#FBCFE8] flex items-center gap-1.5 border border-white/10">
+              <Terminal className="w-3.5 h-3.5 text-[#F472B6]" />
+              npm: roastmaster-ai
+            </span>
+            <span className="px-3 py-1 rounded-full dark-liquid-glass-pill text-[#FBCFE8] flex items-center gap-1.5 border border-white/10">
               <Cpu className="w-3.5 h-3.5 text-[#F472B6]" />
               Gemini 2.5 AI
             </span>
             <span className="px-3 py-1 rounded-full dark-liquid-glass-pill text-[#FBCFE8] flex items-center gap-1.5 border border-white/10">
               <Database className="w-3.5 h-3.5 text-[#F472B6]" />
               pgvector RAG
-            </span>
-            <span className="px-3 py-1 rounded-full dark-liquid-glass-pill text-[#FBCFE8] flex items-center gap-1.5 border border-white/10">
-              <Layers className="w-3.5 h-3.5 text-[#F472B6]" />
-              LangChain Splitter
             </span>
           </div>
 
@@ -212,10 +234,10 @@ export default function HomePage() {
       <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-20">
         {/* ── Hero Section ─────────────────────────────────────────────────── */}
         <div className="text-center max-w-4xl mx-auto mb-16 sm:mb-20">
-          {/* Live Marquee Badge */}
+          {/* Live Marquee Badge with npm indicator */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full dark-liquid-glass-pill border border-[#F472B6]/40 text-[#FDA4AF] text-xs font-mono font-bold tracking-widest uppercase mb-6 shadow-[0_0_25px_rgba(244,114,182,0.25)]">
             <Radio className="w-3.5 h-3.5 text-[#F43F5E] animate-pulse" />
-            <span>UNFILTERED DEV STAND-UP • NO MERCY CODE REVIEWS</span>
+            <span>NOW ON NPM • TERMINAL CLI + LIVE COMEDY CELLAR</span>
           </div>
 
           {/* Hero Main Heading */}
@@ -225,15 +247,12 @@ export default function HomePage() {
               SUCKS.
             </span>
             <br />
-            LET&apos;S ROAST IT LIVE.
+            ROAST IT IN YOUR TERMINAL.
           </h1>
 
           {/* Subheading */}
           <p className="mt-6 text-base sm:text-lg text-[#FBCFE8]/90 max-w-2xl mx-auto font-sans leading-relaxed">
-            Tired of gentle PR reviews and diplomatic feedback? Roastmaster
-            combines <span className="text-white font-bold">Google Gemini AI</span> with{" "}
-            <span className="text-white font-bold">Aiven pgvector RAG</span> to turn your
-            questionable architecture, recursive state bugs, and midnight commits into savage standup routines — plus senior-staff constructive truth.
+            Tired of polite PR comments and passive-aggressive code reviews? Roastmaster is the unfiltered developer comedian powered by <span className="text-white font-bold">Google Gemini</span> &amp; <span className="text-white font-bold">pgvector RAG</span>. Run it in any repo to roast your commits before you push — plus senior-staff constructive truth.
           </p>
 
           {/* Primary Action Buttons */}
@@ -249,156 +268,359 @@ export default function HomePage() {
 
             {/* Quick CLI Copy Pill */}
             <button
-              onClick={handleCopyCli}
-              className="px-5 py-3.5 rounded-2xl dark-liquid-glass-card hover:bg-white/10 text-xs sm:text-sm font-mono text-[#FBCFE8] border border-white/20 transition-all flex items-center gap-2.5 cursor-pointer active:scale-95"
+              onClick={() => handleCopyCommand("npx roastmaster-ai --roast-repo", setCopiedCli)}
+              className="px-5 py-4 rounded-2xl dark-liquid-glass-card hover:bg-white/10 text-xs sm:text-sm font-mono text-[#FBCFE8] border border-white/20 transition-all flex items-center gap-2.5 cursor-pointer active:scale-95 shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
               title="Copy terminal command"
             >
               <Terminal className="w-4 h-4 text-[#F472B6]" />
-              <span>npx roastmaster --roast-repo</span>
+              <span>npx roastmaster-ai --roast-repo</span>
               {copiedCli ? (
                 <Check className="w-4 h-4 text-emerald-400" />
               ) : (
                 <Copy className="w-4 h-4 text-[#FDA4AF]/70" />
               )}
             </button>
+
+            {/* Jump to Terminal Simulator */}
+            <button
+              onClick={scrollToTerminal}
+              className="px-4 py-4 rounded-2xl dark-liquid-glass-pill hover:text-white text-xs sm:text-sm font-mono text-[#FDA4AF]/80 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <span>See CLI Screenshots ↓</span>
+            </button>
           </div>
 
           {copiedCli && (
-            <p className="mt-3 text-xs font-mono text-emerald-400 tracking-wide">
-              ✓ CLI command copied to clipboard!
+            <p className="mt-3 text-xs font-mono text-emerald-400 tracking-wide animate-pulse">
+              ✓ Copied to clipboard! Run in any folder on your machine.
             </p>
           )}
         </div>
 
-        {/* ── Interactive "Taste The Roast" Playground ─────────────────────── */}
-        <section className="mb-24">
+        {/* ── LIVE CLI TERMINAL SIMULATOR SECTION (From Real Screenshots) ────── */}
+        <section id="cli-terminal-section" className="mb-24 scroll-mt-24">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full dark-liquid-glass-pill text-[#F472B6] text-[11px] font-mono font-bold tracking-widest uppercase mb-2">
-              <Zap className="w-3.5 h-3.5 text-amber-300" />
-              <span>LIVE INTERACTIVE PREVIEW</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full dark-liquid-glass-pill text-[#F472B6] text-[11px] font-mono font-bold tracking-widest uppercase mb-2">
+              <Terminal className="w-3.5 h-3.5 text-[#F472B6]" />
+              <span>INTERACTIVE CLI TERMINAL ENGINE</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black font-mono text-white uppercase tracking-tight">
-              TASTE THE ROAST
+            <h2 className="text-2xl sm:text-4xl font-black font-mono text-white uppercase tracking-tight">
+              ROASTMASTER IN YOUR SHELL
             </h2>
-            <p className="text-xs sm:text-sm text-[#FBCFE8]/75 font-sans mt-1">
-              Select a developer horror story below and see how Roastmaster shreds it.
+            <p className="text-xs sm:text-sm text-[#FBCFE8]/80 font-sans max-w-xl mx-auto mt-1">
+              Select a command below to preview the actual real-time terminal outputs produced by the CLI.
             </p>
           </div>
 
-          {/* Playground Deck Card */}
-          <div className="dark-liquid-glass rounded-3xl p-4 sm:p-7 max-w-5xl mx-auto shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] border border-white/15">
-            {/* Snippet Tabs */}
-            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-4 mb-6">
-              {CODE_PREVIEWS.map((snippet, idx) => {
-                const isActive = activeSnippetIndex === idx;
+          {/* Terminal Window Container */}
+          <div className="max-w-4xl mx-auto rounded-3xl dark-liquid-glass p-1.5 sm:p-2 border border-white/20 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.9)] overflow-hidden">
+            {/* Window Title Bar */}
+            <div className="bg-[#190412]/90 rounded-2xl p-3 sm:px-4 sm:py-3 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
+              {/* Traffic Lights + Title */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-[#EF4444] inline-block" />
+                  <span className="w-3 h-3 rounded-full bg-[#F59E0B] inline-block" />
+                  <span className="w-3 h-3 rounded-full bg-[#10B981] inline-block" />
+                </div>
+                <span className="font-mono text-xs text-[#FDA4AF]/70 font-bold hidden sm:inline">
+                  PowerShell — roastmaster-ai v2.5 CLI
+                </span>
+              </div>
+
+              {/* Quick Copy Command for Active Tab */}
+              <button
+                onClick={() => handleCopyCommand(activeScenario.command, setCopiedNpx)}
+                className="px-3 py-1.5 rounded-lg dark-liquid-glass-pill text-[11px] font-mono text-[#FBCFE8] hover:text-white transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border border-white/15"
+              >
+                <Terminal className="w-3 h-3 text-[#F472B6]" />
+                <span className="font-bold">{activeScenario.command}</span>
+                {copiedNpx ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 text-[#FDA4AF]/60" />
+                )}
+              </button>
+            </div>
+
+            {/* Terminal Command Switcher Tabs */}
+            <div className="flex flex-wrap items-center gap-1.5 p-2 sm:p-3 bg-[#11020C]/90 border-b border-white/10 overflow-x-auto">
+              {CLI_SCENARIOS.map((sc, idx) => {
+                const isActive = activeCliIndex === idx;
                 return (
                   <button
-                    key={snippet.id}
-                    onClick={() => setActiveSnippetIndex(idx)}
-                    className={`px-3.5 py-2 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    key={sc.id}
+                    onClick={() => setActiveCliIndex(idx)}
+                    className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
                       isActive
-                        ? "bg-gradient-to-r from-[#EC4899] to-[#BE185D] text-white shadow-[0_0_20px_rgba(236,72,153,0.4)] border border-white/30"
-                        : "dark-liquid-glass-pill text-[#FBCFE8]/80 hover:text-white hover:border-white/30"
+                        ? "bg-gradient-to-r from-[#EC4899] to-[#BE185D] text-white shadow-[0_0_15px_rgba(236,72,153,0.5)] border border-white/30"
+                        : "dark-liquid-glass-pill text-[#FDA4AF]/70 hover:text-white hover:border-white/20"
                     }`}
                   >
-                    <Code2 className="w-3.5 h-3.5" />
-                    <span>{snippet.title}</span>
-                    <span className="hidden sm:inline text-[10px] opacity-75 font-normal">
-                      ({snippet.label})
+                    <span>{sc.tabTitle}</span>
+                    <span className="text-[10px] opacity-75 font-normal">
+                      [{sc.badge}]
                     </span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Split View: Left Code, Right Roast Output */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              {/* Left Column: The Suspect Code */}
-              <div className="lg:col-span-6 bg-[#0E020A]/90 rounded-2xl p-4 sm:p-5 border border-white/10 flex flex-col justify-between font-mono">
-                <div>
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10 text-xs text-[#FDA4AF]/70">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
-                      <span className="ml-2 font-bold text-white">
-                        {activeSnippet.title}
-                      </span>
-                    </span>
-                    <span className="text-[10px] uppercase tracking-wider text-[#F472B6]">
-                      {activeSnippet.category}
-                    </span>
-                  </div>
-
-                  <pre className="text-xs sm:text-[13px] text-[#FDF2F8] font-mono leading-relaxed overflow-x-auto p-1">
-                    <code>{activeSnippet.code}</code>
-                  </pre>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-[#FDA4AF]/70">
-                  <span className="flex items-center gap-1.5">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Detected Anti-Pattern</span>
-                  </span>
-                  <span className="font-bold text-[#F472B6]">
-                    Severity: {activeSnippet.severity}/10
-                  </span>
-                </div>
+            {/* Terminal Body Screen */}
+            <div className="bg-[#0B0207]/95 p-4 sm:p-7 font-mono text-xs sm:text-sm text-[#FCE7F3] leading-relaxed overflow-x-auto rounded-b-2xl">
+              {/* Command Prompt Line */}
+              <div className="flex items-center gap-2 text-white mb-4">
+                <span className="text-[#38BDF8]">●</span>
+                <span className="text-white font-bold">PS D:\Faiz\freelance\nomercy&gt;</span>
+                <span className="text-[#F472B6] font-bold">{activeScenario.command}</span>
               </div>
 
-              {/* Right Column: Roastmaster Savage Verdict */}
-              <div className="lg:col-span-6 dark-liquid-glass-card rounded-2xl p-5 sm:p-6 flex flex-col justify-between border border-[#F472B6]/30">
-                <div>
-                  {/* Verdict Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-[#E11D48] flex items-center justify-center text-white">
-                        <Flame className="w-4 h-4" />
+              {/* ASCII Logo in Glowing Neon Pink */}
+              <pre className="text-[10px] sm:text-[11px] leading-[1.15] text-[#F472B6] font-bold select-none drop-shadow-[0_0_12px_rgba(244,114,182,0.4)] my-3">
+{`  ____   ___     _    ____ _____ __  __    _    ____ _____ _____ ____
+ |  _ \\ / _ \\   / \\  / ___|_   _|  \\/  |  / \\  / ___|_   _| ____|  _ \\
+ | |_) | | | | / _ \\ \\___ \\ | | | |\\/| | / _ \\ \\___ \\ | | |  _| | |_) |
+ |  _ <| |_| |/ ___ \\ ___) || | | |  | |/ ___ \\ ___) || | | |___|  _ <
+ |_| \\_\\\\___//_/   \\_\\____/ |_| |_|  |_/_/   \\_\\____/ |_| |_____|_| \\_\\`}
+              </pre>
+
+              {/* Sub-header */}
+              <div className="text-[11px] font-bold tracking-wider my-3 flex items-center gap-2">
+                <span className="text-[#E11D48]">LIVE DEV STANDUP</span>
+                <span className="text-white/40">•</span>
+                <span className="text-[#EC4899]">ZERO MERCY CODE CRITIQUE</span>
+                <span className="text-white/40">•</span>
+                <span className="text-amber-300">v2.5 CLI</span>
+              </div>
+
+              {/* Special View for Help Manual */}
+              {activeScenario.isManual ? (
+                <div className="mt-4 pt-3 border-t border-white/10 space-y-4 text-xs">
+                  <div>
+                    <div className="text-[#FDA4AF] font-bold uppercase mb-1">USAGE:</div>
+                    <div className="text-[#F472B6]">npx roastmaster [options]</div>
+                    <div className="text-[#F472B6]">npx roastmaster-ai --roast-repo</div>
+                    <div className="text-white">roastmaster -f src/components/App.tsx</div>
+                  </div>
+
+                  <div>
+                    <div className="text-[#FDA4AF] font-bold uppercase mb-1">COMMANDS &amp; FLAGS:</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-1 text-xs">
+                      <div className="sm:col-span-4 text-[#38BDF8]">-r, --roast-repo</div>
+                      <div className="sm:col-span-8 text-[#FBCFE8]/80">Inspect git status, recent commit, and package.json to roast repository</div>
+                      <div className="sm:col-span-4 text-[#38BDF8]">-d, --diff</div>
+                      <div className="sm:col-span-8 text-[#FBCFE8]/80">Roast uncommitted/staged git diff changes before pushing</div>
+                      <div className="sm:col-span-4 text-[#38BDF8]">-f, --file &lt;path&gt;</div>
+                      <div className="sm:col-span-8 text-[#FBCFE8]/80">Roast a specific code file directly</div>
+                      <div className="sm:col-span-4 text-[#38BDF8]">-h, --help</div>
+                      <div className="sm:col-span-8 text-[#FBCFE8]/80">Show this comedy manual and exit</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[#FDA4AF] font-bold uppercase mb-1">EXAMPLES:</div>
+                    <div className="text-white/60"># Roast the current repository</div>
+                    <div className="text-[#F472B6]">$ npx roastmaster --roast-repo</div>
+                    <div className="text-white/60 mt-1"># Roast your pending git diff before code review</div>
+                    <div className="text-[#F472B6]">$ npx roastmaster --diff</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Context Subtitle & Scanned info */}
+                  {activeScenario.subtitle && (
+                    <div className="my-3 text-xs sm:text-[13px] text-[#38BDF8] font-bold flex items-center gap-2">
+                      <span>{activeScenario.subtitle}</span>
+                    </div>
+                  )}
+
+                  {activeScenario.scannedDetails && (
+                    <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-[11px] text-[#FBCFE8]/75 leading-relaxed my-3 font-mono">
+                      {activeScenario.scannedDetails}
+                    </div>
+                  )}
+
+                  {/* The Exact Boxed ANSI Card matching the screenshots */}
+                  <div className="mt-5 rounded-2xl border-2 border-[#F472B6] bg-[#160311]/90 shadow-[0_0_30px_rgba(244,114,182,0.25)] overflow-hidden">
+                    {/* Header inside Card */}
+                    <div className="p-3 sm:p-4 border-b border-[#F472B6]/40 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🎙️</span>
+                        <span className="font-mono font-black text-xs sm:text-sm text-white uppercase tracking-wider">
+                          {activeScenario.cardTitle}
+                        </span>
                       </div>
-                      <span className="font-mono text-xs font-black uppercase text-white tracking-wider">
-                        HEADLINER ROAST VERDICT
-                      </span>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="text-[#FDA4AF] font-bold flex items-center gap-1">
+                          🏷️ {activeScenario.category}
+                        </span>
+                        <span className="text-white/30">•</span>
+                        <div className="flex items-center gap-1.5 font-bold">
+                          <span>🔥</span>
+                          <span className="text-[#E11D48] tracking-tighter">
+                            {activeScenario.severityBar}
+                          </span>
+                          <span className="text-[#F472B6]">
+                            {activeScenario.severity}/10
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-black bg-[#E11D48]/25 text-[#FDA4AF] border border-[#E11D48]/40">
-                      🔥 {activeSnippet.severity} / 10 SAVAGE
+                    {/* Savage Roast Punchline */}
+                    <div className="p-4 sm:p-5 text-xs sm:text-sm font-sans font-semibold text-white leading-relaxed border-b border-[#F472B6]/40 bg-black/30">
+                      {activeScenario.roast}
+                    </div>
+
+                    {/* Backstage Real Talk (Constructive Fix) */}
+                    <div className="p-4 sm:p-5 bg-[#200518]/90 text-xs sm:text-sm leading-relaxed">
+                      <div className="font-mono font-bold text-[#FBBF24] mb-1.5 flex items-center gap-1.5 uppercase text-[11px] tracking-wider">
+                        <span>💡</span>
+                        <span>BACKSTAGE REAL TALK (CONSTRUCTIVE FIX):</span>
+                      </div>
+                      <p className="text-[#34D399] font-sans">
+                        {activeScenario.realTalk}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Terminal Footer */}
+                  <div className="mt-4 pt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#FDA4AF]/60 font-mono">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#F472B6]" />
+                      <span>Web Stage:</span>
+                      <a
+                        href="https://roastmaster-phi.vercel.app/chat"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[#F472B6] hover:underline font-bold"
+                      >
+                        https://roastmaster-phi.vercel.app/chat
+                      </a>
                     </span>
+                    <span>Roastmaster CLI v2.5</span>
                   </div>
-
-                  {/* The Roast Quote */}
-                  <div className="p-4 rounded-xl bg-black/40 border border-white/10 text-sm sm:text-base font-sans font-medium text-white leading-relaxed mb-4">
-                    &ldquo;{activeSnippet.roast}&rdquo;
-                  </div>
-
-                  {/* Backstage Real Talk (Constructive Advice) */}
-                  <div className="p-3.5 rounded-xl bg-[#2D061E]/70 border border-[#F472B6]/30 text-xs font-sans text-[#FCE7F3] leading-relaxed">
-                    <div className="font-mono font-bold text-[11px] uppercase tracking-wider text-[#F472B6] mb-1 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Backstage Real Talk (Constructive Fix)</span>
-                    </div>
-                    <p>{activeSnippet.realTalk}</p>
-                  </div>
-                </div>
-
-                {/* Footer Action */}
-                <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between">
-                  <span className="text-[11px] font-mono text-[#FDA4AF]/70">
-                    Ready to roast your own repository?
-                  </span>
-                  <button
-                    onClick={handleEnterStage}
-                    className="font-mono text-xs font-bold text-[#F472B6] hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer uppercase"
-                  >
-                    <span>Try on stage</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </div>
         </section>
 
-        {/* ── Real Tech Stack Showcase (Luring Developers) ──────────────────── */}
+        {/* ── 4 Core CLI Workflows Feature Grid ─────────────────────────────── */}
+        <section className="mb-24">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-black font-mono text-white uppercase tracking-tight">
+              HOW TO USE IT IN YOUR WORKFLOW
+            </h2>
+            <p className="text-xs sm:text-sm text-[#FBCFE8]/75 font-sans mt-1">
+              From pre-commit Git checks to full repository architecture roasts.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* Card 1 */}
+            <div className="dark-liquid-glass-card rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#EC4899] to-[#BE185D] flex items-center justify-center text-white mb-4 shadow-[0_0_15px_rgba(236,72,153,0.35)]">
+                  <PackageCheck className="w-5 h-5" />
+                </div>
+                <h3 className="font-mono font-black text-base text-white uppercase">
+                  Repo Audit (`-r`)
+                </h3>
+                <p className="font-mono text-xs text-[#F472B6] mt-0.5 mb-2 font-semibold">
+                  `roastmaster --roast-repo`
+                </p>
+                <p className="text-xs text-[#FBCFE8]/80 font-sans leading-relaxed">
+                  Scans dependencies, package bloat, recent commits, and dirty files to critique your whole project architecture.
+                </p>
+              </div>
+              <button
+                onClick={() => handleCopyCommand("roastmaster --roast-repo", setCopiedCli)}
+                className="mt-4 pt-3 border-t border-white/10 font-mono text-[11px] text-[#FDA4AF] hover:text-white flex items-center justify-between cursor-pointer"
+              >
+                <span>Copy Command</span>
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Card 2 */}
+            <div className="dark-liquid-glass-card rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8B5CF6] to-[#6D28D9] flex items-center justify-center text-white mb-4 shadow-[0_0_15px_rgba(139,92,246,0.35)]">
+                  <GitPullRequest className="w-5 h-5" />
+                </div>
+                <h3 className="font-mono font-black text-base text-white uppercase">
+                  Pre-Commit Diff (`-d`)
+                </h3>
+                <p className="font-mono text-xs text-[#C4B5FD] mt-0.5 mb-2 font-semibold">
+                  `roastmaster --diff`
+                </p>
+                <p className="text-xs text-[#FBCFE8]/80 font-sans leading-relaxed">
+                  Roasts only your uncommitted or staged changes so you can clean up embarrassing hacks before opening a PR.
+                </p>
+              </div>
+              <button
+                onClick={() => handleCopyCommand("roastmaster --diff", setCopiedCli)}
+                className="mt-4 pt-3 border-t border-white/10 font-mono text-[11px] text-[#C4B5FD] hover:text-white flex items-center justify-between cursor-pointer"
+              >
+                <span>Copy Command</span>
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Card 3 */}
+            <div className="dark-liquid-glass-card rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F59E0B] to-[#D97706] flex items-center justify-center text-white mb-4 shadow-[0_0_15px_rgba(245,158,11,0.35)]">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <h3 className="font-mono font-black text-base text-white uppercase">
+                  Single File Deep Dive
+                </h3>
+                <p className="font-mono text-xs text-amber-300 mt-0.5 mb-2 font-semibold">
+                  `roastmaster -f &lt;file&gt;`
+                </p>
+                <p className="text-xs text-[#FBCFE8]/80 font-sans leading-relaxed">
+                  Target a specific 600-line React component, messy SQL migration, or suspicious utility script directly.
+                </p>
+              </div>
+              <button
+                onClick={() => handleCopyCommand("roastmaster -f src/app/page.jsx", setCopiedCli)}
+                className="mt-4 pt-3 border-t border-white/10 font-mono text-[11px] text-amber-300 hover:text-white flex items-center justify-between cursor-pointer"
+              >
+                <span>Copy Command</span>
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Card 4 */}
+            <div className="dark-liquid-glass-card rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#10B981] to-[#047857] flex items-center justify-center text-white mb-4 shadow-[0_0_15px_rgba(16,185,129,0.35)]">
+                  <Download className="w-5 h-5" />
+                </div>
+                <h3 className="font-mono font-black text-base text-white uppercase">
+                  Zero Install NPX
+                </h3>
+                <p className="font-mono text-xs text-emerald-300 mt-0.5 mb-2 font-semibold">
+                  `npx roastmaster-ai`
+                </p>
+                <p className="text-xs text-[#FBCFE8]/80 font-sans leading-relaxed">
+                  Runs instantly with 0 local dependencies. Downloads a lightweight 10.4 kB tarball and exits immediately.
+                </p>
+              </div>
+              <button
+                onClick={() => handleCopyCommand("npm install -g roastmaster-ai", setCopiedCli)}
+                className="mt-4 pt-3 border-t border-white/10 font-mono text-[11px] text-emerald-300 hover:text-white flex items-center justify-between cursor-pointer"
+              >
+                <span>Global Install</span>
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Real Tech Stack Showcase ─────────────────────────────────────── */}
         <section className="mb-24">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full dark-liquid-glass-pill text-[#F472B6] text-[11px] font-mono font-bold tracking-widest uppercase mb-2">
@@ -504,119 +726,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ── Feature Comparison / Why Roastmaster ─────────────────────────── */}
-        <section className="mb-24 max-w-5xl mx-auto">
-          <div className="dark-liquid-glass rounded-3xl p-6 sm:p-10 border border-white/15">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-5">
-                <span className="px-3 py-1 rounded-full dark-liquid-glass-pill text-[#F472B6] text-xs font-mono font-bold uppercase tracking-wider">
-                  THE COMEDY CELLAR GUARANTEE
-                </span>
-                <h3 className="text-2xl sm:text-3xl font-black font-mono text-white uppercase mt-3 mb-4 leading-tight">
-                  WHY CONVENTIONAL CODE REVIEWS FAIL
-                </h3>
-                <p className="text-xs sm:text-sm text-[#FBCFE8]/80 font-sans leading-relaxed mb-6">
-                  Senior engineers write polite PR comments like &ldquo;Consider refactoring this.&rdquo; You ignore them. Roastmaster makes fun of your lineage and your RAM usage so you never write an unmemoized callback again.
-                </p>
-                <button
-                  onClick={handleEnterStage}
-                  className="px-5 py-3 rounded-xl font-mono text-xs font-bold uppercase tracking-wider text-white bg-gradient-to-r from-[#EC4899] to-[#BE185D] hover:opacity-95 transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(236,72,153,0.35)]"
-                >
-                  <span>Experience The Roast</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3.5 font-mono">
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                  <div className="flex items-center gap-2 text-[#EF4444] text-xs font-bold mb-2">
-                    <Flame className="w-4 h-4" />
-                    <span>Zero Corporate Fluff</span>
-                  </div>
-                  <p className="text-[11px] text-[#FBCFE8]/75 font-sans">
-                    No &ldquo;Great job on this PR! Just one small nit.&rdquo; Direct punches that hit the actual flaw.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                  <div className="flex items-center gap-2 text-[#EC4899] text-xs font-bold mb-2">
-                    <FileText className="w-4 h-4" />
-                    <span>RAG Document Ingestion</span>
-                  </div>
-                  <p className="text-[11px] text-[#FBCFE8]/75 font-sans">
-                    Upload your architecture RFC or sprint brief as PDF. We quote your own documentation against you.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                  <div className="flex items-center gap-2 text-[#10B981] text-xs font-bold mb-2">
-                    <Sparkles className="w-4 h-4" />
-                    <span>Backstage Real Talk</span>
-                  </div>
-                  <p className="text-[11px] text-[#FBCFE8]/75 font-sans">
-                    Every savage roast is paired with a real, battle-tested architectural fix written like senior staff advice.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                  <div className="flex items-center gap-2 text-amber-300 text-xs font-bold mb-2">
-                    <Laugh className="w-4 h-4" />
-                    <span>100% Unique Jokes</span>
-                  </div>
-                  <p className="text-[11px] text-[#FBCFE8]/75 font-sans">
-                    Strict system prompts ban stock clichés and internet tropes. Tailored uniquely to your exact syntax.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Testimonials / Developer Wall of Fame ────────────────────────── */}
-        <section className="mb-24">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-black font-mono text-white uppercase tracking-tight">
-              DEVELOPERS SURVIVING THE MIC
-            </h2>
-            <p className="text-xs sm:text-sm text-[#FBCFE8]/75 font-sans mt-1">
-              Real reactions from engineers who dared to share their production repositories.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
-            <div className="dark-liquid-glass-card rounded-2xl p-5 border border-white/10 flex flex-col justify-between">
-              <p className="text-xs sm:text-sm text-[#FDF2F8] font-sans italic leading-relaxed">
-                &ldquo;It called my Redux slice an &apos;emotional baggage carousel&apos; and then explained how to rewrite it using Zustand in 8 lines. My ego is hurt, but my bundle size dropped 40%.&rdquo;
-              </p>
-              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-[#F472B6]">
-                <span className="font-bold">@alex_frontend</span>
-                <span className="text-[#FDA4AF]/60">Staff Engineer</span>
-              </div>
-            </div>
-
-            <div className="dark-liquid-glass-card rounded-2xl p-5 border border-white/10 flex flex-col justify-between">
-              <p className="text-xs sm:text-sm text-[#FDF2F8] font-sans italic leading-relaxed">
-                &ldquo;I attached a 30-page security RFC PDF. Roastmaster cited page 14 where I allowed `0.0.0.0/0` on port 22 and roasted me in front of my entire platform engineering team.&rdquo;
-              </p>
-              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-[#F472B6]">
-                <span className="font-bold">@karan_devops</span>
-                <span className="text-[#FDA4AF]/60">Infra Architect</span>
-              </div>
-            </div>
-
-            <div className="dark-liquid-glass-card rounded-2xl p-5 border border-white/10 flex flex-col justify-between">
-              <p className="text-xs sm:text-sm text-[#FDF2F8] font-sans italic leading-relaxed">
-                &ldquo;Better than my tech lead. The roast made me laugh out loud in the office, and the Backstage Real Talk actually pinpointed the database connection pool leak.&rdquo;
-              </p>
-              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-[#F472B6]">
-                <span className="font-bold">@sarah_go</span>
-                <span className="text-[#FDA4AF]/60">Backend Specialist</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Final Hero Call to Action ────────────────────────────────────── */}
+        {/* ── Final Call to Action ─────────────────────────────────────────── */}
         <div className="relative max-w-4xl mx-auto rounded-3xl dark-liquid-glass p-8 sm:p-12 text-center border border-white/25 shadow-[0_0_50px_rgba(236,72,153,0.3)]">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#EC4899] via-[#F43F5E] to-[#BE185D] flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(236,72,153,0.5)] border border-white/30">
             <Mic2 className="w-8 h-8 text-white" />
@@ -631,19 +741,30 @@ export default function HomePage() {
           </h2>
 
           <p className="text-sm sm:text-base text-[#FBCFE8]/80 max-w-lg mx-auto mt-4 mb-8 font-sans">
-            Free VIP front-row seating. Instant dynamic titles, real-time audio teleprompter streams, and vector-backed document roasts.
+            Available as an instant CLI or interactive web stage. Free VIP front-row seating, dynamic titles, and vector-backed document roasts.
           </p>
 
-          <button
-            onClick={handleEnterStage}
-            className="w-full sm:w-auto px-10 py-5 rounded-2xl font-mono text-base font-black uppercase tracking-wider text-white bg-gradient-to-r from-[#EC4899] via-[#F43F5E] to-[#BE185D] hover:shadow-[0_0_40px_rgba(236,72,153,0.7)] transition-all cursor-pointer inline-flex items-center justify-center gap-3 active:scale-95 border border-white/40 shadow-[0_10px_35px_rgba(236,72,153,0.4)]"
-          >
-            <span>Enter The Roast Arena Mic</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <button
+              onClick={handleEnterStage}
+              className="px-10 py-5 rounded-2xl font-mono text-base font-black uppercase tracking-wider text-white bg-gradient-to-r from-[#EC4899] via-[#F43F5E] to-[#BE185D] hover:shadow-[0_0_40px_rgba(236,72,153,0.7)] transition-all cursor-pointer inline-flex items-center justify-center gap-3 active:scale-95 border border-white/40 shadow-[0_10px_35px_rgba(236,72,153,0.4)]"
+            >
+              <span>Enter The Web Stage (/chat)</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
 
-          <p className="text-[11px] font-mono text-[#FDA4AF]/70 uppercase tracking-widest mt-4">
-            NO SIGN-UP REQUIRED TO START • FEELINGS NOT REFUNDABLE
+            <button
+              onClick={() => handleCopyCommand("npx roastmaster-ai --roast-repo", setCopiedCli)}
+              className="px-8 py-5 rounded-2xl dark-liquid-glass-card hover:bg-white/10 font-mono text-sm text-[#FBCFE8] border border-white/30 transition-all cursor-pointer inline-flex items-center gap-2.5 active:scale-95"
+            >
+              <Terminal className="w-4 h-4 text-[#F472B6]" />
+              <span>npx roastmaster-ai --roast-repo</span>
+              <Copy className="w-4 h-4 text-[#FDA4AF]/60" />
+            </button>
+          </div>
+
+          <p className="text-[11px] font-mono text-[#FDA4AF]/70 uppercase tracking-widest mt-5">
+            NO SIGN-UP REQUIRED • COMPATIBLE WITH MACOS, LINUX, AND WINDOWS
           </p>
         </div>
       </div>
@@ -653,23 +774,25 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs text-[#FDA4AF]/70">
           <div className="flex items-center gap-2 text-white font-bold">
             <Mic2 className="w-4 h-4 text-[#F472B6]" />
-            <span>ROASTMASTER // NOMERCY DEV PORTAL</span>
+            <span>ROASTMASTER // NOMERCY DEV PORTAL &amp; CLI</span>
           </div>
           <div className="flex items-center gap-6">
             <button
               onClick={() => router.push("/chat")}
               className="hover:text-white transition-colors cursor-pointer"
             >
-              Stage Mic
+              Web Stage
             </button>
-            <button
-              onClick={() => router.push("/profile")}
+            <a
+              href="https://www.npmjs.com/package/roastmaster-ai"
+              target="_blank"
+              rel="noreferrer"
               className="hover:text-white transition-colors cursor-pointer"
             >
-              VIP Pass
-            </button>
+              npm: roastmaster-ai
+            </a>
             <span className="text-[#FDA4AF]/40">•</span>
-            <span>Next.js 16 + pgvector + Gemini</span>
+            <span>Next.js 16 + pgvector + Gemini 2.5</span>
           </div>
         </div>
       </footer>
