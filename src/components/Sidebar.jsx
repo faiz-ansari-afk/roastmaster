@@ -122,6 +122,11 @@ export default function Sidebar({
     setDeletingId(deletedId);
     try {
       await deleteSession(user.uid, deletedId);
+      // Shred from PostgreSQL (pgvector session_embeddings & document_chunks)
+      fetch(`/api/sessions?sessionId=${encodeURIComponent(deletedId)}`, {
+        method: "DELETE",
+      }).catch((e) => console.warn("[Sidebar] PostgreSQL session delete warning:", e));
+
       setSessions((prev) => prev.filter((s) => s.id !== deletedId));
       if (onDeleteSession) {
         onDeleteSession(deletedId);

@@ -44,7 +44,7 @@ export async function POST(req) {
         (c) => Array.isArray(c?.embedding) && c.embedding.length > 0
       );
       if (validEmbeddings.length > 0) {
-        await upsertBatchSessionEmbeddings(validEmbeddings).catch((syncErr) =>
+        await upsertBatchSessionEmbeddings(validEmbeddings, userId).catch((syncErr) =>
           console.warn("[Search API] Candidate sync warning:", syncErr?.message)
         );
       }

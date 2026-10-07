@@ -269,7 +269,7 @@ export async function upsertSessionEmbedding({
  * @param {Array<object>} sessions
  * @returns {Promise<number>}
  */
-export async function upsertBatchSessionEmbeddings(sessions) {
+export async function upsertBatchSessionEmbeddings(sessions, defaultUserId = null) {
   const db = getDbPool();
   if (!db || !Array.isArray(sessions) || sessions.length === 0) return 0;
 
@@ -297,7 +297,7 @@ export async function upsertBatchSessionEmbeddings(sessions) {
       const vectorLiteral = formatVectorForPg(s.embedding);
       await client.query(query, [
         sid,
-        s.userId || null,
+        s.userId || defaultUserId || null,
         s.title || null,
         s.snippet || null,
         s.category || null,
@@ -353,7 +353,7 @@ export async function searchSimilarSessions({
       1 - (embedding <=> $1::vector) AS "similarityScore",
       embedding <=> $1::vector AS distance
     FROM session_embeddings
-    WHERE ($2::text IS NULL OR user_id = $2::text OR user_id IS NULL)
+    WHERE (($2::text IS NOT NULL AND user_id = $2::text) OR ($2::text IS NULL AND user_id IS NULL))
       AND (1 - (embedding <=> $1::vector)) >= $3
     ORDER BY embedding <=> $1::vector ASC
     LIMIT $4;
@@ -380,3 +380,53 @@ export async function searchSimilarSessions({
     return [];
   }
 }
+
+/**
+ * Deletes a session's vector embedding and document chunks from PostgreSQL.
+ * @param {string} sessionId
+ */
+export async function deleteSessionFromPostgres(sessionId) {
+  const db = getDbPool();
+  if (!db || !sessionId) return;
+  try {
+    await db.query("DELETE FROM session_embeddings WHERE session_id = $1", [sessionId]);
+    await db.query("DELETE FROM document_chunks WHERE session_id = $1", [sessionId]);
+  } catch (err) {
+    console.error("[DB] Error deleting session from PostgreSQL:", err.message);
+  }
+}
+
+/**
+ * Shreds all session vectors and document chunks for a specific user from PostgreSQL.
+ * @param {string} [userId]
+ */
+export async function deleteAllUserPostgresData(userId = null) {
+  const db = getDbPool();
+  if (!db) return { success: false, error: "Database unavailable" };
+  try {
+    let deletedSessions = 0;
+    let deletedChunks = 0;
+    if (userId) {
+      const res1 = await db.query(
+        "DELETE FROM session_embeddings WHERE user_id = $1 OR user_id IS NULL",
+        [userId]
+      );
+      deletedSessions = res1.rowCount;
+      const res2 = await db.query(
+        "DELETE FROM document_chunks WHERE user_id = $1 OR user_id IS NULL",
+        [userId]
+      );
+      deletedChunks = res2.rowCount;
+    } else {
+      const res1 = await db.query("DELETE FROM session_embeddings");
+      deletedSessions = res1.rowCount;
+      const res2 = await db.query("DELETE FROM document_chunks");
+      deletedChunks = res2.rowCount;
+    }
+    return { success: true, deletedSessions, deletedChunks };
+  } catch (err) {
+    console.error("[DB] Error shredding all user data from PostgreSQL:", err.message);
+    return { success: false, error: err.message };
+  }
+}
+

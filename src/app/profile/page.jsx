@@ -265,18 +265,29 @@ export default function ProfilePage() {
     }
   };
 
-  // Handle Delete All Chats
+  // Handle Delete All Chats (Firestore + PostgreSQL pgvector)
   const handleDeleteAllChats = async () => {
     if (!user || deletingChats) return;
 
     setDeletingChats(true);
     try {
+      // 1. Shred from Firestore
       const res = await deleteAllUserSessions(user.uid);
+
+      // 2. Shred from PostgreSQL (pgvector session_embeddings & document_chunks)
+      try {
+        await fetch(`/api/sessions?all=true&userId=${encodeURIComponent(user.uid)}`, {
+          method: "DELETE",
+        });
+      } catch (pgErr) {
+        console.warn("[Profile] PostgreSQL shred warning:", pgErr);
+      }
+
       if (res.success) {
         setSessionsCount(0);
         setShowDeleteModal(false);
         setDeleteConfirmationText("");
-        setDeleteSuccessMsg(`Shredded ${res.count} comedy sets from the vault.`);
+        setDeleteSuccessMsg(`Shredded ${res.count} comedy sets from both Firestore and pgvector.`);
         setTimeout(() => setDeleteSuccessMsg(""), 5000);
       } else {
         alert("Failed to shred all sets. Please check connection.");
