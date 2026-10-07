@@ -1,274 +1,216 @@
 <div align="center">
 
-# 🔥 RoastMaster AI
+# 🔥 RoastMaster AI (`roastmaster-ai`)
 
-### The AI chatbot that answers your questions while roasting your existence
+### *The Unfiltered AI Standup Comedian & Code Reviewer With Zero Mercy.*
 
-[![Next.js](https://img.shields.io/badge/Next.js_15-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Firebase](https://img.shields.io/badge/Firebase-DD2C00?style=for-the-badge&logo=firebase&logoColor=white)](https://firebase.google.com/)
-[![Gemini AI](https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Vercel](https://img.shields.io/badge/Vercel-black?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
+[![npm version](https://img.shields.io/badge/npm-v1.0.0-EC4899?style=for-the-badge&logo=npm&logoColor=white)](https://www.npmjs.com/package/roastmaster-ai)
+[![Live Web Stage](https://img.shields.io/badge/Live_Stage-roastmaster--phi.vercel.app-F43F5E?style=for-the-badge&logo=vercel&logoColor=white)](https://roastmaster-phi.vercel.app)
+[![Next.js 16](https://img.shields.io/badge/Next.js_16-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Google Gemini](https://img.shields.io/badge/Gemini_2.5_AI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![pgvector](https://img.shields.io/badge/Aiven_pgvector-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://aiven.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-emerald?style=for-the-badge)](LICENSE)
 
-![RoastMaster Preview](https://roastmaster-phi.vercel.app/og-preview.png)
+<br />
 
-**Ask a question. Get roasted. Repeat.**
+**Tired of diplomatic PR comments? Roastmaster shreds your repository sins, recursive state loops, and midnight commits — then hands you constructive Senior-Staff architectural advice.**
 
-[Live Demo](https://roastmaster-phi.vercel.app) · [Report Bug](https://github.com/yourusername/roastmaster/issues) · [Request Feature](https://github.com/yourusername/roastmaster/issues)
+<br />
+
+[🎙️ Enter The Live Stage](https://roastmaster-phi.vercel.app/chat) · [📦 View on npm](https://www.npmjs.com/package/roastmaster-ai) · [⚡ Quick CLI Start](#-instant-cli-quickstart)
 
 </div>
 
 ---
 
-## 🎯 What is this?
+## ⚡ Instant CLI Quickstart
 
-RoastMaster AI is a savage, hilariously brutal AI chatbot that answers every question with maximum sarcasm and Hinglish roasting. Built with Next.js 15, powered by Google Gemini AI, and backed by Firebase for auth and chat history.
+You don't even need to install anything. Run it directly in **any** git repository:
 
+```bash
+# Roast your current repository status & questionable dependencies
+npx roastmaster-ai --roast-repo
 ```
-You:  "What is 2+2?"
-Bot:  "Fine, 2+2=4. Congrats on knowing addition.
-       Most log ye age 5 mein seekh lete hain. 🔥"
+
+```bash
+# Roast your uncommitted git diff before your tech lead sees it
+npx roastmaster-ai --diff
+```
+
+```bash
+# Roast a suspicious source code file
+npx roastmaster-ai -f src/components/App.tsx
+```
+
+```bash
+# Quick freestyle query
+npx roastmaster-ai "I use localStorage to save production Stripe keys"
+```
+
+### 📺 Sample Terminal Output
+
+```text
+  ____   ___     _    ____ _____ __  __    _    ____ _____ _____ ____  
+ |  _ \ / _ \   / \  / ___|_   _|  \/  |  / \  / ___|_   _| ____|  _ \ 
+ | |_) | | | | / _ \ \___ \ | | | |\/| | / _ \ \___ \ | | |  _| | |_) |
+ |  _ <| |_| |/ ___ \ ___) || | | |  | |/ ___ \ ___) || | | |___|  _ < 
+ |_| \_\\___//_/   \_\____/ |_| |_|  |_/_/   \_\____/ |_| |_____|_| \_\
+  LIVE DEV STANDUP • ZERO MERCY CODE CRITIQUE • v2.5 CLI
+
+  📦 Scanning Repository Context...
+[✦] Roastmaster analyzing your code sins with zero mercy...
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  🎙️  STRIPE SUICIDE SHORTCUT                                                 │
+│  🏷️  Security  •  🔥 ██████████ 10/10                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  “Storing live Stripe keys in localStorage is like taping your bank PIN      │
+│  to a public billboard in Times Square. Even script kiddies will feel        │
+│  guilty stealing from someone this clueless.”                                │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  💡 BACKSTAGE REAL TALK (CONSTRUCTIVE FIX):                                  │
+│  Backstage Real Talk: Move Stripe API calls exclusively to your secure       │
+│  backend server, use environment variables, and rotate that compromised      │
+│  secret key immediately before your bank account gets wiped.                 │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+  ✨ Web Stage: https://roastmaster-phi.vercel.app/chat  •  Roastmaster CLI v2.5
 ```
 
 ---
 
-## ✨ Features
+## ✨ Features That Hurt (In a Good Way)
 
-- 🔥 **Savage Hinglish Roasting** — Every answer dripping with sarcasm and desi memes
-- ⚡ **Word-by-word animation** — Replies appear word by word, feels like real typing
-- 💾 **Chat History** — All sessions saved per user in Firestore
-- 👤 **Guest + Auth Login** — Continue as guest or sign in with Google / Email
-- 📱 **Responsive Design** — Works on mobile and desktop
-- 🎬 **Animated Intro** — Cinematic landing page with live demo before entering chat
-- 🔐 **Secure** — Firestore rules ensure users only access their own data
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
+| Feature | Description |
 |---|---|
-| Framework | Next.js 15 (App Router) |
-| Styling | Tailwind CSS |
-| AI | Google Gemini 2.5 Flash Lite |
-| Auth | Firebase Authentication |
-| Database | Cloud Firestore |
-| Deployment | Vercel |
+| 🔥 **Zero Mercy Standup Roasts** | Razor-sharp, 1–2 punchline sentences crafted with stand-up crowd work heuristics. Banned clichés and 100% unique roasts. |
+| 🛠️ **Backstage Real Talk** | Every savage roast is paired with constructive, senior-staff architectural advice so you actually fix your code. |
+| 📂 **RAG Document Ingestion** | Upload system specs, API docs, or RFC PDFs. Powered by **Aiven pgvector**, Roastmaster extracts vector embeddings and quotes your own documentation against you. |
+| 🫧 **Liquid Glass UI + Venom Goo Flow** | Hardware-accelerated VisionOS glassmorphism with an organic, flowing blackish-pink **SVG metaball symbiote** background. |
+| 💻 **CLI & Web In One** | Seamless terminal workflow via `npx roastmaster-ai` or full interactive web cellar with teleprompter streams at [roastmaster-phi.vercel.app](https://roastmaster-phi.vercel.app). |
+| 📝 **Syntax-Highlighted Code Blocks** | Mobile-safe horizontal scroll containment for code snippets and instant clipboard copying. |
+| 💾 **Persistent Standup Sets** | Cloud Firestore session persistence, dynamic title renames, shred set confirmation modals, and VIP pass authentication. |
 
 ---
 
-## 📁 Project Structure
+## 🛠️ Tech Architecture
 
 ```
-roastmaster/
-├── app/
-│   ├── layout.js              # Root layout + AuthProvider
-│   ├── page.js                # Animated intro page
-│   ├── globals.css            # Global styles
-│   ├── favicon.svg            # 🔥 Fire favicon
-│   ├── chat/
-│   │   └── page.jsx           # Main chat page
-│   └── api/
-│       └── chat/
-│           └── route.js       # Gemini API endpoint (server-side)
-├── components/
-│   ├── AuthModal.jsx          # Login / Signup / Guest modal
-│   ├── Sidebar.jsx            # Chat history sidebar
-│   └── ChatWindow.jsx         # Main chat UI + word animation
-├── contexts/
-│   └── AuthContext.jsx        # Firebase Auth state
-├── lib/
-│   ├── firebase.js            # Firebase initialization
-│   └── firestore.js           # Firestore CRUD helpers
-└── firestore.rules            # Security rules
+┌───────────────────────────────────────────────────────────────┐
+│                    ROASTMASTER CORE ENGINE                    │
+├───────────────────────────────┬───────────────────────────────┤
+│ Frontend & CLI Interface      │ Artificial Intelligence Core  │
+│ • Next.js 16 (App Router)     │ • Google Gemini 2.5 Flash     │
+│ • React 19 + Tailwind CSS v4  │ • Multi-turn structured JSON  │
+│ • SVG Metaball Goo Engine     │ • Anthropic SDK Integration   │
+│ • VisionOS Liquid Glass Tokens│ • Standup Comedy Heuristics   │
+├───────────────────────────────┼───────────────────────────────┤
+│ Vector Database & RAG         │ Storage & Authentication      │
+│ • Aiven PostgreSQL + pgvector │ • Cloud Firestore Sessions    │
+│ • 1536-dim Cosine Similarity  │ • Firebase Auth & VIP Passes  │
+│ • LangChain Sentence Splitters│ • UnPDF Context Ingestion     │
+└───────────────────────────────┴───────────────────────────────┘
 ```
 
 ---
 
-## 🚀 Getting Started
+## 💻 CLI Commands & Options
 
-### Prerequisites
-
-- Node.js 18+
-- A [Firebase](https://console.firebase.google.com/) project
-- A [Google AI Studio](https://aistudio.google.com/) API key (free)
-
-### 1. Clone the repo
-
+You can install globally:
 ```bash
-git clone https://github.com/yourusername/roastmaster.git
-cd roastmaster
+npm install -g roastmaster-ai
+```
+Or run directly via `npx`:
+```bash
+npx roastmaster-ai [flags]
 ```
 
-### 2. Install dependencies
+### Flags & Options:
 
+| Flag | Shorthand | Description |
+|---|---|---|
+| `--roast-repo` | `-r` | Inspects `git status`, recent commits, uncommitted diff, and `package.json` to roast the current repo. |
+| `--diff` | `-d` | Roasts only uncommitted or staged `git diff` changes before pushing. |
+| `--file <path>` | `-f <path>` | Roasts a specific code file directly. |
+| `--help` | `-h` | Displays the ASCII manual and command options. |
+
+---
+
+## 🌐 Web Application Setup
+
+If you want to run the web application locally:
+
+### 1. Clone & Install:
 ```bash
+git clone https://github.com/your-username/nomercy.git
+cd nomercy
 npm install
 ```
 
-### 3. Set up Firebase
-
-1. Go to [Firebase Console](https://console.firebase.google.com/) → Create project
-2. **Authentication** → Enable: `Email/Password`, `Google`, `Anonymous`
-3. **Firestore** → Create database → Production mode → Region: `asia-south1`
-4. Apply security rules (see below)
-5. **Project Settings** → Your apps → Add web app → Copy config
-
-### 4. Apply Firestore Security Rules
-
-In Firebase Console → Firestore → **Rules** tab, paste:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-```
-
-Click **Publish**.
-
-### 5. Configure environment variables
-
-```bash
-cp .env.local.example .env.local
-```
-
-Fill in `.env.local`:
-
+### 2. Configure Environment (`.env`):
 ```env
-# Gemini AI (free key from https://aistudio.google.com/apikey)
-GEMINI_API_KEY=your_gemini_key_here
+# AI Engine
+GEMINI_API_KEY="your-gemini-api-key"
 
-# Firebase (from Firebase Console → Project Settings → Your apps)
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaXXXXXXXXXXXXXXXXXXX
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:xxxxxxxx
+# Vector Database (Aiven PostgreSQL pgvector)
+PGHOST="your-pg-host.aivencloud.com"
+PGPORT="your-port"
+PGDATABASE="defaultdb"
+PGUSER="avnadmin"
+PGPASSWORD="your-password"
+PGSSLMODE="require"
+
+# Firebase Client Keys
+NEXT_PUBLIC_FIREBASE_API_KEY="your-api-key"
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-auth-domain"
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-storage-bucket"
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="your-sender-id"
+NEXT_PUBLIC_FIREBASE_APP_ID="your-app-id"
 ```
 
-### 6. Run locally
-
+### 3. Run Dev Server:
 ```bash
 npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) 🔥
+Open [http://localhost:3000](http://localhost:3000) to view the live stage.
 
 ---
 
-## 🌐 Deploy to Vercel
+## 📦 How to Publish to npm
 
-### Option A — GitHub + Vercel (recommended)
+Since the package name `roastmaster-ai` is available on npm, publish in 3 simple steps:
 
-1. Push to GitHub:
+### 1. Log in to npm:
 ```bash
-git add .
-git commit -m "🔥 Initial commit"
-git push origin main
+npm login
 ```
 
-2. Go to [vercel.com](https://vercel.com) → Import your repo
-3. Add all environment variables in Vercel dashboard:
-   - `Settings` → `Environment Variables` → add all vars from `.env.local`
-4. Deploy!
-
-### Option B — Vercel CLI
-
+### 2. Verify files to be published:
 ```bash
-npm i -g vercel
-vercel
-vercel env add GEMINI_API_KEY
-# ... add all other env vars
-vercel --prod
+npm pack --dry-run
+```
+*(Notice that only `bin/` and `README.md` are packaged, keeping download size under 15KB!)*
+
+### 3. Publish to npm:
+```bash
+npm publish --access public
 ```
 
-### After deploying
-
-Add your Vercel domain to Firebase authorized domains:
-- Firebase Console → **Authentication → Settings → Authorized domains** → Add `roastmaster-phi.vercel.app`
-
----
-
-## 🗄️ Firestore Data Structure
-
-```
-users/
-  {userId}/
-    sessions/
-      {sessionId}/
-        title: "What is 2+2?"       ← auto-generated from first message
-        createdAt: Timestamp
-        updatedAt: Timestamp
-        messageCount: 6
-        messages/
-          {messageId}/
-            role: "user" | "assistant"
-            content: "What is 2+2?"
-            createdAt: Timestamp
+Once published, anyone in the world can run:
+```bash
+npx roastmaster-ai --roast-repo
 ```
 
 ---
 
-## ⚙️ Configuration
+## 📜 License
 
-### Change AI personality
-
-Edit `app/api/chat/route.js` → `SYSTEM_PROMPT` constant.
-
-### Change roast language
-
-Add/remove rule 11 in the system prompt to toggle Hinglish mode.
-
-### Change animation speed
-
-In `components/ChatWindow.jsx` → `AnimatedBotMessage`:
-```js
-const delay = hasPunct ? 120 : 42;  // ms per word
-```
-
-### Swap AI model
-
-In `app/api/chat/route.js`:
-```js
-model: "gemini-2.5-flash-lite"   // change this
-```
-
-Available free models: `gemini-2.5-flash-lite`, `gemini-2.5-flash`, `gemini-2.5-pro`
-
----
-
-## 🐛 Common Issues
-
-| Error | Fix |
-|---|---|
-| `auth/invalid-api-key` | Check `NEXT_PUBLIC_FIREBASE_API_KEY` in env vars |
-| `Database '(default)' not found` | Check `NEXT_PUBLIC_FIREBASE_PROJECT_ID` matches your actual project ID |
-| `permission-denied` on Firestore | Apply security rules in Firebase Console → Firestore → Rules |
-| `auth/unauthorized-domain` | Add your domain in Firebase → Authentication → Authorized domains |
-| Gemini 429 quota error | Switch model or wait — free tier has rate limits |
-| Env vars work locally but not on Vercel | Add all vars in Vercel dashboard → Settings → Environment Variables → Redeploy |
-
----
-
-## 📄 License
-
-MIT License — do whatever you want with this, just don't blame me when your users cry.
-
----
+Distributed under the **MIT License**. Feel free to use, fork, and roast responsibly.
 
 <div align="center">
-
-Built with 🔥 by [Faiz](https://github.com/yourusername)
-
-*"Itni dikkat hai toh Pakistan chale jao."* — RoastMaster AI
-
+<sub>Built with 🖤 & 💖 for developers who know their code could be better.</sub>
 </div>

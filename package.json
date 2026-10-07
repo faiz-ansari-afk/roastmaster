@@ -1,12 +1,35 @@
 {
-  "name": "nomercy",
-  "version": "0.1.0",
-  "private": true,
+  "name": "roastmaster-ai",
+  "version": "1.0.0",
+  "description": "Unfiltered AI standup comedian & code reviewer with zero mercy. Powered by Gemini & pgvector RAG.",
+  "main": "./bin/cli.mjs",
+  "type": "module",
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "keywords": [
+    "ai",
+    "cli",
+    "code-review",
+    "roast",
+    "developer-tools",
+    "gemini",
+    "standup-comedy",
+    "rag",
+    "pgvector"
+  ],
+  "homepage": "https://roastmaster-phi.vercel.app/",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
+  },
+  "bin": {
+    "roastmaster": "./bin/cli.mjs",
+    "roastmaster-ai": "./bin/cli.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
