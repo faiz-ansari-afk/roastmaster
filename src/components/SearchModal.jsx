@@ -109,7 +109,6 @@ export default function SearchModal({
             query: trimmed,
             userId: user?.uid || null,
             limit: 5,
-            candidates: sessions,
           }),
         });
 

@@ -284,15 +284,17 @@ export async function saveCompletedExchange(userId, sessionId, userMsg, botMsg, 
   try {
     const msgsRef = collection(db, "users", userId, "sessions", sessionId, "messages");
 
+    let cleanBotContent = botMsg;
+    if (botMsg && typeof botMsg === "object") {
+      const { embedding: _ignored, ...rest } = botMsg;
+      cleanBotContent = rest;
+    }
+
     const assistantDoc = {
       role: "assistant",
-      content: botMsg,
+      content: cleanBotContent,
       createdAt: serverTimestamp(),
     };
-
-    if (Array.isArray(botMsg?.embedding) && botMsg.embedding.length > 0) {
-      assistantDoc.embedding = botMsg.embedding;
-    }
 
     // Save both messages in parallel
     const writePromise = Promise.all([
@@ -349,10 +351,6 @@ export async function saveCompletedExchange(userId, sessionId, userMsg, botMsg, 
       }
     }
 
-    // Store embedding and snippet on session doc for fast, lightweight vault search
-    if (Array.isArray(botMsg?.embedding) && botMsg.embedding.length > 0) {
-      sessionUpdate.embedding = botMsg.embedding;
-    }
     const roastText = typeof botMsg === "object" ? botMsg?.roast : String(botMsg || "");
     if (roastText) {
       sessionUpdate.snippet = roastText.slice(0, 160);
@@ -384,7 +382,6 @@ export async function getMessages(userId, sessionId) {
       id: d.id,
       role: d.data().role,
       content: d.data().content,
-      embedding: d.data().embedding || null,
     }));
   } catch (err) {
     console.warn("[Firestore] getMessages with orderBy failed, falling back to manual sort:", err.code || err.message);
@@ -397,7 +394,6 @@ export async function getMessages(userId, sessionId) {
         id: d.id,
         role: d.data().role,
         content: d.data().content,
-        embedding: d.data().embedding || null,
         createdAt: d.data().createdAt?.toMillis?.() || 0,
       }));
       docs.sort((a, b) => a.createdAt - b.createdAt);
