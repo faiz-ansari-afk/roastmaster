@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { getEmbedding } from "@/lib/embeddings";
 import { searchSimilarChunks, upsertSessionEmbedding } from "@/lib/db";
+import { retrieveAndRerankChunks } from "@/lib/reranker";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -114,30 +115,29 @@ export async function POST(req) {
         ? JSON.stringify(lastItem)
         : String(lastItem || "");
 
-    // ── RAG Retrieval via Aiven pgvector ────────────────────────────────────
+    // ── High-Precision RAG Retrieval: Query -> Embedding -> pgvector (Top 15) -> Reranking & Filtering -> Top 3-5 -> Gemini
     let retrievedDocs = [];
     let ragContext = "";
 
     if (sessionId && lastMessage.trim()) {
       try {
-        const queryVector = await getEmbedding(lastMessage);
-        if (Array.isArray(queryVector) && queryVector.length > 0) {
-          retrievedDocs = await searchSimilarChunks({
-            sessionId,
-            queryVector,
-            limit: 5,
-            minSimilarity: 0.30,
-          });
+        retrievedDocs = await retrieveAndRerankChunks({
+          sessionId,
+          query: lastMessage,
+          broadLimit: 15, // Retrieve Top 10-20 broad candidates from pgvector
+          topK: 4,        // Final Top 3-5 after multi-signal relevance reranking
+          minInitialSimilarity: 0.20,
+          minRelevanceScore: 0.36,
+        });
 
-          if (retrievedDocs.length > 0) {
-            ragContext = retrievedDocs
-              .map(
-                (c, idx) =>
-                  `[Excerpt ${idx + 1} | File: ${c.fileName} | Page: ${c.pageNumber || 1} (Relevance: ${(c.similarity * 100).toFixed(0)}%)]:\n"${c.content}"`
-              )
-              .join("\n\n");
-            console.log(`[Chat API RAG] Retrieved ${retrievedDocs.length} chunks with page numbers from Aiven pgvector for session: ${sessionId}`);
-          }
+        if (retrievedDocs.length > 0) {
+          ragContext = retrievedDocs
+            .map(
+              (c, idx) =>
+                `[Excerpt ${idx + 1} | File: ${c.fileName} | Page: ${c.pageNumber || 1} (Relevance: ${(c.similarity * 100).toFixed(0)}%)]:\n"${c.content}"`
+            )
+            .join("\n\n");
+          console.log(`[Chat API RAG] Injected ${retrievedDocs.length} high-relevance reranked chunks into Gemini context for session: ${sessionId}`);
         }
       } catch (ragErr) {
         console.warn("[Chat API] RAG retrieval error (falling back to standard chat):", ragErr?.message || ragErr);
@@ -247,6 +247,9 @@ RAG RULES:
           chunkIndex: d.chunkIndex,
           pageNumber: d.pageNumber || 1,
           similarity: d.similarity,
+          rerankScore: d.rerankScore || d.similarity,
+          vectorSimilarity: d.vectorSimilarity || d.similarity,
+          matchedKeywords: d.matchedKeywords || [],
           snippet: d.content.slice(0, 160) + (d.content.length > 160 ? "..." : ""),
         }));
 
