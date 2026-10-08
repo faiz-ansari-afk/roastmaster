@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import {
   getSessionMessagesFromDb,
+  getSessionByIdFromDb,
   saveCompletedExchangeInDb,
 } from "@/lib/db";
 
@@ -15,8 +16,16 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
     }
 
-    const messages = await getSessionMessagesFromDb(sessionId);
-    return NextResponse.json({ messages }, { status: 200 });
+    const [messages, session] = await Promise.all([
+      getSessionMessagesFromDb(sessionId),
+      getSessionByIdFromDb(sessionId),
+    ]);
+
+    return NextResponse.json({
+      messages,
+      sessionTitle: session?.title || null,
+      session: session || null,
+    }, { status: 200 });
   } catch (error) {
     console.error("[Messages API GET error]:", error);
     return NextResponse.json(

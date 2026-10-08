@@ -147,7 +147,9 @@ export async function getMessages(userId, sessionId) {
     const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/messages`);
     if (!res.ok) return [];
     const data = await res.json();
-    return Array.isArray(data?.messages) ? data.messages : [];
+    const list = Array.isArray(data?.messages) ? data.messages : [];
+    list.sessionTitle = data?.sessionTitle || data?.session?.title || null;
+    return list;
   } catch (err) {
     console.error("[API] getMessages error:", err);
     return [];
@@ -229,9 +231,7 @@ export function formatSessionDisplayTitle(session) {
   const rawTitle = (session.title || "").trim();
   if (
     rawTitle &&
-    rawTitle !== "New Roast Session" &&
-    rawTitle !== "Roast Session" &&
-    rawTitle !== "Standup Roast"
+    rawTitle !== "New Roast Session"
   ) {
     return rawTitle;
   }

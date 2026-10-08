@@ -790,8 +790,11 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       const loadedMsgs = (msgs || []).map((m) => ({ ...m, isNew: false }));
       setMessages(loadedMsgs);
 
-      // Infer dynamic title from existing session messages
-      if (loadedMsgs.length > 0) {
+      // 1. Prioritize saved title from database
+      if (msgs.sessionTitle && msgs.sessionTitle !== "New Roast Session") {
+        setSessionTitle(msgs.sessionTitle);
+      } else if (loadedMsgs.length > 0) {
+        // Fallback: Infer dynamic title from existing session messages
         const firstAssistant = loadedMsgs.find((m) => m.role === "assistant" && m.content);
         const firstUser = loadedMsgs.find((m) => m.role === "user" && m.content);
 
@@ -887,8 +890,19 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     setIsSavingTitle(true);
     setSessionTitle(trimmed);
     try {
-      if (currentSessionId && user && !isGuest) {
-        await updateSessionTitle(user.uid, currentSessionId, trimmed);
+      if (user && !isGuest) {
+        let sid = currentSessionIdRef.current || currentSessionId;
+        if (!sid) {
+          sid = await createSession(user.uid, trimmed);
+          if (sid) {
+            sessionCreatedLocallyRef.current = sid;
+            currentSessionIdRef.current = sid;
+            setCurrentSessionId(sid);
+            onSessionCreated?.(sid);
+          }
+        } else {
+          await updateSessionTitle(user.uid, sid, trimmed);
+        }
       }
     } catch (err) {
       console.error("Failed to update session title:", err);
@@ -901,6 +915,22 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const handleCancelEditTitle = () => {
     setIsEditingTitle(false);
   };
+
+  // Sync title when session is updated from sidebar or other tabs
+  useEffect(() => {
+    const handleSessionsUpdated = () => {
+      const sid = currentSessionIdRef.current || currentSessionId;
+      if (sid && user && !isGuest) {
+        getMessages(user.uid, sid).then((msgs) => {
+          if (msgs?.sessionTitle && msgs.sessionTitle !== "New Roast Session") {
+            setSessionTitle(msgs.sessionTitle);
+          }
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener("sessions-updated", handleSessionsUpdated);
+    return () => window.removeEventListener("sessions-updated", handleSessionsUpdated);
+  }, [currentSessionId, user, isGuest]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
@@ -1016,12 +1046,13 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     if (!user || isGuest || !botReply) return;
     try {
       let sid = targetSessionId || currentSessionIdRef.current || currentSessionId;
-      const dynamicTitle =
-        botReply?.title ||
-        (userText ? (userText.length > 40 ? userText.slice(0, 40) + "..." : userText) : "Standup Roast");
+      const isCustomTitle = sessionTitle && sessionTitle !== "Standup Roast" && sessionTitle !== "New Roast Session";
+      const titleToUse = isCustomTitle
+        ? sessionTitle
+        : (botReply?.title || (userText ? (userText.length > 40 ? userText.slice(0, 40) + "..." : userText) : "Standup Roast"));
 
       if (!sid) {
-        sid = await createSession(user.uid, dynamicTitle);
+        sid = await createSession(user.uid, titleToUse);
         if (sid) {
           sessionCreatedLocallyRef.current = sid;
           currentSessionIdRef.current = sid;
@@ -1036,7 +1067,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
           userText,
           botReply,
           isFirstMsg,
-          dynamicTitle,
+          titleToUse,
           botReply?.embedding || null
         );
       }
@@ -1209,91 +1240,89 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         ) : (
           <>
             {/* Sticky Live Set Marquee & Manual Title Editor — Liquid Glass Capsule */}
-            {sessionTitle && (
-              <div className="sticky -top-4 md:-top-6 z-20 -mx-2 sm:-mx-4 px-2 sm:px-4 py-2 bg-gradient-to-b from-[#FFF5F7]/85 to-transparent backdrop-blur-md">
-                {isEditingTitle ? (
-                  <div className="flex items-center justify-between px-3 py-1.5 liquid-glass !border-[#EC4899] ring-2 ring-[#F472B6]/30 rounded-2xl transition-all">
-                    <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/70 border border-white/90 text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0 shadow-2xs">
-                        <Flame className="w-3 h-3 text-[#EC4899]" />
-                        <span>EDIT SET</span>
-                      </span>
-                      <input
-                        ref={editTitleInputRef}
-                        type="text"
-                        value={editTitleValue}
-                        onChange={(e) => setEditTitleValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleSaveTitle();
-                          } else if (e.key === "Escape") {
-                            e.preventDefault();
-                            handleCancelEditTitle();
-                          }
-                        }}
-                        disabled={isSavingTitle}
-                        maxLength={60}
-                        className="flex-1 min-w-0 bg-white/60 border border-white/80 focus:border-[#EC4899] text-xs sm:text-sm font-bold text-[#2D1C24] px-2.5 py-1 rounded-xl outline-none"
-                        placeholder="Enter set title..."
-                      />
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
+            <div className="sticky -top-4 md:-top-6 z-20 -mx-2 sm:-mx-4 px-2 sm:px-4 py-2 bg-gradient-to-b from-[#FFF5F7]/85 to-transparent backdrop-blur-md">
+              {isEditingTitle ? (
+                <div className="flex items-center justify-between px-3 py-1.5 liquid-glass !border-[#EC4899] ring-2 ring-[#F472B6]/30 rounded-2xl transition-all">
+                  <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/70 border border-white/90 text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0 shadow-2xs">
+                      <Flame className="w-3 h-3 text-[#EC4899]" />
+                      <span>EDIT SET</span>
+                    </span>
+                    <input
+                      ref={editTitleInputRef}
+                      type="text"
+                      value={editTitleValue}
+                      onChange={(e) => setEditTitleValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSaveTitle();
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          handleCancelEditTitle();
+                        }
+                      }}
+                      disabled={isSavingTitle}
+                      maxLength={60}
+                      className="flex-1 min-w-0 bg-white/60 border border-white/80 focus:border-[#EC4899] text-xs sm:text-sm font-bold text-[#2D1C24] px-2.5 py-1 rounded-xl outline-none"
+                      placeholder="Enter set title..."
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleSaveTitle}
+                      disabled={isSavingTitle}
+                      className="p-1.5 text-white liquid-glass-pink rounded-xl cursor-pointer transition-colors shadow-2xs"
+                      title="Save title (Enter)"
+                      aria-label="Save title"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelEditTitle}
+                      disabled={isSavingTitle}
+                      className="p-1.5 text-[#836270] hover:text-[#2D1C24] hover:bg-white/70 rounded-xl cursor-pointer transition-colors"
+                      title="Cancel (Esc)"
+                      aria-label="Cancel"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between px-3.5 py-2 liquid-glass rounded-2xl transition-all">
+                  <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/70 border border-white/90 text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0 shadow-2xs">
+                      <Flame className="w-3 h-3 text-[#EC4899]" />
+                      <span>LIVE SET</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0 group/title">
+                      <h2
+                        className="text-xs sm:text-sm font-extrabold text-[#2D1C24] truncate cursor-pointer hover:text-[#BE185D] transition-colors"
+                        onClick={handleStartEditTitle}
+                        title="Click to rename set"
+                      >
+                        {sessionTitle || "Standup Roast"}
+                      </h2>
                       <button
                         type="button"
-                        onClick={handleSaveTitle}
-                        disabled={isSavingTitle}
-                        className="p-1.5 text-white liquid-glass-pink rounded-xl cursor-pointer transition-colors shadow-2xs"
-                        title="Save title (Enter)"
-                        aria-label="Save title"
+                        onClick={handleStartEditTitle}
+                        className="opacity-70 group-hover/title:opacity-100 hover:opacity-100 p-1 text-[#836270] hover:text-[#BE185D] hover:bg-white/70 rounded-lg transition-all cursor-pointer shrink-0"
+                        title="Rename set"
+                        aria-label="Rename set"
                       >
-                        <Check className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCancelEditTitle}
-                        disabled={isSavingTitle}
-                        className="p-1.5 text-[#836270] hover:text-[#2D1C24] hover:bg-white/70 rounded-xl cursor-pointer transition-colors"
-                        title="Cancel (Esc)"
-                        aria-label="Cancel"
-                      >
-                        <X className="w-3.5 h-3.5" />
+                        <Pencil className="w-3 h-3 text-[#EC4899]" />
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between px-3.5 py-2 liquid-glass rounded-2xl transition-all">
-                    <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/70 border border-white/90 text-[10px] font-mono font-bold text-[#BE185D] uppercase tracking-wider shrink-0 shadow-2xs">
-                        <Flame className="w-3 h-3 text-[#EC4899]" />
-                        <span>LIVE SET</span>
-                      </span>
-                      <div className="flex items-center gap-1.5 min-w-0 group/title">
-                        <h2
-                          className="text-xs sm:text-sm font-extrabold text-[#2D1C24] truncate cursor-pointer hover:text-[#BE185D] transition-colors"
-                          onClick={handleStartEditTitle}
-                          title="Click to rename set"
-                        >
-                          {sessionTitle}
-                        </h2>
-                        <button
-                          type="button"
-                          onClick={handleStartEditTitle}
-                          className="opacity-70 group-hover/title:opacity-100 hover:opacity-100 p-1 text-[#836270] hover:text-[#BE185D] hover:bg-white/70 rounded-lg transition-all cursor-pointer shrink-0"
-                          title="Rename set"
-                          aria-label="Rename set"
-                        >
-                          <Pencil className="w-3 h-3 text-[#EC4899]" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] font-mono text-[#836270] shrink-0">
-                      <span>{messages.length} {messages.length === 1 ? "EXCHANGE" : "EXCHANGES"}</span>
-                    </div>
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-[#836270] shrink-0">
+                    <span>{messages.length} {messages.length === 1 ? "EXCHANGE" : "EXCHANGES"}</span>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
             {messages.map((msg, i) => (
               <MessageBubble
                 key={i}

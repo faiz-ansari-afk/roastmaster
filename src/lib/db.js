@@ -685,15 +685,47 @@ export async function createSessionInDb({ sessionId, userId, title = null }) {
   }
 }
 
+export async function getSessionByIdFromDb(sessionId) {
+  const db = getDbPool();
+  if (!db || !sessionId) return null;
+  try {
+    const res = await db.query(
+      `SELECT id, user_id, title, snippet, category, message_count, created_at, updated_at
+       FROM sessions
+       WHERE id = $1`,
+      [sessionId]
+    );
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      userId: r.user_id,
+      title: r.title,
+      snippet: r.snippet,
+      category: r.category,
+      messageCount: r.message_count,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    };
+  } catch (err) {
+    console.error("[DB] getSessionByIdFromDb error:", err.message);
+    return null;
+  }
+}
+
 export async function updateSessionTitleInDb(sessionId, title) {
   const db = getDbPool();
   if (!db || !sessionId || !title) return false;
   try {
-    const cleanTitle = title.length > 60 ? title.slice(0, 60) + "..." : title;
+    const cleanTitle = title.length > 60 ? title.slice(0, 60) + "..." : title.trim();
     await db.query(
       `UPDATE sessions SET title = $2, updated_at = NOW() WHERE id = $1`,
       [sessionId, cleanTitle]
     );
+    await db.query(
+      `UPDATE session_embeddings SET title = $2, updated_at = NOW() WHERE session_id = $1`,
+      [sessionId, cleanTitle]
+    ).catch(() => {});
     return true;
   } catch (err) {
     console.error("[DB] updateSessionTitleInDb error:", err.message);
@@ -787,7 +819,8 @@ export async function saveCompletedExchangeInDb({
        ON CONFLICT (id) DO UPDATE SET
          user_id = COALESCE(sessions.user_id, EXCLUDED.user_id),
          title = CASE 
-           WHEN $3::text IS NOT NULL AND ($9::boolean = true OR sessions.title = 'New Roast Session') THEN $3::text 
+           WHEN sessions.title IS NOT NULL AND sessions.title <> 'New Roast Session' AND sessions.title <> 'Standup Roast' THEN sessions.title
+           WHEN $3::text IS NOT NULL AND $3::text <> 'New Roast Session' THEN $3::text 
            ELSE sessions.title 
          END,
          snippet = COALESCE(EXCLUDED.snippet, sessions.snippet),

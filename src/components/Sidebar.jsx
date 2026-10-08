@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   subscribeToSessions,
   deleteSession,
+  updateSessionTitle,
   formatSessionDisplayTitle,
   backfillHistoricalSessionTitles,
   cleanEmptyOrphanSessions,
@@ -25,6 +26,8 @@ import {
   ChevronRight,
   Search,
   Sparkles,
+  Pencil,
+  Check,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -41,6 +44,9 @@ export default function Sidebar({
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [editTitleValue, setEditTitleValue] = useState("");
+  const [savingTitleId, setSavingTitleId] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
 
@@ -138,6 +144,39 @@ export default function Sidebar({
       console.error("Delete session error:", err);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleStartEdit = (e, session) => {
+    e.stopPropagation();
+    setEditingSessionId(session.id);
+    setEditTitleValue(session.title || formatSessionDisplayTitle(session));
+  };
+
+  const handleCancelEdit = (e) => {
+    e?.stopPropagation();
+    setEditingSessionId(null);
+    setEditTitleValue("");
+  };
+
+  const handleSaveEdit = async (e, sessionId) => {
+    e?.stopPropagation();
+    const trimmed = editTitleValue.trim();
+    if (!trimmed || !user) {
+      setEditingSessionId(null);
+      return;
+    }
+    setSavingTitleId(sessionId);
+    try {
+      setSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, title: trimmed } : s))
+      );
+      await updateSessionTitle(user.uid, sessionId, trimmed);
+    } catch (err) {
+      console.error("Failed to rename session:", err);
+    } finally {
+      setSavingTitleId(null);
+      setEditingSessionId(null);
     }
   };
 
@@ -313,11 +352,12 @@ export default function Sidebar({
                   role="button"
                   tabIndex={0}
                   onClick={() => {
+                    if (editingSessionId === session.id) return;
                     onSelectSession(session.id);
                     onCloseSidebar();
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+                    if (e.key === "Enter" && editingSessionId !== session.id) {
                       onSelectSession(session.id);
                       onCloseSidebar();
                     }
@@ -343,9 +383,55 @@ export default function Sidebar({
                           {isActive ? "CURRENT STAGE" : "STANDUP SET"}
                         </span>
                       </div>
-                      <p className="text-xs font-bold truncate leading-tight">
-                        {formatSessionDisplayTitle(session)}
-                      </p>
+                      {editingSessionId === session.id ? (
+                        <div
+                          className="flex items-center gap-1.5 my-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="text"
+                            value={editTitleValue}
+                            onChange={(e) => setEditTitleValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleSaveEdit(e, session.id);
+                              } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                handleCancelEdit(e);
+                              }
+                            }}
+                            autoFocus
+                            maxLength={60}
+                            disabled={savingTitleId === session.id}
+                            className="flex-1 min-w-0 text-xs font-bold text-[#2D1C24] bg-white/90 border border-[#EC4899] rounded-lg px-2 py-0.5 outline-none ring-1 ring-[#EC4899]/30"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => handleSaveEdit(e, session.id)}
+                            disabled={savingTitleId === session.id}
+                            className="p-1 text-[#BE185D] hover:bg-white rounded-md cursor-pointer transition-colors"
+                            title="Save title"
+                            aria-label="Save title"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCancelEdit(e)}
+                            disabled={savingTitleId === session.id}
+                            className="p-1 text-[#836270] hover:bg-white rounded-md cursor-pointer transition-colors"
+                            title="Cancel"
+                            aria-label="Cancel"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs font-bold truncate leading-tight">
+                          {formatSessionDisplayTitle(session)}
+                        </p>
+                      )}
                       <div className="flex items-center gap-2 mt-1.5 text-[10px] text-[#836270]">
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -354,16 +440,28 @@ export default function Sidebar({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => handleDeleteClick(e, session)}
-                        disabled={deletingId === session.id}
-                        className="opacity-0 group-hover:opacity-100 text-[#836270] hover:text-[#E11D48] transition-all p-1.5 rounded-lg hover:bg-[#FFE4E6] shrink-0 cursor-pointer"
-                        title="Delete set"
-                        aria-label={`Delete set ${formatSessionDisplayTitle(session)}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="flex items-center gap-0.5">
+                      {editingSessionId !== session.id && (
+                        <>
+                          <button
+                            onClick={(e) => handleStartEdit(e, session)}
+                            className="opacity-0 group-hover:opacity-100 text-[#836270] hover:text-[#BE185D] transition-all p-1.5 rounded-lg hover:bg-white/80 shrink-0 cursor-pointer"
+                            title="Rename set"
+                            aria-label={`Rename set ${formatSessionDisplayTitle(session)}`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteClick(e, session)}
+                            disabled={deletingId === session.id}
+                            className="opacity-0 group-hover:opacity-100 text-[#836270] hover:text-[#E11D48] transition-all p-1.5 rounded-lg hover:bg-[#FFE4E6] shrink-0 cursor-pointer"
+                            title="Delete set"
+                            aria-label={`Delete set ${formatSessionDisplayTitle(session)}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                       <ChevronRight
                         className={`w-4 h-4 shrink-0 transition-transform ${
                           isActive
