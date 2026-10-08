@@ -85,7 +85,7 @@ export default function Sidebar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showSignOutModal, sessionToDelete, deletingId, sidebarOpen, onCloseSidebar]);
 
-  // Real-time Firestore listener for user sessions
+  // Real-time synchronization for user sessions
   useEffect(() => {
     if (!user || isGuest) {
       setSessions([]);
@@ -97,7 +97,7 @@ export default function Sidebar({
     const unsubscribe = subscribeToSessions(user.uid, (data) => {
       setSessions(data || []);
       setLoadingSessions(false);
-      // Auto-backfill older historical sets with dynamic titles in Firestore
+      // Auto-backfill older historical sets with dynamic titles
       backfillHistoricalSessionTitles(user.uid, data);
       // Auto-purge any empty ghost sessions left behind
       cleanEmptyOrphanSessions(user.uid, data);

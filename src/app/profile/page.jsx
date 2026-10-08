@@ -128,7 +128,7 @@ export default function ProfilePage() {
     setImgError(false);
   }, [photoURL]);
 
-  // Fetch user profile and sessions count from Firestore
+  // Fetch user profile and sessions count from PostgreSQL database
   useEffect(() => {
     if (!user) {
       setLoadingData(false);
@@ -229,8 +229,8 @@ export default function ProfilePage() {
       const trimmedName = displayName.trim() || "VIP Heckler";
       const cleanPhoto = photoURL ? photoURL.trim() : "";
 
-      // 1. Save full comedy persona and image to Firestore DB first
-      const savedToFirestore = await saveUserProfile(user.uid, {
+      // 1. Save full comedy persona and image to PostgreSQL database
+      const savedToDb = await saveUserProfile(user.uid, {
         displayName: trimmedName,
         photoURL: cleanPhoto,
         stageTitle: stageTitle.trim(),
@@ -249,7 +249,7 @@ export default function ProfilePage() {
         favoriteTopic: favoriteTopic.trim(),
       });
 
-      if (savedToFirestore) {
+      if (savedToDb) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 4000);
       } else {
@@ -265,29 +265,20 @@ export default function ProfilePage() {
     }
   };
 
-  // Handle Delete All Chats (Firestore + PostgreSQL pgvector)
+  // Handle Delete All Chats (PostgreSQL pgvector)
   const handleDeleteAllChats = async () => {
     if (!user || deletingChats) return;
 
     setDeletingChats(true);
     try {
-      // 1. Shred from Firestore
+      // Shred from PostgreSQL (sessions, messages, session_embeddings, document_chunks)
       const res = await deleteAllUserSessions(user.uid);
-
-      // 2. Shred from PostgreSQL (pgvector session_embeddings & document_chunks)
-      try {
-        await fetch(`/api/sessions?all=true&userId=${encodeURIComponent(user.uid)}`, {
-          method: "DELETE",
-        });
-      } catch (pgErr) {
-        console.warn("[Profile] PostgreSQL shred warning:", pgErr);
-      }
 
       if (res.success) {
         setSessionsCount(0);
         setShowDeleteModal(false);
         setDeleteConfirmationText("");
-        setDeleteSuccessMsg(`Shredded ${res.count} comedy sets from both Firestore and pgvector.`);
+        setDeleteSuccessMsg(`Shredded ${res.count} comedy sets from PostgreSQL.`);
         setTimeout(() => setDeleteSuccessMsg(""), 5000);
       } else {
         alert("Failed to shred all sets. Please check connection.");

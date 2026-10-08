@@ -92,7 +92,7 @@ npx roastmaster-ai "I use localStorage to save production Stripe keys"
 | 🫧 **Liquid Glass UI + Venom Goo Flow** | Hardware-accelerated VisionOS glassmorphism with an organic, flowing blackish-pink **SVG metaball symbiote** background. |
 | 💻 **CLI & Web In One** | Seamless terminal workflow via `npx roastmaster-ai` or full interactive web cellar with teleprompter streams at [roastmaster-phi.vercel.app](https://roastmaster-phi.vercel.app). |
 | 📝 **Syntax-Highlighted Code Blocks** | Mobile-safe horizontal scroll containment for code snippets and instant clipboard copying. |
-| 💾 **Persistent Standup Sets** | Cloud Firestore session persistence, dynamic title renames, shred set confirmation modals, and VIP pass authentication. |
+| 💾 **Persistent Standup Sets** | Aiven PostgreSQL session persistence, dynamic title renames, shred set confirmation modals, and VIP pass authentication. |
 
 ---
 
@@ -109,9 +109,9 @@ npx roastmaster-ai "I use localStorage to save production Stripe keys"
 │ • VisionOS Liquid Glass Tokens│ • Standup Comedy Heuristics   │
 ├───────────────────────────────┼───────────────────────────────┤
 │ Vector Database & RAG         │ Storage & Authentication      │
-│ • Aiven PostgreSQL + pgvector │ • Cloud Firestore Sessions    │
+│ • Aiven PostgreSQL + pgvector │ • PostgreSQL Sessions & Chats │
 │ • 768-dim (gemini-embedding-2)│ • Firebase Auth & VIP Passes  │
-│ • LangChain Sentence Splitters│ • UnPDF Context Ingestion     │
+│ • True Hybrid Search (RRF)    │ • UnPDF Context Ingestion     │
 └───────────────────────────────┴───────────────────────────────┘
 ```
 
@@ -155,15 +155,12 @@ npm install
 # AI Engine
 GEMINI_API_KEY="your-gemini-api-key"
 
-# Vector Database (Aiven PostgreSQL pgvector)
-PGHOST="your-pg-host.aivencloud.com"
-PGPORT="your-port"
-PGDATABASE="defaultdb"
-PGUSER="avnadmin"
-PGPASSWORD="your-password"
-PGSSLMODE="require"
+# Vector Database & Storage (Aiven PostgreSQL + pgvector)
+DATABASE_URL="postgres://avnadmin:password@your-host.aivencloud.com:port/roastmaster?sslmode=require"
+EMBEDDING_MODEL="gemini-embedding-2"
+EMBEDDING_DIMENSION=768
 
-# Firebase Client Keys
+# Firebase Client Keys (Authentication for VIP Passes)
 NEXT_PUBLIC_FIREBASE_API_KEY="your-api-key"
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-auth-domain"
 NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
