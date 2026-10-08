@@ -169,8 +169,8 @@ export function rerankAndFilterChunks(query, candidates, options = {}) {
 
   // 4. Relevance Gatekeeper: Filter out low-confidence & unrelated noise
   const filtered = scoredCandidates.filter((chunk) => {
-    // If the query contains multiple distinct keywords, require that at least one matched
-    if (queryKeywords.length >= 2 && chunk.coverageRatio === 0 && chunk.vectorSimilarity < 0.60) {
+    // If the query contains multiple distinct keywords, require that at least one matched or vector is high-confidence (>= 0.68)
+    if (queryKeywords.length >= 2 && chunk.coverageRatio === 0 && chunk.vectorSimilarity < 0.68) {
       return false;
     }
 

@@ -423,7 +423,7 @@ export async function upsertBatchSessionEmbeddings(sessions, defaultUserId = nul
  * @param {string} [params.queryText=""]
  * @param {string} [params.userId]
  * @param {number} [params.limit=5]
- * @param {number} [params.minSimilarity=0.28]
+ * @param {number} [params.minSimilarity=0.68] - Calibrated floor: Gemini 768-d random text noise floor is ~0.58-0.62
  * @returns {Promise<Array<object>>}
  */
 export async function searchSimilarSessions({
@@ -431,7 +431,7 @@ export async function searchSimilarSessions({
   queryText = "",
   userId = null,
   limit = 5,
-  minSimilarity = 0.28,
+  minSimilarity = 0.68,
 }) {
   const db = getDbPool();
   if (!db) return [];
@@ -466,7 +466,7 @@ export async function searchSimilarSessions({
       )::numeric, 4) AS "similarityScore",
       CASE 
         WHEN $2::text <> '' AND (title ILIKE '%' || $2 || '%' OR snippet ILIKE '%' || $2 || '%' OR ($6::text <> '' AND REPLACE(REPLACE(snippet, '-', ''), ' ', '') ILIKE '%' || $6 || '%')) 
-          AND $1::text IS NOT NULL AND embedding IS NOT NULL AND (1 - (embedding <=> $1::vector)) >= 0.35
+          AND $1::text IS NOT NULL AND embedding IS NOT NULL AND (1 - (embedding <=> $1::vector)) >= 0.68
         THEN 'hybrid'
         WHEN $2::text <> '' AND (title ILIKE '%' || $2 || '%' OR snippet ILIKE '%' || $2 || '%' OR ($6::text <> '' AND REPLACE(REPLACE(snippet, '-', ''), ' ', '') ILIKE '%' || $6 || '%'))
         THEN 'keyword'

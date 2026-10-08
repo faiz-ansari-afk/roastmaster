@@ -159,14 +159,14 @@ export function cosineSimilarity(vecA, vecB) {
  * @param {Array<object>} items - List of items containing embeddings.
  * @param {object} [options]
  * @param {string|function} [options.embeddingKey='embedding'] - Field name or getter function for the item's vector.
- * @param {number} [options.minScore=0.4] - Minimum similarity threshold.
+ * @param {number} [options.minScore=0.68] - Minimum similarity threshold (calibrated for Gemini 768-d noise floor).
  * @param {number} [options.limit=10] - Max number of top results to return.
  * @returns {Array<object>} Items sorted by similarity score descending, with a `similarityScore` property attached.
  */
 export function rankBySimilarity(queryVector, items, options = {}) {
   const {
     embeddingKey = "embedding",
-    minScore = 0.4,
+    minScore = 0.68,
     limit = 10,
   } = options;
 

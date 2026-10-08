@@ -28,7 +28,8 @@ export async function POST(req) {
     }
 
     const effectiveLimit = typeof limit === "number" ? Math.min(20, Math.max(1, limit)) : 5;
-    const effectiveMinScore = typeof minScore === "number" ? minScore : 0.28;
+    // Calibrated threshold: Gemini 768-d noise floor sits around ~0.58-0.62; 0.68 ensures real semantic relevance
+    const effectiveMinScore = typeof minScore === "number" ? minScore : 0.68;
 
     // 1. User query -> Gemini embedding -> query vector
     let queryVector = null;
