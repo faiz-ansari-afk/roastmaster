@@ -1,6 +1,6 @@
 // src/lib/db.js — Aiven PostgreSQL + pgvector Client & Utilities
 import { Pool } from "pg";
-import { EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "./embeddings.js";
+import { EMBEDDING_MODEL, EMBEDDING_DIMENSION, getEmbedding } from "./embeddings.js";
 
 let pool;
 let vectorSchemaEnsured = false;
@@ -781,21 +781,7 @@ export async function saveCompletedExchangeInDb({
       cleanBotContent = rest;
     }
 
-    // 1. Insert user message
-    await client.query(
-      `INSERT INTO messages (session_id, user_id, role, content, created_at)
-       VALUES ($1, $2, 'user', $3, NOW())`,
-      [sessionId, userId, JSON.stringify(userMsg)]
-    );
-
-    // 2. Insert assistant message
-    await client.query(
-      `INSERT INTO messages (session_id, user_id, role, content, created_at)
-       VALUES ($1, $2, 'assistant', $3, NOW())`,
-      [sessionId, userId, JSON.stringify(cleanBotContent)]
-    );
-
-    // 3. Derive dynamic title if appropriate
+    // 1. Derive dynamic title if appropriate
     const rawTitle = (typeof botMsg === "object" && botMsg?.title) || title;
     let cleanTitle = null;
     if (rawTitle && typeof rawTitle === "string" && rawTitle.trim()) {
@@ -812,7 +798,7 @@ export async function saveCompletedExchangeInDb({
     const embModel = vectorLiteral ? EMBEDDING_MODEL : null;
     const embDim = vectorLiteral ? (embedding.length || EMBEDDING_DIMENSION) : null;
 
-    // 4. Upsert session summary in sessions table
+    // 2. Upsert session summary in sessions table FIRST to guarantee foreign key constraint satisfaction
     await client.query(
       `INSERT INTO sessions (id, user_id, title, snippet, category, message_count, embedding, embedding_model, embedding_dimension, created_at, updated_at)
        VALUES ($1, $2, COALESCE($3, 'New Roast Session'), $4, $5, 2, $6::vector, $7, $8, NOW(), NOW())
@@ -830,17 +816,27 @@ export async function saveCompletedExchangeInDb({
          embedding_model = COALESCE(EXCLUDED.embedding_model, sessions.embedding_model),
          embedding_dimension = COALESCE(EXCLUDED.embedding_dimension, sessions.embedding_dimension),
          updated_at = NOW()`,
-      [sessionId, userId, cleanTitle, snippet, category, vectorLiteral, embModel, embDim, isFirstMessage]
+      [sessionId, userId, cleanTitle, snippet, category, vectorLiteral, embModel, embDim]
+    );
+
+    // 3. Insert user message
+    await client.query(
+      `INSERT INTO messages (session_id, user_id, role, content, created_at)
+       VALUES ($1, $2, 'user', $3, NOW())`,
+      [sessionId, userId, JSON.stringify(userMsg)]
+    );
+
+    // 4. Insert assistant message
+    await client.query(
+      `INSERT INTO messages (session_id, user_id, role, content, created_at)
+       VALUES ($1, $2, 'assistant', $3, NOW())`,
+      [sessionId, userId, JSON.stringify(cleanBotContent)]
     );
 
     await client.query("COMMIT");
 
     if (!vectorLiteral && (cleanTitle || snippet)) {
-      import("@/lib/embeddings")
-        .then(({ getEmbedding }) => {
-          const textToEmbed = `Title: ${cleanTitle || ""}. Snippet: ${snippet || ""}. Category: ${category || ""}`;
-          return getEmbedding(textToEmbed);
-        })
+      getEmbedding(`Title: ${cleanTitle || ""}. Snippet: ${snippet || ""}. Category: ${category || ""}`)
         .then((vec) => {
           if (vec && vec.length > 0) {
             upsertSessionEmbedding({
