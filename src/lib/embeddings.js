@@ -14,20 +14,44 @@ function getGenAI() {
   return genAIInstance;
 }
 
-// Preferred embedding models in order of priority
-const EMBEDDING_MODELS = [
-  "gemini-embedding-001",
-  "gemini-embedding-2",
-];
+/**
+ * Explicit embedding provider, model, and dimension architecture.
+ *
+ * CRITICAL VECTOR RETRIEVAL PRINCIPLE:
+ * In any vector index (pgvector, HNSW, cosine similarity), embeddings from different models
+ * inhabit completely distinct high-dimensional spaces. A query vector generated from Model A
+ * cannot be compared against document chunks embedded with Model B, even if dimension counts match.
+ *
+ * Silent cross-model fallbacks corrupt the vector index. Therefore, the entire index strictly
+ * uses a single explicit model ('gemini-embedding-2') and dimension (768). Transient API issues
+ * are retried on the same model rather than falling back to an incompatible model.
+ */
+export const EMBEDDING_PROVIDER = "gemini";
+export const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "gemini-embedding-2";
+export const EMBEDDING_DIMENSION = parseInt(process.env.EMBEDDING_DIMENSION, 10) || 768;
 
-// 768 dimensions provides optimal balance of accuracy, speed, and compact Firestore storage (~6KB)
-export const DEFAULT_EMBEDDING_DIM = 768;
+// Backward-compatibility alias
+export const DEFAULT_EMBEDDING_DIM = EMBEDDING_DIMENSION;
+
+/**
+ * Returns current active embedding configuration metadata.
+ */
+export function getEmbeddingConfig() {
+  return {
+    provider: EMBEDDING_PROVIDER,
+    model: EMBEDDING_MODEL,
+    dimension: EMBEDDING_DIMENSION,
+  };
+}
 
 /**
  * Generates an embedding vector for a given text snippet using Gemini.
+ * Strictly uses EMBEDDING_MODEL ('gemini-embedding-2') and EMBEDDING_DIMENSION (768).
  * @param {string} text - The input text to embed.
  * @param {object} [options]
- * @param {number} [options.dimensions=768] - Desired output dimensionality (default: 768).
+ * @param {number} [options.dimensions] - Desired output dimensionality (default: EMBEDDING_DIMENSION).
+ * @param {string} [options.model] - Model name override (default: EMBEDDING_MODEL).
+ * @param {number} [options.maxRetries=2] - Number of retries for transient errors.
  * @returns {Promise<number[]>} Array of floating-point numbers representing the embedding.
  */
 export async function getEmbedding(text, options = {}) {
@@ -35,15 +59,18 @@ export async function getEmbedding(text, options = {}) {
     return [];
   }
 
-  const dimensions = options.dimensions || DEFAULT_EMBEDDING_DIM;
+  const dimensions = options.dimensions || EMBEDDING_DIMENSION;
+  const modelName = options.model || EMBEDDING_MODEL;
+  const maxRetries = typeof options.maxRetries === "number" ? options.maxRetries : 2;
+
   const sanitizedText = text.trim().slice(0, 2048);
   if (!sanitizedText) return [];
 
   const ai = getGenAI();
+  const model = ai.getGenerativeModel({ model: modelName });
 
-  for (const modelName of EMBEDDING_MODELS) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const model = ai.getGenerativeModel({ model: modelName });
       const result = await model.embedContent({
         content: { parts: [{ text: sanitizedText }] },
         outputDimensionality: dimensions,
@@ -53,11 +80,26 @@ export async function getEmbedding(text, options = {}) {
         return result.embedding.values;
       }
     } catch (error) {
-      console.warn(`[Embeddings] Model ${modelName} failed, trying next:`, error?.message || error);
+      const isTransient = /quota|rate|timeout|503|429|overloaded/i.test(error?.message || "");
+      if (attempt < maxRetries && isTransient) {
+        const backoffMs = (attempt + 1) * 600;
+        console.warn(
+          `[Embeddings] Model ${modelName} transient issue on attempt ${attempt + 1}/${maxRetries + 1}, retrying in ${backoffMs}ms:`,
+          error?.message
+        );
+        await new Promise((r) => setTimeout(r, backoffMs));
+      } else {
+        console.error(
+          `[Embeddings] Model ${modelName} error on attempt ${attempt + 1}/${maxRetries + 1}:`,
+          error?.message || error
+        );
+        if (attempt === maxRetries) {
+          return [];
+        }
+      }
     }
   }
 
-  console.error("[Embeddings] All embedding models failed for query:", sanitizedText.slice(0, 50));
   return [];
 }
 

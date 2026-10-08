@@ -818,14 +818,18 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     }
   }, [user, isGuest]);
 
-  // Load existing indexed PDF documents whenever the active session changes
+  // Load existing indexed PDF documents whenever an existing active session changes
   useEffect(() => {
     if (!currentSessionId) {
       setAttachedDocs([]);
       return;
     }
+    // Skip network request if this session was just generated locally by sending a chat message
+    if (sessionCreatedLocallyRef.current === currentSessionId) {
+      return;
+    }
     let isMounted = true;
-    fetch(`/api/rag/upload?sessionId=${encodeURIComponent(currentSessionId)}`)
+    fetch(`/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`)
       .then((res) => res.json())
       .then((data) => {
         if (isMounted && Array.isArray(data?.documents)) {
@@ -999,7 +1003,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const handleRemoveDoc = async () => {
     if (!currentSessionId) return;
     try {
-      await fetch(`/api/rag/upload?sessionId=${encodeURIComponent(currentSessionId)}`, {
+      await fetch(`/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`, {
         method: "DELETE",
       });
       setAttachedDocs([]);

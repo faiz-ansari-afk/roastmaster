@@ -110,7 +110,7 @@ npx roastmaster-ai "I use localStorage to save production Stripe keys"
 ├───────────────────────────────┼───────────────────────────────┤
 │ Vector Database & RAG         │ Storage & Authentication      │
 │ • Aiven PostgreSQL + pgvector │ • Cloud Firestore Sessions    │
-│ • 1536-dim Cosine Similarity  │ • Firebase Auth & VIP Passes  │
+│ • 768-dim (gemini-embedding-2)│ • Firebase Auth & VIP Passes  │
 │ • LangChain Sentence Splitters│ • UnPDF Context Ingestion     │
 └───────────────────────────────┴───────────────────────────────┘
 ```

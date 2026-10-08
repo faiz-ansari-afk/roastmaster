@@ -1,7 +1,35 @@
 // src/lib/db.js — Aiven PostgreSQL + pgvector Client & Utilities
 import { Pool } from "pg";
+import { EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "./embeddings.js";
 
 let pool;
+let vectorSchemaEnsured = false;
+
+/**
+ * Ensures PostgreSQL tables have explicit embedding_model and embedding_dimension columns.
+ * Prevents index corruption by guaranteeing that model and dimension metadata are tracked per row.
+ */
+export async function ensureVectorSchema(clientOrPool = null) {
+  if (vectorSchemaEnsured && !clientOrPool) return;
+  const db = clientOrPool || getDbPool();
+  if (!db) return;
+
+  try {
+    await db.query(`
+      ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS embedding_model VARCHAR(64) DEFAULT '${EMBEDDING_MODEL}';
+      ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS embedding_dimension INTEGER DEFAULT ${EMBEDDING_DIMENSION};
+
+      ALTER TABLE session_embeddings ADD COLUMN IF NOT EXISTS embedding_model VARCHAR(64) DEFAULT '${EMBEDDING_MODEL}';
+      ALTER TABLE session_embeddings ADD COLUMN IF NOT EXISTS embedding_dimension INTEGER DEFAULT ${EMBEDDING_DIMENSION};
+
+      ALTER TABLE sessions ADD COLUMN IF NOT EXISTS embedding_model VARCHAR(64) DEFAULT '${EMBEDDING_MODEL}';
+      ALTER TABLE sessions ADD COLUMN IF NOT EXISTS embedding_dimension INTEGER DEFAULT ${EMBEDDING_DIMENSION};
+    `);
+    vectorSchemaEnsured = true;
+  } catch (err) {
+    console.warn("[DB] ensureVectorSchema notice:", err.message);
+  }
+}
 
 export function getDbPool() {
   if (!pool) {
@@ -74,6 +102,7 @@ export async function insertDocumentChunks({ sessionId, userId = null, fileName,
   const client = await db.connect();
   try {
     await client.query("BEGIN");
+    await ensureVectorSchema(client);
 
     // Optional: clear existing chunks for this file in the session if re-uploading
     await client.query(
@@ -82,12 +111,16 @@ export async function insertDocumentChunks({ sessionId, userId = null, fileName,
     );
 
     const insertQuery = `
-      INSERT INTO document_chunks (session_id, user_id, file_name, chunk_index, page_number, content, embedding)
-      VALUES ($1, $2, $3, $4, $5, $6, $7::vector)
+      INSERT INTO document_chunks (
+        session_id, user_id, file_name, chunk_index, page_number, content, embedding, embedding_model, embedding_dimension
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7::vector, $8, $9)
     `;
 
     for (const chunk of chunks) {
       const vectorLiteral = formatVectorForPg(chunk.embedding);
+      const modelName = chunk.embeddingModel || EMBEDDING_MODEL;
+      const dim = chunk.embeddingDimension || (Array.isArray(chunk.embedding) ? chunk.embedding.length : EMBEDDING_DIMENSION);
       await client.query(insertQuery, [
         sessionId,
         userId,
@@ -96,6 +129,8 @@ export async function insertDocumentChunks({ sessionId, userId = null, fileName,
         chunk.pageNumber || 1,
         chunk.content,
         vectorLiteral,
+        modelName,
+        dim,
       ]);
     }
 
@@ -145,6 +180,8 @@ export async function searchSimilarChunks({
       chunk_index AS "chunkIndex",
       page_number AS "pageNumber",
       content,
+      embedding_model AS "embeddingModel",
+      embedding_dimension AS "embeddingDimension",
       1 - (embedding <=> $1::vector) AS similarity
     FROM document_chunks
     WHERE session_id = $2
@@ -237,36 +274,53 @@ export async function upsertSessionEmbedding({
   snippet = null,
   category = null,
   embedding,
+  embeddingModel = EMBEDDING_MODEL,
+  embeddingDimension = null,
 }) {
   const db = getDbPool();
   if (!db || !sessionId || !Array.isArray(embedding) || embedding.length === 0) return null;
 
   const vectorLiteral = formatVectorForPg(embedding);
+  const dim = embeddingDimension || embedding.length || EMBEDDING_DIMENSION;
+
   const query = `
-    INSERT INTO session_embeddings (session_id, user_id, title, snippet, category, embedding, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6::vector, NOW())
+    INSERT INTO session_embeddings (session_id, user_id, title, snippet, category, embedding, embedding_model, embedding_dimension, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6::vector, $7, $8, NOW())
     ON CONFLICT (session_id) DO UPDATE SET
       user_id = COALESCE(EXCLUDED.user_id, session_embeddings.user_id),
       title = COALESCE(EXCLUDED.title, session_embeddings.title),
       snippet = COALESCE(EXCLUDED.snippet, session_embeddings.snippet),
       category = COALESCE(EXCLUDED.category, session_embeddings.category),
       embedding = EXCLUDED.embedding,
+      embedding_model = EXCLUDED.embedding_model,
+      embedding_dimension = EXCLUDED.embedding_dimension,
       updated_at = NOW()
     RETURNING id, session_id AS "sessionId";
   `;
 
   try {
-    const res = await db.query(query, [sessionId, userId, title, snippet, category, vectorLiteral]);
+    const res = await db.query(query, [
+      sessionId,
+      userId,
+      title,
+      snippet,
+      category,
+      vectorLiteral,
+      embeddingModel,
+      dim,
+    ]);
     // Synchronize vector embedding to primary sessions table as well
     await db.query(
       `UPDATE sessions
        SET embedding = $1::vector,
-           title = COALESCE($2, title),
-           snippet = COALESCE($3, snippet),
-           category = COALESCE($4, category),
+           embedding_model = $2,
+           embedding_dimension = $3,
+           title = COALESCE($4, title),
+           snippet = COALESCE($5, snippet),
+           category = COALESCE($6, category),
            updated_at = NOW()
-       WHERE id = $5`,
-      [vectorLiteral, title, snippet, category, sessionId]
+       WHERE id = $7`,
+      [vectorLiteral, embeddingModel, dim, title, snippet, category, sessionId]
     ).catch((syncErr) => console.warn("[DB] Session table embedding sync notice:", syncErr.message));
 
     return res.rows[0];
@@ -294,30 +348,37 @@ export async function upsertBatchSessionEmbeddings(sessions, defaultUserId = nul
   const client = await db.connect();
   try {
     await client.query("BEGIN");
+    await ensureVectorSchema(client);
     const query = `
-      INSERT INTO session_embeddings (session_id, user_id, title, snippet, category, embedding, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6::vector, NOW())
+      INSERT INTO session_embeddings (session_id, user_id, title, snippet, category, embedding, embedding_model, embedding_dimension, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6::vector, $7, $8, NOW())
       ON CONFLICT (session_id) DO UPDATE SET
         user_id = COALESCE(EXCLUDED.user_id, session_embeddings.user_id),
         title = COALESCE(EXCLUDED.title, session_embeddings.title),
         snippet = COALESCE(EXCLUDED.snippet, session_embeddings.snippet),
         category = COALESCE(EXCLUDED.category, session_embeddings.category),
         embedding = EXCLUDED.embedding,
+        embedding_model = EXCLUDED.embedding_model,
+        embedding_dimension = EXCLUDED.embedding_dimension,
         updated_at = NOW();
     `;
     const syncSessionQuery = `
       UPDATE sessions
       SET embedding = $1::vector,
-          title = COALESCE($2, title),
-          snippet = COALESCE($3, snippet),
-          category = COALESCE($4, category),
+          embedding_model = $2,
+          embedding_dimension = $3,
+          title = COALESCE($4, title),
+          snippet = COALESCE($5, snippet),
+          category = COALESCE($6, category),
           updated_at = NOW()
-      WHERE id = $5;
+      WHERE id = $7;
     `;
     for (const s of valid) {
       const sid = s.id || s.sessionId;
       const vectorLiteral = formatVectorForPg(s.embedding);
       const uid = s.userId || defaultUserId || null;
+      const model = s.embeddingModel || EMBEDDING_MODEL;
+      const dim = s.embeddingDimension || s.embedding.length || EMBEDDING_DIMENSION;
       await client.query(query, [
         sid,
         uid,
@@ -325,9 +386,13 @@ export async function upsertBatchSessionEmbeddings(sessions, defaultUserId = nul
         s.snippet || null,
         s.category || null,
         vectorLiteral,
+        model,
+        dim,
       ]);
       await client.query(syncSessionQuery, [
         vectorLiteral,
+        model,
+        dim,
         s.title || null,
         s.snippet || null,
         s.category || null,
@@ -389,6 +454,8 @@ export async function searchSimilarSessions({
       snippet,
       category,
       message_count AS "messageCount",
+      embedding_model AS "embeddingModel",
+      embedding_dimension AS "embeddingDimension",
       ROUND(GREATEST(
         CASE WHEN $1::text IS NOT NULL AND embedding IS NOT NULL THEN (1 - (embedding <=> $1::vector)) ELSE 0 END,
         CASE WHEN $2::text <> '' AND title ILIKE '%' || $2 || '%' THEN 0.88 ELSE 0 END,
@@ -677,7 +744,8 @@ export async function saveCompletedExchangeInDb({
     // Clean bot content to avoid storing embedding inside JSON
     let cleanBotContent = botMsg;
     if (botMsg && typeof botMsg === "object") {
-      const { embedding: _ignored, ...rest } = botMsg;
+      const rest = { ...botMsg };
+      delete rest.embedding;
       cleanBotContent = rest;
     }
 
@@ -709,23 +777,27 @@ export async function saveCompletedExchangeInDb({
 
     const category = typeof botMsg === "object" ? botMsg?.category || null : null;
     const vectorLiteral = Array.isArray(embedding) && embedding.length > 0 ? formatVectorForPg(embedding) : null;
+    const embModel = vectorLiteral ? EMBEDDING_MODEL : null;
+    const embDim = vectorLiteral ? (embedding.length || EMBEDDING_DIMENSION) : null;
 
     // 4. Upsert session summary in sessions table
     await client.query(
-      `INSERT INTO sessions (id, user_id, title, snippet, category, message_count, embedding, created_at, updated_at)
-       VALUES ($1, $2, COALESCE($3, 'New Roast Session'), $4, $5, 2, $6::vector, NOW(), NOW())
+      `INSERT INTO sessions (id, user_id, title, snippet, category, message_count, embedding, embedding_model, embedding_dimension, created_at, updated_at)
+       VALUES ($1, $2, COALESCE($3, 'New Roast Session'), $4, $5, 2, $6::vector, $7, $8, NOW(), NOW())
        ON CONFLICT (id) DO UPDATE SET
          user_id = COALESCE(sessions.user_id, EXCLUDED.user_id),
          title = CASE 
-           WHEN $3::text IS NOT NULL AND ($7::boolean = true OR sessions.title = 'New Roast Session') THEN $3::text 
+           WHEN $3::text IS NOT NULL AND ($9::boolean = true OR sessions.title = 'New Roast Session') THEN $3::text 
            ELSE sessions.title 
          END,
          snippet = COALESCE(EXCLUDED.snippet, sessions.snippet),
          category = COALESCE(EXCLUDED.category, sessions.category),
          message_count = sessions.message_count + 2,
          embedding = COALESCE(EXCLUDED.embedding, sessions.embedding),
+         embedding_model = COALESCE(EXCLUDED.embedding_model, sessions.embedding_model),
+         embedding_dimension = COALESCE(EXCLUDED.embedding_dimension, sessions.embedding_dimension),
          updated_at = NOW()`,
-      [sessionId, userId, cleanTitle, snippet, category, vectorLiteral, isFirstMessage]
+      [sessionId, userId, cleanTitle, snippet, category, vectorLiteral, embModel, embDim, isFirstMessage]
     );
 
     await client.query("COMMIT");

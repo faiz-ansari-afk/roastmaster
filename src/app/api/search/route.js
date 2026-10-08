@@ -1,6 +1,11 @@
 // src/app/api/search/route.js — Real pgvector Retrieval Engine for RoastMaster Sessions
 import { NextResponse } from "next/server";
-import { getEmbedding } from "@/lib/embeddings";
+import {
+  getEmbedding,
+  EMBEDDING_PROVIDER,
+  EMBEDDING_MODEL,
+  EMBEDDING_DIMENSION,
+} from "@/lib/embeddings";
 import {
   searchSimilarSessions,
   upsertBatchSessionEmbeddings,
@@ -62,6 +67,9 @@ export async function POST(req) {
       results: pgResults,
       engine: "postgresql_hybrid_pgvector",
       mode: "hnsw_cosine_keyword_augmented",
+      embedding_provider: EMBEDDING_PROVIDER,
+      embedding_model: EMBEDDING_MODEL,
+      embedding_dimension: EMBEDDING_DIMENSION,
     });
   } catch (error) {
     console.error("[Search API] Error executing pgvector retrieval:", error);

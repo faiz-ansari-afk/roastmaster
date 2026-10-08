@@ -2,7 +2,12 @@
 import { NextResponse } from "next/server";
 import { extractText } from "unpdf";
 import { splitTextIntoChunks } from "@/lib/chunking";
-import { getBatchEmbeddings } from "@/lib/embeddings";
+import {
+  getBatchEmbeddings,
+  EMBEDDING_PROVIDER,
+  EMBEDDING_MODEL,
+  EMBEDDING_DIMENSION,
+} from "@/lib/embeddings";
 import {
   insertDocumentChunks,
   getSessionDocuments,
@@ -153,7 +158,10 @@ export async function POST(req) {
       fileName,
       totalPages,
       totalChunks: chunksWithEmbeddings.length,
-      message: `Indexed "${fileName}" with ${chunksWithEmbeddings.length} chunks into Aiven pgvector.`,
+      embedding_provider: EMBEDDING_PROVIDER,
+      embedding_model: EMBEDDING_MODEL,
+      embedding_dimension: EMBEDDING_DIMENSION,
+      message: `Indexed "${fileName}" with ${chunksWithEmbeddings.length} chunks into Aiven pgvector (${EMBEDDING_MODEL}, ${EMBEDDING_DIMENSION} dims).`,
     });
   } catch (error) {
     console.error("[RAG Upload] Uncaught error during PDF ingestion:", error);

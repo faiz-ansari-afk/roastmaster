@@ -26,7 +26,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "migrate:firestore": "node --env-file=.env scripts/migrate-firestore-to-postgres.mjs"
+    "migrate:firestore": "node --env-file=.env scripts/migrate-firestore-to-postgres.mjs",
+    "migrate:embeddings": "node --env-file=.env scripts/migrate-embeddings.mjs"
   },
   "bin": {
     "roastmaster": "./bin/cli.mjs",
