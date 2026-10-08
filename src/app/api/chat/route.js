@@ -2,8 +2,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { getEmbedding } from "@/lib/embeddings";
-import { searchSimilarChunks, upsertSessionEmbedding } from "@/lib/db";
-import { retrieveAndRerankChunks } from "@/lib/reranker";
+import { searchSimilarChunks, upsertSessionEmbedding, getSessionDocuments } from "@/lib/db";
+import { retrieveAndRerankChunks, extractSalientKeywords } from "@/lib/reranker";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -36,7 +36,16 @@ Always return valid JSON:
   "roast": "1-2 short, razor-sharp punchline sentences specifically roasting the user's exact topic",
   "severity": <integer from 1 to 10>,
   "category": "<1-2 words category, e.g. Frontend, Backend, Career, Logic, Food, Lifestyle, Travel, AI>",
-  "suggestion": "<Backstage Real Talk: clever, constructive, and actually helpful takeaway or advice>"
+  "suggestion": "<Backstage Real Talk: clever, constructive, and actually helpful takeaway or advice>",
+  "isDocumentSupported": <boolean: true if answered directly from uploaded document context, false otherwise>,
+  "citations": [
+    {
+      "chunkId": <integer ID or index of supporting chunk>,
+      "fileName": "<fileName>",
+      "pageNumber": <pageNumber>,
+      "quote": "<brief exact supporting quote from document excerpt>"
+    }
+  ]
 }
 `;
 
@@ -69,10 +78,22 @@ function parseStructuredRoast(text, fallbackQuery = "") {
     }
   }
 
+  const suggestionText =
+    parsed.suggestion ||
+    parsed.answer ||
+    "Chhodo coding, standup comedy dekh lo thodi der, mood theek ho jayega.";
+
+  const rawCitations = Array.isArray(parsed.citations) ? parsed.citations : [];
+  const isDocSupported =
+    typeof parsed.isDocumentSupported === "boolean"
+      ? parsed.isDocumentSupported
+      : (rawCitations.length > 0 && /source:\s*[^,\n]+,\s*page\s*\d+/i.test(suggestionText));
+
   return {
     title: title.trim(),
     roast:
       parsed.roast ||
+      parsed.reply ||
       text ||
       "Bhai, tumhara performance dekh ke comedy club ke saare mics mute ho gaye.",
     severity:
@@ -80,9 +101,10 @@ function parseStructuredRoast(text, fallbackQuery = "") {
         ? Math.min(10, Math.max(1, parsed.severity))
         : 8,
     category: parsed.category || "Crowd Work",
-    suggestion:
-      parsed.suggestion ||
-      "Chhodo coding, standup comedy dekh lo thodi der, mood theek ho jayega.",
+    suggestion: suggestionText,
+    answer: suggestionText,
+    isDocumentSupported: isDocSupported,
+    citations: rawCitations,
   };
 }
 
@@ -115,6 +137,16 @@ export async function POST(req) {
         ? JSON.stringify(lastItem)
         : String(lastItem || "");
 
+    // ── Check if session has uploaded documents ──
+    let sessionDocs = [];
+    if (sessionId) {
+      try {
+        sessionDocs = await getSessionDocuments(sessionId);
+      } catch (docErr) {
+        console.warn("[Chat API] Warning fetching session docs:", docErr?.message);
+      }
+    }
+
     // ── High-Precision RAG Retrieval: Query -> Embedding -> pgvector (Top 15) -> Reranking & Filtering -> Top 3-5 -> Gemini
     let retrievedDocs = [];
     let ragContext = "";
@@ -134,7 +166,7 @@ export async function POST(req) {
           ragContext = retrievedDocs
             .map(
               (c, idx) =>
-                `[Excerpt ${idx + 1} | File: ${c.fileName} | Page: ${c.pageNumber || 1} (Relevance: ${(c.similarity * 100).toFixed(0)}%)]:\n"${c.content}"`
+                `[Chunk ${idx + 1} (ID: ${c.id || c.chunkIndex}) | File: ${c.fileName} | Page: ${c.pageNumber || 1} (Relevance: ${(c.similarity * 100).toFixed(0)}%)]:\n"${c.content}"`
             )
             .join("\n\n");
           console.log(`[Chat API RAG] Injected ${retrievedDocs.length} high-relevance reranked chunks into Gemini context for session: ${sessionId}`);
@@ -183,6 +215,7 @@ PROFILE ROAST RULES:
 `;
       }
     }
+
     if (ragContext) {
       activeSystemPrompt += `
 
@@ -191,18 +224,56 @@ DOCUMENT CONTEXT (from user's uploaded reference PDF via pgvector):
 ${ragContext}
 ======================================================================
 
-RAG RULES:
-1. Ground your roast and advice directly in the facts, claims, code, or context of the document excerpts above.
-2. In "roast", mock or roast their document, ideas, or questions with razor-sharp standup comedy punchlines (1-2 sentences).
-3. In "suggestion" (Backstage Real Talk), answer the user's specific query with genuine facts and constructive advice from the document.
-4. STRICT CITATION OF REAL PAGE NUMBERS (MANDATORY):
-   - Whenever answering questions or stating facts from the document excerpts, provide the exact source citation at the end of the answer in this exact format:
-     Source: <fileName>, Page <pageNumber>
-   - Example:
-     Employees are entitled to 30 days of annual leave.
+GROUNDING & CITATION PROTOCOL (CRITICAL):
+1. RELEVANCE & GROUNDING EVALUATION:
+   Carefully examine the user's question and the DOCUMENT CONTEXT above:
+   - Does the document context actually contain facts or information that answer or directly support the user's question?
 
-     Source: employee-handbook.pdf, Page 17
-   - NEVER invent or hallucinate page numbers. ONLY cite the exact Page number provided in the excerpt header above. The retrieval layer has provided the true page number.
+   CASE A: THE DOCUMENT CONTAINS THE ANSWER:
+   - Set "isDocumentSupported": true
+   - In "suggestion" (Backstage Real Talk), provide a concise, factual answer grounded directly in the document excerpts.
+   - Conclude "suggestion" with the exact citation in this format:
+     Source: <fileName>, Page <pageNumber>
+   - In "citations", return the supporting chunk references:
+     [
+       {
+         "chunkId": <chunk ID or number from header above>,
+         "fileName": "<exact fileName>",
+         "pageNumber": <exact pageNumber from header above>,
+         "quote": "<short exact quote from excerpt supporting this answer>"
+       }
+     ]
+
+   CASE B: THE DOCUMENT DOES NOT CONTAIN THE ANSWER (OR IS IRRELEVANT):
+   - Set "isDocumentSupported": false
+   - Set "citations": []
+   - In "suggestion", explicitly state that the uploaded document does not contain this information (e.g., "I couldn't find this in your document (<fileName>)."). You may optionally offer brief general knowledge advice, but NEVER claim it came from the document.
+   - DO NOT append any "Source:" line to "suggestion" when the document does not contain the answer!
+   - NEVER hallucinate or force a citation to an unrelated excerpt!
+
+2. COMEDY PUNCHLINE ("roast"):
+   - Deliver 1-2 razor-sharp comedy punchlines mocking their document, question, or dilemma.
+   - If the document doesn't contain the answer, roast them for asking for something that isn't in their own uploaded file!
+
+3. STRICT ACCURACY:
+   - ONLY cite the exact page numbers and file names present in the DOCUMENT CONTEXT headers above.
+   - Never invent pages or files.
+`;
+    } else if (sessionDocs.length > 0) {
+      activeSystemPrompt += `
+
+DOCUMENT RETRIEVAL NOTICE:
+======================================================================
+The user has uploaded reference document(s) in this session: ${sessionDocs.map((d) => d.fileName).join(", ")}.
+However, automated vector and keyword retrieval found NO matching or relevant passages for the query: "${lastMessage}".
+
+STRICT UNANSWERABLE / REFUSAL RULE:
+- If the user's question is asking about their uploaded document or expecting document facts, you MUST explicitly state in "suggestion" (Backstage Real Talk):
+  "I couldn't find this in your document (${sessionDocs[0].fileName})."
+- Set "isDocumentSupported": false
+- Set "citations": []
+- NEVER invent document facts or cite non-existent pages!
+======================================================================
 `;
     }
 
@@ -241,42 +312,189 @@ RAG RULES:
     }
 
     if (finalPayload) {
+      // ── STRICT CITATION VALIDATION & GROUNDING ENGINE ──
+      // Verify citations against actual retrieved chunks before trusting them
       if (retrievedDocs.length > 0) {
-        finalPayload.ragSources = retrievedDocs.map((d) => ({
-          fileName: d.fileName,
-          chunkIndex: d.chunkIndex,
-          pageNumber: d.pageNumber || 1,
-          similarity: d.similarity,
-          rerankScore: d.rerankScore || d.similarity,
-          vectorSimilarity: d.vectorSimilarity || d.similarity,
-          matchedKeywords: d.matchedKeywords || [],
-          snippet: d.content.slice(0, 160) + (d.content.length > 160 ? "..." : ""),
-        }));
+        const suggestionLower = (finalPayload.suggestion || "").toLowerCase();
+        const negativeRefusalPatterns = [
+          "couldn't find this in your document",
+          "could not find this in your document",
+          "could not find any information",
+          "couldn't find any information",
+          "not mentioned in the document",
+          "not mentioned in your document",
+          "not found in the document",
+          "not found in your document",
+          "not contained in the document",
+          "document does not mention",
+          "document does not contain",
+          "document doesn't mention",
+          "document doesn't contain",
+          "does not specify",
+          "doesn't specify",
+          "no information in the document",
+          "not in your document",
+          "unable to find in the document",
+          "i couldn't find",
+          "i could not find",
+        ];
+        const hasNegativeRefusal = negativeRefusalPatterns.some((pattern) =>
+          suggestionLower.includes(pattern)
+        );
 
-        // Determine top verified source and page number from retrieval layer
-        const topDoc = retrievedDocs[0];
-        const primarySource = `Source: ${topDoc.fileName}, Page ${topDoc.pageNumber || 1}`;
-        finalPayload.source = primarySource;
+        // If model explicitly declared unsupported, or text expresses inability to find in doc
+        if (!finalPayload.isDocumentSupported || hasNegativeRefusal) {
+          finalPayload.isDocumentSupported = false;
+          finalPayload.citations = [];
+          finalPayload.source = null;
+          finalPayload.ragSources = [];
+          // Strip any hallucinated "Source: ..." lines from suggestion
+          finalPayload.suggestion = finalPayload.suggestion
+            .replace(/\n\s*Source:\s*[^,\n]+,\s*Page\s*\d+[^\n]*/gi, "")
+            .trim();
+          finalPayload.answer = finalPayload.suggestion;
+        } else {
+          // Validate model citations against actual retrieved chunks
+          const candidateCitations = Array.isArray(finalPayload.citations) ? finalPayload.citations : [];
+          const verifiedCitations = [];
 
-        // If the answer in suggestion does not cite the source or hallucinated an invalid page number,
-        // guarantee accuracy by verifying against retrieved chunks
-        if (finalPayload.suggestion && typeof finalPayload.suggestion === "string") {
-          const sourceMatch = finalPayload.suggestion.match(/Source:\s*([^,\n]+),\s*Page\s*(\d+)/i);
-          if (sourceMatch) {
-            const citedPage = parseInt(sourceMatch[2], 10);
-            const validPages = retrievedDocs.map((d) => d.pageNumber || 1);
-            if (!validPages.includes(citedPage)) {
-              // Replace hallucinated page number with the actual page number from the retrieval layer
+          for (const cit of candidateCitations) {
+            if (!cit) continue;
+            const citedPage = parseInt(cit.pageNumber || cit.page, 10);
+            const citedFile = (cit.fileName || "").trim().toLowerCase();
+            const citedChunkId = cit.chunkId != null ? String(cit.chunkId) : null;
+            const citedQuote = (cit.quote || "").trim();
+
+            const matchingDoc = retrievedDocs.find((doc) => {
+              if (citedChunkId && (String(doc.id) === citedChunkId || String(doc.chunkIndex) === citedChunkId)) {
+                return true;
+              }
+              const pageMatches = !citedPage || (doc.pageNumber || 1) === citedPage;
+              const fileMatches =
+                !citedFile ||
+                doc.fileName.toLowerCase() === citedFile ||
+                doc.fileName.toLowerCase().includes(citedFile) ||
+                citedFile.includes(doc.fileName.toLowerCase());
+              return pageMatches && fileMatches;
+            });
+
+            if (matchingDoc) {
+              let isQuoteGrounded = true;
+              if (citedQuote && citedQuote.length > 8) {
+                const quoteWords = extractSalientKeywords(citedQuote);
+                if (quoteWords.length > 0) {
+                  const docContentLower = matchingDoc.content.toLowerCase();
+                  const matchedWords = quoteWords.filter((w) => docContentLower.includes(w));
+                  isQuoteGrounded = (matchedWords.length / quoteWords.length) >= 0.35;
+                }
+              }
+
+              if (isQuoteGrounded) {
+                verifiedCitations.push({
+                  chunkId: matchingDoc.id || matchingDoc.chunkIndex,
+                  fileName: matchingDoc.fileName,
+                  pageNumber: matchingDoc.pageNumber || 1,
+                  quote: citedQuote || matchingDoc.content.slice(0, 160) + "...",
+                  similarity: matchingDoc.similarity,
+                });
+              }
+            }
+          }
+
+          // Fallback check: If candidateCitations was empty or model formatted citation only in text,
+          // verify if the textual citation matches a real retrieved chunk AND has lexical grounding
+          if (verifiedCitations.length === 0) {
+            const textSourceMatch = finalPayload.suggestion.match(
+              /Source:\s*([^,\n]+),\s*Page\s*(\d+)/i
+            );
+            if (textSourceMatch) {
+              const textFile = textSourceMatch[1].trim().toLowerCase();
+              const textPage = parseInt(textSourceMatch[2], 10);
+              const matchingDoc = retrievedDocs.find(
+                (d) =>
+                  (d.pageNumber || 1) === textPage &&
+                  (d.fileName.toLowerCase().includes(textFile) || textFile.includes(d.fileName.toLowerCase()))
+              );
+              if (matchingDoc) {
+                const suggKeywords = extractSalientKeywords(finalPayload.suggestion);
+                const contentLower = matchingDoc.content.toLowerCase();
+                const overlap = suggKeywords.filter((w) => contentLower.includes(w));
+                if (suggKeywords.length === 0 || overlap.length >= 2 || (overlap.length / suggKeywords.length) >= 0.25) {
+                  verifiedCitations.push({
+                    chunkId: matchingDoc.id || matchingDoc.chunkIndex,
+                    fileName: matchingDoc.fileName,
+                    pageNumber: matchingDoc.pageNumber || 1,
+                    quote: matchingDoc.content.slice(0, 160) + "...",
+                    similarity: matchingDoc.similarity,
+                  });
+                }
+              }
+            }
+          }
+
+          // Grounding decision
+          if (verifiedCitations.length > 0) {
+            finalPayload.isDocumentSupported = true;
+            finalPayload.citations = verifiedCitations;
+
+            const primaryCitation = verifiedCitations[0];
+            const primarySource = `Source: ${primaryCitation.fileName}, Page ${primaryCitation.pageNumber}`;
+            finalPayload.source = primarySource;
+
+            // Ensure citation in suggestion matches verified primary citation
+            const sourceMatch = finalPayload.suggestion.match(/Source:\s*([^,\n]+),\s*Page\s*(\d+)/i);
+            if (sourceMatch) {
               finalPayload.suggestion = finalPayload.suggestion.replace(
                 sourceMatch[0],
-                `Source: ${topDoc.fileName}, Page ${topDoc.pageNumber || 1}`
+                primarySource
               );
+            } else {
+              finalPayload.suggestion = `${finalPayload.suggestion.trim()}\n\n${primarySource}`;
             }
-          } else if (!finalPayload.suggestion.toLowerCase().includes("source:")) {
-            // Append the true source and page citation from the retrieval layer
-            finalPayload.suggestion = `${finalPayload.suggestion.trim()}\n\nSource: ${topDoc.fileName}, Page ${topDoc.pageNumber || 1}`;
+            finalPayload.answer = finalPayload.suggestion;
+
+            // Mark which retrieved chunks were verified and cited
+            finalPayload.ragSources = retrievedDocs.map((d) => {
+              const isCited = verifiedCitations.some(
+                (vc) =>
+                  vc.pageNumber === (d.pageNumber || 1) &&
+                  vc.fileName.toLowerCase() === d.fileName.toLowerCase()
+              );
+              return {
+                fileName: d.fileName,
+                chunkIndex: d.chunkIndex,
+                pageNumber: d.pageNumber || 1,
+                similarity: d.similarity,
+                rerankScore: d.rerankScore || d.similarity,
+                vectorSimilarity: d.vectorSimilarity || d.similarity,
+                matchedKeywords: d.matchedKeywords || [],
+                snippet: d.content.slice(0, 160) + (d.content.length > 160 ? "..." : ""),
+                isCited,
+              };
+            });
+          } else {
+            // Citations could NOT be verified against retrieved chunks!
+            // Do NOT blindly append top source!
+            finalPayload.isDocumentSupported = false;
+            finalPayload.citations = [];
+            finalPayload.source = null;
+            finalPayload.ragSources = [];
+            finalPayload.suggestion = finalPayload.suggestion
+              .replace(/\n\s*Source:\s*[^,\n]+,\s*Page\s*\d+[^\n]*/gi, "")
+              .trim();
+            finalPayload.answer = finalPayload.suggestion;
           }
         }
+      } else {
+        // No chunks retrieved at all
+        finalPayload.isDocumentSupported = false;
+        finalPayload.citations = [];
+        finalPayload.source = null;
+        finalPayload.ragSources = [];
+        finalPayload.suggestion = finalPayload.suggestion
+          .replace(/\n\s*Source:\s*[^,\n]+,\s*Page\s*\d+[^\n]*/gi, "")
+          .trim();
+        finalPayload.answer = finalPayload.suggestion;
       }
 
       try {

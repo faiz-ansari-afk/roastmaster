@@ -39,16 +39,18 @@ import {
 
 // ── Helpers for structured data parsing & severity metadata ───────────────────
 function parseRoastData(raw) {
-  if (!raw) return { roast: "", severity: null, category: null, suggestion: "", ragSources: null, source: null };
+  if (!raw) return { roast: "", severity: null, category: null, suggestion: "", ragSources: null, source: null, citations: null, isDocumentSupported: false };
 
   if (typeof raw === "object") {
     return {
       roast: raw.roast || raw.reply || "",
       severity: typeof raw.severity === "number" ? raw.severity : null,
       category: raw.category || null,
-      suggestion: raw.suggestion || "",
+      suggestion: raw.suggestion || raw.answer || "",
       ragSources: Array.isArray(raw.ragSources) ? raw.ragSources : null,
       source: raw.source || null,
+      citations: Array.isArray(raw.citations) ? raw.citations : null,
+      isDocumentSupported: Boolean(raw.isDocumentSupported),
     };
   }
 
@@ -62,9 +64,11 @@ function parseRoastData(raw) {
             roast: parsed.roast || parsed.reply || "",
             severity: typeof parsed.severity === "number" ? parsed.severity : null,
             category: parsed.category || null,
-            suggestion: parsed.suggestion || "",
+            suggestion: parsed.suggestion || parsed.answer || "",
             ragSources: Array.isArray(parsed.ragSources) ? parsed.ragSources : null,
             source: parsed.source || null,
+            citations: Array.isArray(parsed.citations) ? parsed.citations : null,
+            isDocumentSupported: Boolean(parsed.isDocumentSupported),
           };
         }
       } catch {
@@ -78,10 +82,12 @@ function parseRoastData(raw) {
       suggestion: "",
       ragSources: null,
       source: null,
+      citations: null,
+      isDocumentSupported: false,
     };
   }
 
-  return { roast: String(raw), severity: null, category: null, suggestion: "", ragSources: null, source: null };
+  return { roast: String(raw), severity: null, category: null, suggestion: "", ragSources: null, source: null, citations: null, isDocumentSupported: false };
 }
 
 function getSeverityBadge(severity) {
@@ -200,7 +206,11 @@ function RagSourcesAccordion({ sources }) {
             {sources.map((src, sIdx) => (
               <div
                 key={sIdx}
-                className="bg-white/85 backdrop-blur-xs p-2.5 rounded-xl border border-white/90 text-xs shadow-2xs"
+                className={`p-2.5 rounded-xl border text-xs shadow-2xs transition-all ${
+                  src.isCited
+                    ? "bg-[#FDF2F8] border-[#F472B6]/60 shadow-[0_0_8px_rgba(244,114,182,0.12)]"
+                    : "bg-white/85 backdrop-blur-xs border-white/90"
+                }`}
               >
                 <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1 text-[#9D174D]">
                   <span className="flex items-center gap-1.5 truncate max-w-[240px] sm:max-w-md">
@@ -209,6 +219,11 @@ function RagSourcesAccordion({ sources }) {
                     <span className="text-[#BE185D] font-bold shrink-0 bg-[#FCE7F3]/80 border border-[#FBCFE8] px-1.5 py-0.2 rounded-md text-[10px]">
                       Page {src.pageNumber || 1}
                     </span>
+                    {src.isCited && (
+                      <span className="bg-[#EC4899] text-white px-1.5 py-0.2 rounded-md text-[9px] font-black tracking-wide shrink-0">
+                        CITED IN ANSWER
+                      </span>
+                    )}
                   </span>
                   <span className="bg-[#FDF2F8]/90 text-[#BE185D] border border-[#FBCFE8] px-1.5 py-0.5 rounded shrink-0">
                     {(src.similarity * 100).toFixed(0)}% match
@@ -410,8 +425,8 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
           )}
         </div>
 
-        {/* 📄 The Grounding Sources from Aiven pgvector — Collapsible Accordion */}
-        {!isSpeaking && data.ragSources && data.ragSources.length > 0 && (
+        {/* 📄 The Grounding Sources from Aiven pgvector — Collapsible Accordion (Only when supported) */}
+        {!isSpeaking && data.isDocumentSupported && data.ragSources && data.ragSources.length > 0 && (
           <RagSourcesAccordion sources={data.ragSources} />
         )}
 
@@ -419,9 +434,17 @@ function BotStageCard({ content, isStreaming, isNew = false }) {
         {!isSpeaking && data.suggestion && (
           <div className="mt-4 pt-3.5 border-t border-white/70 animate-in fade-in duration-400">
             <div className="liquid-glass-pink-soft rounded-2xl p-3.5 sm:p-4">
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#9D174D] tracking-wider uppercase font-mono mb-1.5">
-                <Lightbulb className="w-4 h-4 text-[#EC4899]" />
-                <span>Backstage Real Talk (Actually Improve):</span>
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-black text-[#9D174D] tracking-wider uppercase font-mono">
+                  <Lightbulb className="w-4 h-4 text-[#EC4899]" />
+                  <span>Backstage Real Talk (Actually Improve):</span>
+                </div>
+                {data.isDocumentSupported && data.source && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#EC4899]/15 text-[#BE185D] border border-[#F472B6]/40">
+                    <FileCheck className="w-3 h-3 text-[#EC4899]" />
+                    Verified Source
+                  </span>
+                )}
               </div>
               <div className="text-xs sm:text-sm text-[#4A2D3C] leading-relaxed whitespace-pre-wrap break-words">
                 {data.suggestion}
