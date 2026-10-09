@@ -43,6 +43,39 @@ export function getEmbeddingConfig() {
     dimension: EMBEDDING_DIMENSION,
   };
 }
+// In-memory query embedding cache (LRU-style with max 500 items) to prevent redundant API calls
+const embeddingCache = new Map();
+const MAX_CACHE_SIZE = 500;
+
+function getCachedEmbedding(key) {
+  return embeddingCache.get(key) || null;
+}
+
+function setCachedEmbedding(key, vector) {
+  if (embeddingCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = embeddingCache.keys().next().value;
+    embeddingCache.delete(firstKey);
+  }
+  embeddingCache.set(key, vector);
+}
+
+/**
+ * Extracts recommended retry delay in ms from Google Gemini RPC error message.
+ * Example: "Please retry in 2.607340685s" or "retryDelay: '2s'".
+ * @param {string} errorMsg
+ * @returns {number|null} Delay in milliseconds
+ */
+function extractRetryDelayMs(errorMsg) {
+  if (!errorMsg || typeof errorMsg !== "string") return null;
+  const matchSeconds = errorMsg.match(/retry in\s+([0-9.]+)\s*s/i) || errorMsg.match(/retryDelay["']?\s*:\s*["']?([0-9.]+)s/i);
+  if (matchSeconds) {
+    const sec = parseFloat(matchSeconds[1]);
+    if (!isNaN(sec) && sec > 0) {
+      return Math.ceil(sec * 1000) + 400; // Add 400ms safety buffer
+    }
+  }
+  return null;
+}
 
 /**
  * Generates an embedding vector for a given text snippet using Gemini.
@@ -51,7 +84,7 @@ export function getEmbeddingConfig() {
  * @param {object} [options]
  * @param {number} [options.dimensions] - Desired output dimensionality (default: EMBEDDING_DIMENSION).
  * @param {string} [options.model] - Model name override (default: EMBEDDING_MODEL).
- * @param {number} [options.maxRetries=2] - Number of retries for transient errors.
+ * @param {number} [options.maxRetries=3] - Number of retries for transient errors.
  * @returns {Promise<number[]>} Array of floating-point numbers representing the embedding.
  */
 export async function getEmbedding(text, options = {}) {
@@ -59,12 +92,19 @@ export async function getEmbedding(text, options = {}) {
     return [];
   }
 
-  const dimensions = options.dimensions || EMBEDDING_DIMENSION;
-  const modelName = options.model || EMBEDDING_MODEL;
-  const maxRetries = typeof options.maxRetries === "number" ? options.maxRetries : 2;
-
   const sanitizedText = text.trim().slice(0, 2048);
   if (!sanitizedText) return [];
+
+  const dimensions = options.dimensions || EMBEDDING_DIMENSION;
+  const modelName = options.model || EMBEDDING_MODEL;
+  const maxRetries = typeof options.maxRetries === "number" ? options.maxRetries : 3;
+
+  // Check cache first for identical text + model + dimensions
+  const cacheKey = `${modelName}:${dimensions}:${sanitizedText}`;
+  const cached = getCachedEmbedding(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
   const ai = getGenAI();
   const model = ai.getGenerativeModel({ model: modelName });
@@ -77,21 +117,28 @@ export async function getEmbedding(text, options = {}) {
       });
 
       if (result?.embedding?.values && result.embedding.values.length > 0) {
-        return result.embedding.values;
+        const vector = result.embedding.values;
+        setCachedEmbedding(cacheKey, vector);
+        return vector;
       }
     } catch (error) {
-      const isTransient = /quota|rate|timeout|503|429|overloaded/i.test(error?.message || "");
+      const msg = error?.message || "";
+      const isRateLimit = /quota|rate|429|resource_exhausted|too many requests/i.test(msg);
+      const isTransient = isRateLimit || /timeout|503|overloaded|econnreset/i.test(msg);
+
       if (attempt < maxRetries && isTransient) {
-        const backoffMs = (attempt + 1) * 600;
+        // If Google provides an explicit retryDelay, respect it; otherwise exponential backoff
+        const serverDelayMs = extractRetryDelayMs(msg);
+        const backoffMs = serverDelayMs || Math.min(8000, Math.pow(2, attempt + 1) * 1000);
+
         console.warn(
-          `[Embeddings] Model ${modelName} transient issue on attempt ${attempt + 1}/${maxRetries + 1}, retrying in ${backoffMs}ms:`,
-          error?.message
+          `[Embeddings] Rate limit/transient issue on attempt ${attempt + 1}/${maxRetries + 1}. Waiting ${backoffMs}ms before retry...`
         );
         await new Promise((r) => setTimeout(r, backoffMs));
       } else {
         console.error(
           `[Embeddings] Model ${modelName} error on attempt ${attempt + 1}/${maxRetries + 1}:`,
-          error?.message || error
+          msg || error
         );
         if (attempt === maxRetries) {
           return [];
@@ -104,23 +151,33 @@ export async function getEmbedding(text, options = {}) {
 }
 
 /**
- * Generates embeddings for multiple texts in parallel.
+ * Generates embeddings for multiple texts with safe concurrency throttling to respect Free Tier 100 RPM.
  * @param {string[]} texts - Array of strings to embed.
  * @param {object} [options]
+ * @param {number} [options.concurrency=5] - Maximum parallel requests.
  * @returns {Promise<number[][]>} Array of embedding vectors.
  */
 export async function getBatchEmbeddings(texts, options = {}) {
   if (!Array.isArray(texts) || texts.length === 0) return [];
 
-  try {
-    const embeddings = await Promise.all(
-      texts.map((t) => getEmbedding(t, options))
+  const concurrency = options.concurrency || 5;
+  const results = new Array(texts.length);
+
+  for (let i = 0; i < texts.length; i += concurrency) {
+    const batch = texts.slice(i, i + concurrency);
+    const batchPromises = batch.map((text, idx) =>
+      getEmbedding(text, options).then((res) => {
+        results[i + idx] = res;
+      })
     );
-    return embeddings;
-  } catch (error) {
-    console.error("[Embeddings] Batch embedding error:", error?.message || error);
-    return [];
+    await Promise.all(batchPromises);
+    // Micro-delay between batches to smooth out RPM spikes
+    if (i + concurrency < texts.length) {
+      await new Promise((r) => setTimeout(r, 150));
+    }
   }
+
+  return results;
 }
 
 /**
