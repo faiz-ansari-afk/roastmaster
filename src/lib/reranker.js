@@ -174,6 +174,11 @@ export function rerankAndFilterChunks(query, candidates, options = {}) {
       return false;
     }
 
+    // Guardrail against accidental single-keyword hits when query has 3+ distinct keywords and low vector similarity
+    if (queryKeywords.length >= 3 && chunk.coverageRatio < 0.20 && chunk.vectorSimilarity < 0.60) {
+      return false;
+    }
+
     // Drop chunks below the minimum composite relevance cutoff
     if (chunk.rerankScore < minRelevanceScore) {
       return false;
