@@ -243,6 +243,42 @@ export async function getSessionDocuments(sessionId) {
 }
 
 /**
+ * Retrieves document chunks directly for a session.
+ * Used for hybrid fallback when vector search is rate-limited or produces zero candidates.
+ * @param {string} sessionId
+ * @param {number} [limit=50]
+ * @returns {Promise<Array<{ id: number, fileName: string, chunkIndex: number, pageNumber: number, content: string }>>}
+ */
+export async function getSessionChunksDirect(sessionId, limit = 50) {
+  const db = getDbPool();
+  if (!db || !sessionId) return [];
+
+  const query = `
+    SELECT 
+      id,
+      file_name AS "fileName",
+      chunk_index AS "chunkIndex",
+      page_number AS "pageNumber",
+      content
+    FROM document_chunks
+    WHERE session_id = $1
+    ORDER BY chunk_index ASC
+    LIMIT $2;
+  `;
+
+  try {
+    const res = await db.query(query, [sessionId, limit]);
+    return res.rows.map((r) => ({
+      ...r,
+      pageNumber: r.pageNumber || 1,
+    }));
+  } catch (err) {
+    console.error("[DB] Error fetching direct session chunks:", err.message);
+    return [];
+  }
+}
+
+/**
  * Deletes all document chunks for a session.
  * @param {string} sessionId
  */

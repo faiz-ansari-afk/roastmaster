@@ -1,6 +1,6 @@
 # 🎯 RAG Retrieval Evaluation Report
 
-**Evaluation Date:** `2026-10-09 07:29:07 UTC`  
+**Evaluation Date:** `2026-10-09 08:44:12 UTC`  
 **Target Session:** `roast_1791448298854_hlvkord`  
 **Total Queries Evaluated:** **30**  
 
@@ -14,18 +14,18 @@
 | **Recall@5** | **100.0%** | $\ge 90\%$ | 🟢 Optimal Recall |
 | **Precision@3 (In-Doc)** | **74.7%** | $\ge 50\%$ | 🟢 Clean Context |
 | **Refusal / Negative Grounding** | **100.0%** | $100\%$ | 🟢 Safe (Zero False Citations) |
-| **Average Retrieval Latency** | **616 ms** | $< 350\text{ ms}$ | 🟡 Moderate |
+| **Average Retrieval Latency** | **624 ms** | $< 350\text{ ms}$ | 🟡 Moderate |
 
 ## 🔍 Breakdown by Query Archetype
 
 | Query Archetype | Queries | Recall@3 | MRR | Hit Rate | Avg Latency |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. Known Answer (Factual)** | 6 | **100.0%** | **0.889** | 100.0% | 757 ms |
-| **2. Similar Question (Paraphrased)** | 5 | **100.0%** | **0.900** | 100.0% | 580 ms |
-| **3. Ambiguous (Underspecified)** | 5 | **100.0%** | **1.000** | 100.0% | 583 ms |
-| **4. Out-of-Document (Refusal)** | 5 | **100.0%** | **1.000** | 100.0% | 575 ms |
-| **5. Exact Keyword (Codes/Models)** | 5 | **100.0%** | **1.000** | 100.0% | 580 ms |
-| **6. Multi-Hop (Cross-Sectional)** | 4 | **75.0%** | **0.813** | 100.0% | 591 ms |
+| **1. Known Answer (Factual)** | 6 | **100.0%** | **0.889** | 100.0% | 730 ms |
+| **2. Similar Question (Paraphrased)** | 5 | **100.0%** | **0.900** | 100.0% | 608 ms |
+| **3. Ambiguous (Underspecified)** | 5 | **100.0%** | **1.000** | 100.0% | 596 ms |
+| **4. Out-of-Document (Refusal)** | 5 | **100.0%** | **1.000** | 100.0% | 586 ms |
+| **5. Exact Keyword (Codes/Models)** | 5 | **100.0%** | **1.000** | 100.0% | 599 ms |
+| **6. Multi-Hop (Cross-Sectional)** | 4 | **75.0%** | **0.813** | 100.0% | 595 ms |
 
 ## 📋 Detailed Query Results
 

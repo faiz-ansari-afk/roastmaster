@@ -67,11 +67,17 @@ function setCachedEmbedding(key, vector) {
  */
 function extractRetryDelayMs(errorMsg) {
   if (!errorMsg || typeof errorMsg !== "string") return null;
-  const matchSeconds = errorMsg.match(/retry in\s+([0-9.]+)\s*s/i) || errorMsg.match(/retryDelay["']?\s*:\s*["']?([0-9.]+)s/i);
+  const matchSeconds =
+    errorMsg.match(/retry in\s+([0-9.]+)\s*s/i) ||
+    errorMsg.match(/retryDelay["']?\s*:\s*["']?([0-9.]+)s/i);
   if (matchSeconds) {
     const sec = parseFloat(matchSeconds[1]);
     if (!isNaN(sec) && sec > 0) {
-      return Math.ceil(sec * 1000) + 400; // Add 400ms safety buffer
+      // If delay is longer than 5 seconds (e.g. daily quota reached), DO NOT sleep for hours!
+      if (sec > 5) {
+        return null;
+      }
+      return Math.min(3000, Math.ceil(sec * 1000) + 200);
     }
   }
   return null;
@@ -79,12 +85,12 @@ function extractRetryDelayMs(errorMsg) {
 
 /**
  * Generates an embedding vector for a given text snippet using Gemini.
- * Strictly uses EMBEDDING_MODEL ('gemini-embedding-2') and EMBEDDING_DIMENSION (768).
+ * Uses EMBEDDING_MODEL (default: gemini-embedding-001) and EMBEDDING_DIMENSION (768).
  * @param {string} text - The input text to embed.
  * @param {object} [options]
  * @param {number} [options.dimensions] - Desired output dimensionality (default: EMBEDDING_DIMENSION).
  * @param {string} [options.model] - Model name override (default: EMBEDDING_MODEL).
- * @param {number} [options.maxRetries=3] - Number of retries for transient errors.
+ * @param {number} [options.maxRetries=1] - Number of retries for transient errors.
  * @returns {Promise<number[]>} Array of floating-point numbers representing the embedding.
  */
 export async function getEmbedding(text, options = {}) {
@@ -96,52 +102,60 @@ export async function getEmbedding(text, options = {}) {
   if (!sanitizedText) return [];
 
   const dimensions = options.dimensions || EMBEDDING_DIMENSION;
-  const modelName = options.model || EMBEDDING_MODEL;
-  const maxRetries = typeof options.maxRetries === "number" ? options.maxRetries : 3;
+  const primaryModel = options.model || EMBEDDING_MODEL;
+  const maxRetries = typeof options.maxRetries === "number" ? options.maxRetries : 1;
 
-  // Check cache first for identical text + model + dimensions
-  const cacheKey = `${modelName}:${dimensions}:${sanitizedText}`;
+  // Models to attempt: primary model first, followed by safe fallback
+  const modelsToTry = [primaryModel];
+  if (primaryModel !== "gemini-embedding-001") {
+    modelsToTry.push("gemini-embedding-001");
+  }
+
+  // Check cache first
+  const cacheKey = `${primaryModel}:${dimensions}:${sanitizedText}`;
   const cached = getCachedEmbedding(cacheKey);
   if (cached) {
     return cached;
   }
 
   const ai = getGenAI();
-  const model = ai.getGenerativeModel({ model: modelName });
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const result = await model.embedContent({
-        content: { parts: [{ text: sanitizedText }] },
-        outputDimensionality: dimensions,
-      });
+  for (const modelName of modelsToTry) {
+    const model = ai.getGenerativeModel({ model: modelName });
 
-      if (result?.embedding?.values && result.embedding.values.length > 0) {
-        const vector = result.embedding.values;
-        setCachedEmbedding(cacheKey, vector);
-        return vector;
-      }
-    } catch (error) {
-      const msg = error?.message || "";
-      const isRateLimit = /quota|rate|429|resource_exhausted|too many requests/i.test(msg);
-      const isTransient = isRateLimit || /timeout|503|overloaded|econnreset/i.test(msg);
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await model.embedContent({
+          content: { parts: [{ text: sanitizedText }] },
+          outputDimensionality: dimensions,
+        });
 
-      if (attempt < maxRetries && isTransient) {
-        // If Google provides an explicit retryDelay, respect it; otherwise exponential backoff
+        if (result?.embedding?.values && result.embedding.values.length > 0) {
+          const vector = result.embedding.values;
+          setCachedEmbedding(cacheKey, vector);
+          return vector;
+        }
+      } catch (error) {
+        const msg = error?.message || "";
+        const isRateLimit = /quota|rate|429|resource_exhausted|too many requests/i.test(msg);
+        const isTransient = isRateLimit || /timeout|503|overloaded|econnreset/i.test(msg);
+
+        // If daily quota or large delay, skip retrying this model immediately
         const serverDelayMs = extractRetryDelayMs(msg);
-        const backoffMs = serverDelayMs || Math.min(8000, Math.pow(2, attempt + 1) * 1000);
+        if (isRateLimit && !serverDelayMs && /13h|48704|day/i.test(msg)) {
+          console.warn(`[Embeddings] Daily quota exhausted for ${modelName}. Trying fallback...`);
+          break; // Move to next model
+        }
 
-        console.warn(
-          `[Embeddings] Rate limit/transient issue on attempt ${attempt + 1}/${maxRetries + 1}. Waiting ${backoffMs}ms before retry...`
-        );
-        await new Promise((r) => setTimeout(r, backoffMs));
-      } else {
-        console.error(
-          `[Embeddings] Model ${modelName} error on attempt ${attempt + 1}/${maxRetries + 1}:`,
-          msg || error
-        );
-        if (attempt === maxRetries) {
-          return [];
+        if (attempt < maxRetries && isTransient && serverDelayMs) {
+          const backoffMs = Math.min(2500, serverDelayMs);
+          console.warn(
+            `[Embeddings] Brief rate limit on attempt ${attempt + 1}. Waiting ${backoffMs}ms before retry...`
+          );
+          await new Promise((r) => setTimeout(r, backoffMs));
+        } else {
+          console.error(`[Embeddings] Model ${modelName} error:`, msg);
+          break; // Try next model or return empty
         }
       }
     }
@@ -151,29 +165,88 @@ export async function getEmbedding(text, options = {}) {
 }
 
 /**
- * Generates embeddings for multiple texts with safe concurrency throttling to respect Free Tier 100 RPM.
+ * Generates embeddings for multiple texts using Gemini's native batchEmbedContents API.
+ * Bundles up to 50 chunks per single API request to drastically reduce request volume
+ * and easily stay below Google's 100 RPM Free Tier limits.
+ *
  * @param {string[]} texts - Array of strings to embed.
  * @param {object} [options]
- * @param {number} [options.concurrency=5] - Maximum parallel requests.
- * @returns {Promise<number[][]>} Array of embedding vectors.
+ * @param {number} [options.batchSize=50] - Number of text snippets per batchEmbedContents call (max 100).
+ * @param {number} [options.dimensions] - Dimensionality override.
+ * @param {string} [options.model] - Model name override.
+ * @param {number} [options.maxRetries=3] - Retries per batch for transient errors.
+ * @returns {Promise<number[][]>} Array of embedding vectors matching input texts.
  */
 export async function getBatchEmbeddings(texts, options = {}) {
   if (!Array.isArray(texts) || texts.length === 0) return [];
 
-  const concurrency = options.concurrency || 5;
-  const results = new Array(texts.length);
+  const batchSize = Math.min(100, options.batchSize || 50);
+  const dimensions = options.dimensions || EMBEDDING_DIMENSION;
+  const modelName = options.model || EMBEDDING_MODEL;
+  const maxRetries = typeof options.maxRetries === "number" ? options.maxRetries : 3;
 
-  for (let i = 0; i < texts.length; i += concurrency) {
-    const batch = texts.slice(i, i + concurrency);
-    const batchPromises = batch.map((text, idx) =>
-      getEmbedding(text, options).then((res) => {
-        results[i + idx] = res;
-      })
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({ model: modelName });
+  const results = [];
+
+  for (let i = 0; i < texts.length; i += batchSize) {
+    const chunkBatch = texts.slice(i, i + batchSize);
+    const sanitizedBatch = chunkBatch.map((t) =>
+      t && typeof t === "string" ? t.trim().slice(0, 2048) : " "
     );
-    await Promise.all(batchPromises);
-    // Micro-delay between batches to smooth out RPM spikes
-    if (i + concurrency < texts.length) {
-      await new Promise((r) => setTimeout(r, 150));
+
+    let batchHandled = false;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await model.batchEmbedContents({
+          requests: sanitizedBatch.map((text) => ({
+            content: { parts: [{ text: text || " " }] },
+            outputDimensionality: dimensions,
+          })),
+        });
+
+        if (response?.embeddings && Array.isArray(response.embeddings)) {
+          response.embeddings.forEach((item) => {
+            results.push(item?.values || []);
+          });
+          batchHandled = true;
+          break;
+        }
+      } catch (error) {
+        const msg = error?.message || "";
+        const isRateLimit = /quota|rate|429|resource_exhausted|too many requests/i.test(msg);
+        const isTransient = isRateLimit || /timeout|503|overloaded|econnreset/i.test(msg);
+
+        if (attempt < maxRetries && isTransient) {
+          const serverDelayMs = extractRetryDelayMs(msg);
+          if (!serverDelayMs && /13h|48704|day/i.test(msg)) {
+            console.warn(`[BatchEmbeddings] Daily quota exceeded. Aborting batch.`);
+            break;
+          }
+          const backoffMs = serverDelayMs ? Math.min(3000, serverDelayMs) : Math.min(3000, Math.pow(2, attempt + 1) * 1000);
+
+          console.warn(
+            `[BatchEmbeddings] Rate limit on batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(texts.length / batchSize)} (attempt ${attempt + 1}). Waiting ${backoffMs}ms...`
+          );
+          await new Promise((r) => setTimeout(r, backoffMs));
+        } else {
+          console.error(
+            `[BatchEmbeddings] Error on batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(texts.length / batchSize)}:`,
+            msg
+          );
+          if (attempt === maxRetries) {
+            // Fill with empty vectors so indexing remains aligned with input chunks
+            chunkBatch.forEach(() => results.push([]));
+            batchHandled = true;
+          }
+        }
+      }
+    }
+
+    // Micro-delay between batches (350ms) to maintain smooth RPM spacing
+    if (i + batchSize < texts.length) {
+      await new Promise((r) => setTimeout(r, 350));
     }
   }
 

@@ -1,7 +1,7 @@
 // src/lib/reranker.js — Multi-Signal Relevance Filtering & Reranking Engine for RAG
 // Bridges broad vector recall (Top 10-20) with high-precision context injection (Top 3-5).
 import { getEmbedding } from "./embeddings.js";
-import { searchSimilarChunks } from "./db.js";
+import { searchSimilarChunks, getSessionChunksDirect } from "./db.js";
 
 // Common conversational & structural stop words to exclude from keyword extraction
 const STOP_WORDS = new Set([
@@ -258,34 +258,57 @@ export async function retrieveAndRerankChunks({
       vector = await getEmbedding(query);
     } catch (err) {
       console.warn("[RAG Pipeline] Query embedding generation failed:", err?.message);
-      return [];
     }
   }
 
-  if (!Array.isArray(vector) || vector.length === 0) {
-    return [];
-  }
+  let initialCandidates = [];
 
   // 2. Broad Vector Retrieval (Top 10 to 20 from pgvector)
-  const initialCandidates = await searchSimilarChunks({
-    sessionId,
-    queryVector: vector,
-    limit: Math.max(10, Math.min(25, broadLimit)),
-    minSimilarity: minInitialSimilarity,
-  });
+  if (Array.isArray(vector) && vector.length > 0) {
+    try {
+      initialCandidates = await searchSimilarChunks({
+        sessionId,
+        queryVector: vector,
+        limit: Math.max(10, Math.min(25, broadLimit)),
+        minSimilarity: minInitialSimilarity,
+      });
+    } catch (dbErr) {
+      console.warn("[RAG Pipeline] Vector search warning:", dbErr?.message);
+    }
+  }
+
+  // 3. HYBRID RESILIENCE FALLBACK:
+  // If vector search returned 0 candidates (e.g. rate limit on embedding API, model mismatch, or low semantic similarity),
+  // pull direct chunks from the document in PostgreSQL so keyword & exact phrase matching can answer!
+  const usedFallback = !initialCandidates || initialCandidates.length === 0;
+  if (usedFallback) {
+    try {
+      const directChunks = await getSessionChunksDirect(sessionId, 50);
+      if (directChunks && directChunks.length > 0) {
+        initialCandidates = directChunks.map((c) => ({
+          ...c,
+          similarity: 0.50, // Neutral vector similarity baseline
+        }));
+      }
+    } catch (lexErr) {
+      console.warn("[RAG Pipeline] Hybrid direct fetch failed:", lexErr?.message);
+    }
+  }
 
   if (!initialCandidates || initialCandidates.length === 0) {
     return [];
   }
 
-  // 3. Multi-Signal Relevance Filtering & Reranking (Cut down to Top 3–5)
+  // 4. Multi-Signal Relevance Filtering & Reranking (Cut down to Top 3–5)
+  // For hybrid fallback, use a more accommodating minRelevanceScore (0.24) so exact keywords/phrases easily pass
+  const effectiveCutoff = usedFallback ? 0.24 : minRelevanceScore;
   const finalChunks = rerankAndFilterChunks(query, initialCandidates, {
     topK: Math.max(1, Math.min(5, topK)),
-    minRelevanceScore,
+    minRelevanceScore: effectiveCutoff,
   });
 
   console.log(
-    `[RAG Pipeline] Query: "${query.slice(0, 45)}..." | Broad Candidates: ${initialCandidates.length} -> Reranked & Filtered: ${finalChunks.length} chunks (Top Score: ${finalChunks[0]?.relevancePercent || 0}%)`
+    `[RAG Pipeline] Query: "${query.slice(0, 45)}..." | Candidates: ${initialCandidates.length} -> Reranked & Filtered: ${finalChunks.length} chunks (Top Score: ${finalChunks[0]?.relevancePercent || 0}%)`
   );
 
   return finalChunks;

@@ -108,6 +108,52 @@ function parseStructuredRoast(text, fallbackQuery = "") {
   };
 }
 
+/**
+ * Detects if a message is conversational banter, heckling, reactions ("huh", "lol"),
+ * sarcasm, or crowd work commands rather than a substantive query seeking document facts.
+ */
+function isConversationalBanter(text) {
+  if (!text || typeof text !== "string") return true;
+  const clean = text
+    .trim()
+    .toLowerCase()
+    .replace(/[?!.,;:'"()]/g, "")
+    .trim();
+
+  if (!clean) return true;
+
+  // Single-word / short conversational reactions, grunts, interjections
+  const BANTER_WORDS = new Set([
+    "huh", "what", "whaat", "wat", "wut", "eh", "bruh", "bro", "dude", "man",
+    "lol", "lmao", "rofl", "haha", "hahaha", "hehe", "smh",
+    "ok", "okay", "k", "sure", "cool", "nice", "yo", "hi", "hello", "hey", "sup",
+    "nah", "nope", "no", "yes", "yeah", "yep", "aye",
+    "wow", "omg", "oof", "damn", "why", "wtf", "idk",
+    "huhh", "uh", "um", "hmm", "hm", "umm", "meh", "bye", "goodbye",
+    "really", "rly", "sarcasm", "sarcastic", "shutup", "whatever"
+  ]);
+
+  if (BANTER_WORDS.has(clean)) return true;
+
+  // Common conversational heckles / crowdwork commands
+  const BANTER_PHRASES = [
+    "roast me", "roast this", "roast my profile", "roast",
+    "tell me a joke", "make me laugh", "say something funny",
+    "shut up", "you suck", "you are not funny", "be serious",
+    "who are you", "what is your name", "try again", "boo",
+    "are you serious", "really", "for real", "is that all",
+    "what do you mean", "come on", "give me more", "next",
+    "who asked you", "so what", "get out", "leave me alone"
+  ];
+
+  if (BANTER_PHRASES.includes(clean)) return true;
+
+  // Very short non-substantive words (3 chars or less, non-numbers)
+  if (clean.length <= 3 && !/^\d+$/.test(clean)) return true;
+
+  return false;
+}
+
 export async function POST(req) {
   try {
     const { messages, sessionId, userId, userProfile } = await req.json();
@@ -150,8 +196,9 @@ export async function POST(req) {
     // ── High-Precision RAG Retrieval: Query -> Embedding -> pgvector (Top 15) -> Reranking & Filtering -> Top 3-5 -> Gemini
     let retrievedDocs = [];
     let ragContext = "";
+    const isBanter = isConversationalBanter(lastMessage);
 
-    if (sessionId && lastMessage.trim()) {
+    if (sessionId && sessionDocs.length > 0 && lastMessage.trim() && !isBanter) {
       try {
         retrievedDocs = await retrieveAndRerankChunks({
           sessionId,
@@ -247,19 +294,24 @@ GROUNDING & CITATION PROTOCOL (CRITICAL):
    CASE B: THE DOCUMENT DOES NOT CONTAIN THE ANSWER (OR IS IRRELEVANT):
    - Set "isDocumentSupported": false
    - Set "citations": []
-   - In "suggestion", explicitly state that the uploaded document does not contain this information (e.g., "I couldn't find this in your document (<fileName>)."). You may optionally offer brief general knowledge advice, but NEVER claim it came from the document.
+   - CONVERSATIONAL / SARCASM / BANTER RULE:
+     If the user's message is conversational banter, sarcasm, a reaction ("huh", "really?", "lol"), heckling, or general dilemmas:
+     DO NOT mention or apologize about the uploaded document! DO NOT say "I couldn't find this in your document"!
+     Deliver pure comedy crowd work directly addressing their reaction or question with Backstage Real Talk advice.
+   - ONLY if the user is explicitly seeking document facts from their uploaded file (and it's missing), state:
+     "I couldn't find this in your document (<fileName>)."
    - DO NOT append any "Source:" line to "suggestion" when the document does not contain the answer!
    - NEVER hallucinate or force a citation to an unrelated excerpt!
 
 2. COMEDY PUNCHLINE ("roast"):
-   - Deliver 1-2 razor-sharp comedy punchlines mocking their document, question, or dilemma.
+   - Deliver 1-2 razor-sharp comedy punchlines mocking their dilemma, reaction, question, or code.
    - If the document doesn't contain the answer, roast them for asking for something that isn't in their own uploaded file!
 
 3. STRICT ACCURACY:
    - ONLY cite the exact page numbers and file names present in the DOCUMENT CONTEXT headers above.
    - Never invent pages or files.
 `;
-    } else if (sessionDocs.length > 0) {
+    } else if (sessionDocs.length > 0 && !isBanter) {
       activeSystemPrompt += `
 
 DOCUMENT RETRIEVAL NOTICE:
@@ -267,9 +319,11 @@ DOCUMENT RETRIEVAL NOTICE:
 The user has uploaded reference document(s) in this session: ${sessionDocs.map((d) => d.fileName).join(", ")}.
 However, automated vector and keyword retrieval found NO matching or relevant passages for the query: "${lastMessage}".
 
-STRICT UNANSWERABLE / REFUSAL RULE:
-- If the user's question is asking about their uploaded document or expecting document facts, you MUST explicitly state in "suggestion" (Backstage Real Talk):
+GROUNDING & REFUSAL PROTOCOL:
+- If the user's query is asking for document facts or technical details from their uploaded file, you MUST explicitly state in "suggestion" (Backstage Real Talk):
   "I couldn't find this in your document (${sessionDocs[0].fileName})."
+- If the user's message is conversational banter, sarcasm, a reaction ("huh", "really?"), heckling, or a general question:
+  DO NOT mention or apologize about the document! Respond purely as the RoastMaster standup comedian!
 - Set "isDocumentSupported": false
 - Set "citations": []
 - NEVER invent document facts or cite non-existent pages!
@@ -502,25 +556,25 @@ STRICT UNANSWERABLE / REFUSAL RULE:
         const suggestionText = finalPayload.suggestion || "";
         const categoryText = finalPayload.category || "";
         const textToEmbed = `Topic: ${lastMessage}. Subject: ${lastMessage}. Category: ${categoryText}. Roast: ${roastText}. Backstage: ${suggestionText}`.trim();
-        const embedding = await getEmbedding(textToEmbed);
-        if (embedding && embedding.length > 0) {
-          finalPayload.embedding = embedding;
-          // Real Retrieval Engine: Persist session embedding directly in PostgreSQL pgvector
-          if (sessionId) {
-            await upsertSessionEmbedding({
-              sessionId,
-              userId: userId || userProfile?.userId || null,
-              title: finalPayload.title || null,
-              snippet: roastText.slice(0, 160),
-              category: categoryText,
-              embedding,
-            }).catch((pgErr) =>
-              console.warn("[Chat API] Warning upserting session vector in pgvector:", pgErr?.message)
-            );
-          }
-        }
+        // Background fire-and-forget: persist exchange vector without delaying HTTP response
+        getEmbedding(textToEmbed)
+          .then((embedding) => {
+            if (embedding && embedding.length > 0 && sessionId) {
+              return upsertSessionEmbedding({
+                sessionId,
+                userId: userId || userProfile?.userId || null,
+                title: finalPayload.title || null,
+                snippet: roastText.slice(0, 160),
+                category: categoryText,
+                embedding,
+              });
+            }
+          })
+          .catch((embErr) =>
+            console.warn("[Chat API] Warning background session vector:", embErr?.message)
+          );
       } catch (embErr) {
-        console.warn("[Chat API] Failed to generate/store embedding for exchange:", embErr?.message || embErr);
+        console.warn("[Chat API] Failed to schedule embedding for exchange:", embErr?.message || embErr);
       }
     }
 

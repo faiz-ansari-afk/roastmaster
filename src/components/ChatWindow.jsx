@@ -971,6 +971,11 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       return;
     }
 
+    if (file.size > 2.5 * 1024 * 1024) {
+      setUploadError(`File is ${(file.size / (1024 * 1024)).toFixed(1)}MB. For this learning project tier, maximum file size is 2MB.`);
+      return;
+    }
+
     setUploadError(null);
     setUploadingPdf(true);
 

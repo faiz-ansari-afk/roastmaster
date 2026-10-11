@@ -49,11 +49,11 @@ export async function POST(req) {
       );
     }
 
-    // Size limit check (max 15MB)
-    const MAX_SIZE = 15 * 1024 * 1024;
+    // Size limit check (max 2.5MB for learning/free-tier project)
+    const MAX_SIZE = 2.5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
-        { error: "File size exceeds the 15MB limit. Please upload a smaller document." },
+        { error: `File size (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the 2MB limit. For this learning project tier, please upload a PDF under 2MB.` },
         { status: 400 }
       );
     }
@@ -83,6 +83,14 @@ export async function POST(req) {
       );
     }
 
+    // Protect against oversized page counts on free tier
+    if (totalPages > 40) {
+      return NextResponse.json(
+        { error: `Document has ${totalPages} pages. For this learning tier project, maximum limit is 40 pages to protect Free Tier quotas. Please upload a smaller excerpt or chapter.` },
+        { status: 400 }
+      );
+    }
+
     const totalExtractedLength = pageTexts.reduce((sum, p) => sum + (p ? p.trim().length : 0), 0);
     if (totalExtractedLength < 30) {
       return NextResponse.json(
@@ -109,16 +117,16 @@ export async function POST(req) {
 
     console.log(`[RAG Upload] Generated ${textChunks.length} page-attributed chunks across ${totalPages} pages. Generating embeddings...`);
 
-    // Batch embedding generation (Gemini embedding API)
-    // To avoid rate-limit spikes on large PDFs, process in batches of 10
-    const BATCH_SIZE = 10;
+    // Batch embedding generation using Gemini batchEmbedContents API
+    // 50 chunks per batch to stay well below the 100 RPM quota
+    const BATCH_SIZE = 50;
     const chunksWithEmbeddings = [];
 
     for (let i = 0; i < textChunks.length; i += BATCH_SIZE) {
       const batch = textChunks.slice(i, i + BATCH_SIZE);
       const batchTexts = batch.map((c) => c.content);
 
-      const embeddings = await getBatchEmbeddings(batchTexts);
+      const embeddings = await getBatchEmbeddings(batchTexts, { batchSize: 50 });
 
       batch.forEach((chunk, idx) => {
         const emb = embeddings[idx];
