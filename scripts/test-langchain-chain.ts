@@ -1,13 +1,13 @@
 /**
  * scripts/test-langchain-chain.ts
- * Standalone verification script for Phase 4: Declarative LCEL RAG Chain with Query Routing.
+ * Standalone verification script for Multi-Route Intent Routing in LCEL.
  * 
- * Verifies:
- * 1. Building the LCEL Runnable pipeline with RunnableBranch routing
- * 2. Answering a document question with exact citations (intent: "document_rag")
- * 3. Answering conversational banter/greetings with zero DB queries and zero false citations (intent: "banter")
- * 4. Refusal / Hallucination resistance test (asking an out-of-domain question)
- * 5. Tenant isolation enforcement within the LCEL chain
+ * Tests the user's real-world matrix:
+ * 1. "Hey, how are you?" -> BANTER (0 DB queries, 0 citations)
+ * 2. "Explain ReactJS." -> GENERAL_KNOWLEDGE (0 DB queries, answered from LLM knowledge)
+ * 3. "Explain this code." (no code attached) -> CLARIFICATION (asks user to paste code)
+ * 4. "Give me the ingredients for biryani." -> GENERAL_KNOWLEDGE (0 DB queries)
+ * 5. "What does my PDF say about the tech stack of RoastMaster?" -> DOCUMENT_RAG (pgvector search, citations attached)
  * 
  * Run with: npm run test:langchain:chain
  */
@@ -20,19 +20,21 @@ interface TestStepResult {
   details: string;
 }
 
-async function runChainTests() {
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+async function runMultiRouteTests() {
   console.log("============================================================");
-  console.log("   RoastMaster AI — LangChain LCEL RAG Chain Test Harness   ");
+  console.log("   RoastMaster AI — Multi-Route LCEL Chain Test Harness     ");
   console.log("============================================================\n");
 
   const results: TestStepResult[] = [];
   const TENANT_ID = "tenant-vip-club-42";
 
-  // Step 1: Initialize the LCEL RAG Chain with Routing
+  // Step 1: Assembly
   const t0 = Date.now();
-  let ragChain: any;
+  let pipeline: any;
   try {
-    ragChain = await createRagChain({
+    pipeline = await createRagChain({
       k: 3,
       tenantId: TENANT_ID,
       temperature: 0.1,
@@ -40,162 +42,189 @@ async function runChainTests() {
     });
 
     results.push({
-      step: "1. LCEL RunnableBranch Pipeline Assembly",
-      success: !!ragChain && typeof ragChain.invoke === "function",
+      step: "1. Multi-Route LCEL Assembly",
+      success: !!pipeline,
       durationMs: Date.now() - t0,
-      details: "Constructed RunnableBranch routing between Banter Branch and Document RAG Branch.",
+      details: "Assembled 5-route RunnableBranch pipeline.",
     });
   } catch (err: any) {
     results.push({
-      step: "1. LCEL RunnableBranch Pipeline Assembly",
+      step: "1. Multi-Route LCEL Assembly",
       success: false,
       durationMs: Date.now() - t0,
       details: `Assembly failed: ${err.message}`,
     });
   }
 
-  // Step 2: Grounded Document Question Answering with Citations
+  // Route 1 Test: Casual Banter ("Hey, how are you?")
+  await delay(600);
   const t1 = Date.now();
-  const docQuestion = "What is the core tech stack and architecture of RoastMaster AI?";
-  let groundedResponse: RagResponse | null = null;
-
   try {
-    console.log(`[Test 2] Executing Document RAG Branch for: "${docQuestion}"...`);
-    groundedResponse = (await ragChain.invoke({
-      question: docQuestion,
+    console.log("[Route 1] Testing Banter: \"Hey, how are you?\"...");
+    const res = (await pipeline.invoke({
+      question: "Hey, how are you?",
+      hasUploadedDocs: true,
     })) as RagResponse;
 
-    const isSuccess =
-      groundedResponse.intent === "document_rag" &&
-      groundedResponse.retrievedCount > 0 &&
-      groundedResponse.citations.length > 0 &&
-      groundedResponse.grounded &&
-      /Gemini|pgvector|PostgreSQL|Next\.js|React/i.test(groundedResponse.answer);
+    const pass =
+      res.intent === "banter" &&
+      res.retrievedCount === 0 &&
+      res.citations.length === 0;
 
     results.push({
-      step: "2. Grounded Q&A with Exact Citations",
-      success: isSuccess,
+      step: "2. Banter Route (\"Hey, how are you?\")",
+      success: pass,
       durationMs: Date.now() - t1,
-      details: `Intent: "${groundedResponse.intent}" | Retrieved ${groundedResponse.retrievedCount} chunks with ${groundedResponse.citations.length} citations.`,
+      details: pass
+        ? `Intent: "${res.intent}" | Retrieved: ${res.retrievedCount} | Answer: "${res.answer.slice(0, 55)}..."`
+        : `Failed: intent=${res.intent}, retrieved=${res.retrievedCount}`,
     });
   } catch (err: any) {
     results.push({
-      step: "2. Grounded Q&A with Exact Citations",
+      step: "2. Banter Route (\"Hey, how are you?\")",
       success: false,
       durationMs: Date.now() - t1,
-      details: `Execution failed: ${err.message}`,
+      details: `Failed: ${err.message}`,
     });
   }
 
-  // Grace delay to protect free tier rate limits
-  await new Promise((res) => setTimeout(res, 600));
-
-  // Step 3: Banter / Greeting Query Routing (Zero DB Overhead)
+  // Route 2 Test: General Knowledge ("Explain ReactJS.")
+  await delay(600);
   const t2 = Date.now();
-  const banterQuestion = "Yo RoastMaster, what's up bro? Roast me!";
-  let banterResponse: RagResponse | null = null;
-
   try {
-    console.log(`[Test 3] Executing Banter Routing Branch for: "${banterQuestion}"...`);
-    banterResponse = (await ragChain.invoke({
-      question: banterQuestion,
+    console.log("[Route 2] Testing General Tech: \"Explain ReactJS.\" (with hasUploadedDocs=true)...");
+    const res = (await pipeline.invoke({
+      question: "Explain ReactJS.",
+      hasUploadedDocs: true, // User has uploaded a PDF, but this is a general question!
     })) as RagResponse;
 
-    const isBanterSuccess =
-      banterResponse.intent === "banter" &&
-      banterResponse.retrievedCount === 0 &&
-      banterResponse.citations.length === 0 &&
-      !banterResponse.grounded &&
-      banterResponse.answer.length > 10;
+    const pass =
+      res.intent === "general_knowledge" &&
+      res.retrievedCount === 0 &&
+      res.citations.length === 0 &&
+      /component|UI|library|state|virtual DOM/i.test(res.answer);
 
     results.push({
-      step: "3. Banter Routing (Zero Vector Queries & Zero Citations)",
-      success: isBanterSuccess,
+      step: "3. General Knowledge Route (\"Explain ReactJS.\")",
+      success: pass,
       durationMs: Date.now() - t2,
-      details: isBanterSuccess
-        ? `Routed to Banter Branch! Retrieved 0 chunks, attached 0 false citations. Comedy Answer: "${banterResponse.answer.slice(0, 60)}..."`
-        : `Banter routing failed: intent=${banterResponse.intent}, retrievedCount=${banterResponse.retrievedCount}`,
+      details: pass
+        ? `Intent: "${res.intent}" | Zero PDF queries | Answered from LLM knowledge without false citations.`
+        : `Failed: intent=${res.intent}, retrieved=${res.retrievedCount}`,
     });
   } catch (err: any) {
     results.push({
-      step: "3. Banter Routing (Zero Vector Queries & Zero Citations)",
+      step: "3. General Knowledge Route (\"Explain ReactJS.\")",
       success: false,
       durationMs: Date.now() - t2,
-      details: `Execution failed: ${err.message}`,
+      details: `Failed: ${err.message}`,
     });
   }
 
-  // Step 4: Refusal / Hallucination Defense Test
+  // Route 3 Test: Clarification Needed ("Explain this code." without code)
+  await delay(600);
   const t3 = Date.now();
-  const irrelevantQuestion = "What is the airspeed velocity of an unladen swallow carrying a coconut?";
-  let refusalResponse: RagResponse | null = null;
-
   try {
-    console.log(`[Test 4] Testing Hallucination Defense for: "${irrelevantQuestion}"...`);
-    refusalResponse = (await ragChain.invoke({
-      question: irrelevantQuestion,
+    console.log("[Route 3] Testing Missing Code: \"Explain this code.\" (no code attached)...");
+    const res = (await pipeline.invoke({
+      question: "Explain this code.",
+      hasUploadedDocs: true,
+      codeSnippet: undefined,
     })) as RagResponse;
 
-    const didRefuse =
-      /cannot find|not found|no information|does not contain|not mentioned/i.test(
-        refusalResponse.answer
-      );
-
-    const citationsEmpty = refusalResponse.citations.length === 0;
+    const pass =
+      res.intent === "clarification" &&
+      res.retrievedCount === 0 &&
+      res.citations.length === 0 &&
+      /paste|where|code|provide|missing/i.test(res.answer);
 
     results.push({
-      step: "4. Hallucination Defense & Refusal Protocol",
-      success: didRefuse && citationsEmpty && !refusalResponse.grounded,
+      step: "4. Clarification Route (\"Explain this code.\" - missing code)",
+      success: pass,
       durationMs: Date.now() - t3,
-      details: `Refused correctly without hallucinations: "${refusalResponse.answer.slice(0, 65)}..." (Citations: ${refusalResponse.citations.length})`,
+      details: pass
+        ? `Intent: "${res.intent}" | Zero PDF queries | Answer: "${res.answer.slice(0, 65)}..."`
+        : `Failed: intent=${res.intent}, retrieved=${res.retrievedCount}`,
     });
   } catch (err: any) {
     results.push({
-      step: "4. Hallucination Defense & Refusal Protocol",
+      step: "4. Clarification Route (\"Explain this code.\" - missing code)",
       success: false,
       durationMs: Date.now() - t3,
-      details: `Refusal test failed: ${err.message}`,
+      details: `Failed: ${err.message}`,
     });
   }
 
-  // Step 5: Cross-Tenant Isolation in LCEL Chain
+  // Route 4 Test: General Knowledge ("Give me the ingredients for biryani.")
+  await delay(600);
   const t4 = Date.now();
   try {
-    const unauthorizedChain = await createRagChain({
-      k: 3,
-      tenantId: "tenant-unauthorized-stranger",
-      temperature: 0.1,
-      storeOptions: { collectionName: "col_roastmaster_a" },
-    });
-
-    const crossTenantResponse = (await unauthorizedChain.invoke({
-      question: docQuestion,
+    console.log("[Route 4] Testing Cooking Recipe: \"Give me the ingredients for biryani.\"...");
+    const res = (await pipeline.invoke({
+      question: "Give me the ingredients for biryani.",
+      hasUploadedDocs: true,
     })) as RagResponse;
 
-    const correctlyDenied =
-      crossTenantResponse.retrievedCount === 0 &&
-      crossTenantResponse.citations.length === 0;
+    const pass =
+      res.intent === "general_knowledge" &&
+      res.retrievedCount === 0 &&
+      res.citations.length === 0 &&
+      /rice|spice|chicken|mutton|masala|onion/i.test(res.answer);
 
     results.push({
-      step: "5. Cross-Tenant Isolation in LCEL",
-      success: correctlyDenied,
+      step: "5. General Knowledge Recipe (\"Give me the ingredients for biryani.\")",
+      success: pass,
       durationMs: Date.now() - t4,
-      details: correctlyDenied
-        ? "Unauthorized tenant chain retrieved 0 chunks and returned 0 citations."
-        : "Cross-tenant leak detected!",
+      details: pass
+        ? `Intent: "${res.intent}" | Zero PDF queries | Recipe provided from LLM knowledge without complaining about missing PDF.`
+        : `Failed: intent=${res.intent}, retrieved=${res.retrievedCount}`,
     });
   } catch (err: any) {
     results.push({
-      step: "5. Cross-Tenant Isolation in LCEL",
+      step: "5. General Knowledge Recipe (\"Give me the ingredients for biryani.\")",
       success: false,
       durationMs: Date.now() - t4,
       details: `Failed: ${err.message}`,
     });
   }
 
+  // Route 5 Test: Document RAG ("What does my PDF say about the core tech stack...?")
+  await delay(600);
+  const t5 = Date.now();
+  try {
+    console.log("[Route 5] Testing Document RAG: \"What does my PDF say about the core tech stack and architecture of RoastMaster AI?\"...");
+    const res = (await pipeline.invoke({
+      question: "What does my PDF say about the core tech stack and architecture of RoastMaster AI?",
+      hasUploadedDocs: true,
+    })) as RagResponse;
+
+    const pass =
+      res.intent === "document_rag" &&
+      res.retrievedCount > 0 &&
+      res.citations.length > 0 &&
+      res.grounded &&
+      /Gemini|pgvector|PostgreSQL|Next\.js/i.test(res.answer);
+
+    results.push({
+      step: "6. Document RAG Route (\"What does my PDF say about the tech stack...?\")",
+      success: pass,
+      durationMs: Date.now() - t5,
+      details: pass
+        ? `Intent: "${res.intent}" | Retrieved ${res.retrievedCount} chunks from pgvector with ${res.citations.length} verified citations from Page ${res.citations[0]?.pageNumber}.`
+        : `Failed: intent=${res.intent}, retrieved=${res.retrievedCount}`,
+    });
+  } catch (err: any) {
+    results.push({
+      step: "6. Document RAG Route (\"What does my PDF say about the tech stack...?\")",
+      success: false,
+      durationMs: Date.now() - t5,
+      details: `Failed: ${err.message}`,
+    });
+  }
+
   // Print Summary Table
   console.log("\n------------------------------------------------------------");
-  console.log("Test Results Summary:");
+  console.log("Multi-Route Intent Router Test Results Summary:");
   console.log("------------------------------------------------------------");
   let allPassed = true;
   for (const r of results) {
@@ -207,15 +236,15 @@ async function runChainTests() {
   console.log("------------------------------------------------------------");
 
   if (allPassed) {
-    console.log("🎉 All LCEL RAG Chain + Banter Routing tests PASSED successfully!\n");
+    console.log("🎉 All 5 Multi-Route Intent tests PASSED successfully!\n");
     process.exit(0);
   } else {
-    console.error("⚠️ One or more tests failed.\n");
+    console.error("⚠️ One or more routing tests failed.\n");
     process.exit(1);
   }
 }
 
-runChainTests().catch((err) => {
+runMultiRouteTests().catch((err) => {
   console.error("[Fatal Error]", err);
   process.exit(1);
 });

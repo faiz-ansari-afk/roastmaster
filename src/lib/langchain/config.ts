@@ -24,7 +24,7 @@ export function getLangChainConfig(): LangChainConfig {
     );
   }
 
-  const chatModelName = process.env.LANGCHAIN_CHAT_MODEL || "gemini-2.5-flash-lite";
+  const chatModelName = process.env.LANGCHAIN_CHAT_MODEL || "gemini-flash-lite-latest";
   const embeddingModelName = process.env.LANGCHAIN_EMBEDDING_MODEL || "gemini-embedding-001";
   const embeddingDimension = parseInt(process.env.EMBEDDING_DIMENSION || "768", 10);
   const databaseUrl = process.env.DATABASE_URL;
