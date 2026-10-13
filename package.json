@@ -30,7 +30,8 @@
     "migrate:embeddings": "node --env-file=.env scripts/migrate-embeddings.mjs",
     "eval:rag": "node --env-file=.env scripts/evaluate_rag.mjs",
     "test:langchain": "tsx --env-file=.env scripts/test-langchain-runner.ts",
-    "test:langchain:docs": "tsx --env-file=.env scripts/test-langchain-documents.ts"
+    "test:langchain:docs": "tsx --env-file=.env scripts/test-langchain-documents.ts",
+    "test:langchain:vectors": "tsx --env-file=.env scripts/test-langchain-vectorstore.ts"
   },
   "bin": {
     "roastmaster": "./bin/cli.mjs",
