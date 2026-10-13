@@ -2,12 +2,12 @@
  * src/lib/langchain/rag-chain.ts
  * Multi-Route Context-Aware LCEL RAG Chain for RoastMaster AI.
  * 
- * Routes:
- * 1. BANTER: Casual greetings, heckles, and standup small talk (0 DB hits, 0 citations)
- * 2. GENERAL_KNOWLEDGE: Broad tech questions, recipes, concepts (0 DB hits, answered from LLM knowledge)
- * 3. CLARIFICATION: Prompts referencing missing code or missing files (0 DB hits, requests missing artifacts)
- * 4. CODE_ANALYSIS: Dedicated code review when a snippet is provided (0 DB hits, reviews snippet)
- * 5. DOCUMENT_RAG: Queries specifically targeting uploaded PDF evidence (pgvector search, citations attached)
+ * Features:
+ * 1. 5-Route Intent Router (Banter, General Knowledge, Clarification, Code Analysis, Document RAG)
+ * 2. Retrieval Relevance Filtering (Refuses weak retrieval before prompting LLM)
+ * 3. Structured Evidence Attribution (LLM identifies supporting excerpt IDs)
+ * 4. Trusted Citation Validation (Metadata derived strictly from verified Document instances)
+ * 5. Strong Grounding Evaluation (grounded === true only when claims are proven by evidence)
  */
 import {
   RunnableSequence,
@@ -17,7 +17,12 @@ import {
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { Document } from "@langchain/core/documents";
-import { getLangChainVectorStore, VectorStoreOptions } from "./vectorstore";
+import {
+  getLangChainVectorStore,
+  searchSimilarDocuments,
+  SearchResult,
+  VectorStoreOptions,
+} from "./vectorstore";
 import { createChatModel } from "./config";
 import { DocumentMetadata } from "./document-loader";
 
@@ -55,7 +60,14 @@ export interface RagChainOptions {
   k?: number;
   tenantId?: string;
   temperature?: number;
+  minSimilarity?: number;
   storeOptions?: VectorStoreOptions;
+}
+
+export interface StructuredRagOutput {
+  hasSufficientEvidence: boolean;
+  answer: string;
+  citedExcerptIds: number[];
 }
 
 const BANTER_PATTERNS = [
@@ -73,6 +85,38 @@ const BANTER_WORDS = new Set([
   "lol", "lmao", "rofl", "haha", "hahaha", "cool", "nice", "ok", "okay",
   "thanks", "thank you", "cheers", "bro", "dude", "man"
 ]);
+
+/**
+ * Parses structured JSON response from the LLM or falls back deterministically.
+ */
+export function parseStructuredRagOutput(text: string): StructuredRagOutput {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        hasSufficientEvidence: Boolean(parsed.hasSufficientEvidence),
+        answer: String(parsed.answer || "").trim(),
+        citedExcerptIds: Array.isArray(parsed.citedExcerptIds)
+          ? parsed.citedExcerptIds.filter((id: any) => typeof id === "number")
+          : [],
+      };
+    }
+  } catch {
+    // Non-JSON fallback
+  }
+
+  const isRefusal =
+    /cannot find|not mentioned|not found|no information|insufficient evidence|does not state|does not specify/i.test(
+      text
+    );
+
+  return {
+    hasSufficientEvidence: !isRefusal,
+    answer: text.trim(),
+    citedExcerptIds: [],
+  };
+}
 
 /**
  * Multi-signal Context-Aware Intent Router.
@@ -123,8 +167,7 @@ export function classifyQueryIntent(input: RagInput): QueryIntent {
     return "document_rag";
   }
 
-  // 6. Default Fallback for non-banter queries: General Knowledge (React, Biryani, DSA, etc.)
-  // If the user has a document uploaded but simply asks "Explain ReactJS", we do NOT search the document!
+  // 6. Default Fallback: General Knowledge (React, Biryani, DSA, etc.)
   return "general_knowledge";
 }
 
@@ -146,21 +189,20 @@ export function formatDocumentsForContext(docs: Document<DocumentMetadata>[]): s
 }
 
 /**
- * Constructs an intelligent 5-route LCEL Chain with Context-Aware Intent Routing.
+ * Constructs an intelligent 5-route LCEL Chain with Context-Aware Intent Routing,
+ * Relevance Thresholds, and Grounded Citation Verification.
  */
 export async function createRagChain(options: RagChainOptions = {}) {
   const {
     k = 4,
     tenantId,
     temperature = 0.2,
+    minSimilarity = 0.50, // Minimum relevance threshold (cosine similarity)
     storeOptions = {},
   } = options;
 
-  const store = await getLangChainVectorStore(storeOptions);
-  const retriever = store.asRetriever({
-    k,
-    filter: tenantId ? { tenantId } : undefined,
-  });
+  // Verify vector store connection
+  await getLangChainVectorStore(storeOptions);
 
   const chatModel = createChatModel(temperature);
   const comedyChatModel = createChatModel(0.8);
@@ -267,76 +309,132 @@ export async function createRagChain(options: RagChainOptions = {}) {
   ]);
 
   // -------------------------------------------------------------
-  // ROUTE 5: DOCUMENT RAG BRANCH (Vector Retrieval + Evidence)
+  // ROUTE 5: DOCUMENT RAG BRANCH (Grounded Evidence + Verified Citations)
   // -------------------------------------------------------------
   const ragPrompt = ChatPromptTemplate.fromMessages([
     [
       "system",
       `You are RoastMaster's backstage AI technical expert and document reviewer.
-Answer the user's question accurately using ONLY the provided document context below.
+Answer the user's question accurately using ONLY the provided document excerpts below.
 
 DOCUMENT CONTEXT:
 ======================================================================
 {context}
 ======================================================================
 
-GROUNDING RULES:
-1. Ground your answer strictly and exclusively in the provided document excerpts.
-2. If the context does not contain enough information to answer the question, clearly state: "I cannot find this information in the uploaded document." Do NOT invent or speculate.
-3. Be concise, punchy, and technically accurate.`,
+GROUNDING & EVIDENCE RULES (STRICT):
+1. Evaluate whether the provided excerpts contain sufficient facts to answer the question.
+2. If the excerpts do NOT contain enough information, set "hasSufficientEvidence": false, explain what is missing in "answer", and set "citedExcerptIds": []. Do NOT invent or speculate.
+3. In "citedExcerptIds", include ONLY the excerpt numbers (e.g. [1, 2]) that directly prove your answer.
+4. Output valid JSON only matching the schema below.
+
+JSON OUTPUT SCHEMA:
+{{
+  "hasSufficientEvidence": <true | false>,
+  "answer": "<concise, technically accurate answer grounded in excerpts>",
+  "citedExcerptIds": [<array of supporting excerpt numbers>]
+}}`,
     ],
     ["human", "{question}"],
   ]);
 
   const documentRagBranch = RunnableSequence.from([
-    // Step 1: Vector retrieval
+    // Step 1: Perform vector search with distance and similarity metrics
     {
-      documents: async (input: RagInput) => {
-        const rawDocs = await retriever.invoke(input.question);
-        return rawDocs as Document<DocumentMetadata>[];
+      searchResults: async (input: RagInput) => {
+        return searchSimilarDocuments(
+          input.question,
+          { k, tenantId },
+          storeOptions
+        );
       },
       question: (input: RagInput) => input.question,
     },
-    // Step 2: Format context for prompt
+    // Step 2: Relevance threshold & context formatting
     RunnablePassthrough.assign({
-      context: (input: { documents: Document<DocumentMetadata>[] }) =>
-        formatDocumentsForContext(input.documents),
+      context: (state: { searchResults: SearchResult[] }) => {
+        const docs = state.searchResults.map((r) => r.document);
+        return formatDocumentsForContext(docs);
+      },
+      isRelevanceAcceptable: (state: { searchResults: SearchResult[] }) => {
+        if (state.searchResults.length === 0) return false;
+        const bestSimilarity = state.searchResults[0]?.similarity ?? 0;
+        return bestSimilarity >= minSimilarity;
+      },
     }),
-    // Step 3: LLM generation
+    // Step 3: LLM generation (only if relevance threshold is satisfied)
     RunnablePassthrough.assign({
-      answer: RunnableSequence.from([
-        (input: { question: string; context: string }) => ({
-          question: input.question,
-          context: input.context,
-        }),
-        ragPrompt,
-        chatModel,
-        outputParser,
-      ]),
-    }),
-    // Step 4: Map into strongly-typed RagResponse with citations
-    (input: { documents: Document<DocumentMetadata>[]; answer: string }): RagResponse => {
-      const isRefusal =
-        input.documents.length === 0 ||
-        /cannot find|not mentioned|not found|no information/i.test(input.answer);
+      rawOutput: async (state: {
+        question: string;
+        context: string;
+        isRelevanceAcceptable: boolean;
+        searchResults: SearchResult[];
+      }) => {
+        if (!state.isRelevanceAcceptable) {
+          return JSON.stringify({
+            hasSufficientEvidence: false,
+            answer:
+              "I cannot find sufficient relevant evidence in the uploaded document to answer this question.",
+            citedExcerptIds: [],
+          });
+        }
 
-      const citations: Citation[] = isRefusal
-        ? []
-        : input.documents.map((d) => ({
-            source: d.metadata.source,
-            fileName: d.metadata.fileName,
-            pageNumber: d.metadata.pageNumber,
-            documentId: d.metadata.documentId,
-            chunkIndex: d.metadata.chunkIndex,
-            excerpt: d.pageContent.slice(0, 160).trim(),
-          }));
+        const formatted = await ragPrompt.format({
+          question: state.question,
+          context: state.context,
+        });
+        const res = await chatModel.invoke(formatted);
+        return outputParser.invoke(res);
+      },
+    }),
+    // Step 4: Validate citations and evaluate true semantic groundedness
+    (state: {
+      searchResults: SearchResult[];
+      rawOutput: string;
+      isRelevanceAcceptable: boolean;
+    }): RagResponse => {
+      const parsed = parseStructuredRagOutput(state.rawOutput);
+
+      // Validate citations strictly against trusted Document metadata
+      const validatedCitations: Citation[] = [];
+      if (parsed.hasSufficientEvidence && Array.isArray(parsed.citedExcerptIds)) {
+        for (const id of parsed.citedExcerptIds) {
+          const docIndex = id - 1; // 1-indexed to 0-indexed
+          if (docIndex >= 0 && docIndex < state.searchResults.length) {
+            const doc = state.searchResults[docIndex].document;
+            const alreadyCited = validatedCitations.some(
+              (c) =>
+                c.documentId === doc.metadata.documentId &&
+                c.pageNumber === doc.metadata.pageNumber &&
+                c.chunkIndex === doc.metadata.chunkIndex
+            );
+            if (!alreadyCited) {
+              validatedCitations.push({
+                source: doc.metadata.source,
+                fileName: doc.metadata.fileName,
+                pageNumber: doc.metadata.pageNumber,
+                documentId: doc.metadata.documentId,
+                chunkIndex: doc.metadata.chunkIndex,
+                excerpt: doc.pageContent.slice(0, 160).trim(),
+              });
+            }
+          }
+        }
+      }
+
+      // Strong grounded guarantee:
+      // Must have sufficient evidence AND validated citations AND acceptable retrieval relevance
+      const isGrounded =
+        state.isRelevanceAcceptable &&
+        parsed.hasSufficientEvidence === true &&
+        validatedCitations.length > 0;
 
       return {
-        answer: input.answer.trim(),
-        citations,
-        grounded: !isRefusal && citations.length > 0,
+        answer: parsed.answer,
+        citations: isGrounded ? validatedCitations : [],
+        grounded: isGrounded,
         intent: "document_rag",
-        retrievedCount: input.documents.length,
+        retrievedCount: state.searchResults.length,
       };
     },
   ]);

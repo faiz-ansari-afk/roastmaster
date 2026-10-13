@@ -222,6 +222,40 @@ async function runMultiRouteTests() {
     });
   }
 
+  // Route 6 Test: Document Insufficient Evidence ("What is the author's home address in my PDF?")
+  await delay(600);
+  const t6 = Date.now();
+  try {
+    console.log("[Route 6] Testing Insufficient Evidence: \"What is the author's home address in my PDF?\"...");
+    const res = (await pipeline.invoke({
+      question: "What is the author's home address in my PDF?",
+      hasUploadedDocs: true,
+    })) as RagResponse;
+
+    const pass =
+      res.intent === "document_rag" &&
+      res.retrievedCount > 0 &&
+      res.citations.length === 0 && // MUST NOT attach citations!
+      !res.grounded &&              // MUST NOT claim to be grounded!
+      /cannot find|not mentioned|not found|insufficient|does not state|not contain|no information/i.test(res.answer);
+
+    results.push({
+      step: "7. Insufficient Evidence Defense (retrievedCount > 0 but grounded === false)",
+      success: pass,
+      durationMs: Date.now() - t6,
+      details: pass
+        ? `Distinguished retrieval from grounding! Retrieved ${res.retrievedCount} chunks, but grounded=false with 0 citations: "${res.answer.slice(0, 65)}..."`
+        : `Failed: grounded=${res.grounded}, citations=${res.citations.length}, answer=${res.answer}`,
+    });
+  } catch (err: any) {
+    results.push({
+      step: "7. Insufficient Evidence Defense (retrievedCount > 0 but grounded === false)",
+      success: false,
+      durationMs: Date.now() - t6,
+      details: `Failed: ${err.message}`,
+    });
+  }
+
   // Print Summary Table
   console.log("\n------------------------------------------------------------");
   console.log("Multi-Route Intent Router Test Results Summary:");
