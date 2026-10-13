@@ -48,6 +48,7 @@ export function createChatModel(temperature: number = 0.7): ChatGoogleGenerative
     model: config.chatModelName,
     apiKey: config.geminiApiKey,
     temperature,
+    maxRetries: 3,
   });
 }
 

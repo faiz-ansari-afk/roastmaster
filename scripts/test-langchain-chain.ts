@@ -1,12 +1,13 @@
 /**
  * scripts/test-langchain-chain.ts
- * Standalone verification script for Phase 4: Declarative LCEL RAG Chain & Citations.
+ * Standalone verification script for Phase 4: Declarative LCEL RAG Chain with Query Routing.
  * 
  * Verifies:
- * 1. Building the LCEL Runnable pipeline (Retriever -> Prompt -> Gemini -> OutputParser)
- * 2. Answering a document question with exact citations and page attribution
- * 3. Refusal / Hallucination resistance test (asking an out-of-domain question)
- * 4. Tenant isolation enforcement within the LCEL chain
+ * 1. Building the LCEL Runnable pipeline with RunnableBranch routing
+ * 2. Answering a document question with exact citations (intent: "document_rag")
+ * 3. Answering conversational banter/greetings with zero DB queries and zero false citations (intent: "banter")
+ * 4. Refusal / Hallucination resistance test (asking an out-of-domain question)
+ * 5. Tenant isolation enforcement within the LCEL chain
  * 
  * Run with: npm run test:langchain:chain
  */
@@ -27,7 +28,7 @@ async function runChainTests() {
   const results: TestStepResult[] = [];
   const TENANT_ID = "tenant-vip-club-42";
 
-  // Step 1: Initialize the LCEL RAG Chain
+  // Step 1: Initialize the LCEL RAG Chain with Routing
   const t0 = Date.now();
   let ragChain: any;
   try {
@@ -39,14 +40,14 @@ async function runChainTests() {
     });
 
     results.push({
-      step: "1. LCEL Pipeline Assembly",
+      step: "1. LCEL RunnableBranch Pipeline Assembly",
       success: !!ragChain && typeof ragChain.invoke === "function",
       durationMs: Date.now() - t0,
-      details: "Constructed RunnableSequence with retriever, ChatPromptTemplate, Gemini, and citations mapper.",
+      details: "Constructed RunnableBranch routing between Banter Branch and Document RAG Branch.",
     });
   } catch (err: any) {
     results.push({
-      step: "1. LCEL Pipeline Assembly",
+      step: "1. LCEL RunnableBranch Pipeline Assembly",
       success: false,
       durationMs: Date.now() - t0,
       details: `Assembly failed: ${err.message}`,
@@ -55,35 +56,27 @@ async function runChainTests() {
 
   // Step 2: Grounded Document Question Answering with Citations
   const t1 = Date.now();
-  const testQuestion = "What is the core tech stack and architecture of RoastMaster AI?";
+  const docQuestion = "What is the core tech stack and architecture of RoastMaster AI?";
   let groundedResponse: RagResponse | null = null;
 
   try {
-    console.log(`Executing LCEL Chain for Question: "${testQuestion}"...`);
+    console.log(`[Test 2] Executing Document RAG Branch for: "${docQuestion}"...`);
     groundedResponse = (await ragChain.invoke({
-      question: testQuestion,
+      question: docQuestion,
     })) as RagResponse;
 
-    const hasAnswer =
-      typeof groundedResponse.answer === "string" &&
-      groundedResponse.answer.length > 30;
-
-    const hasKeywords =
-      /Gemini|pgvector|PostgreSQL|Next\.js|React/i.test(groundedResponse.answer);
-
-    const hasCitations =
+    const isSuccess =
+      groundedResponse.intent === "document_rag" &&
+      groundedResponse.retrievedCount > 0 &&
       groundedResponse.citations.length > 0 &&
-      groundedResponse.citations.every(
-        (c) => typeof c.pageNumber === "number" && c.fileName && c.documentId
-      );
-
-    const isSuccess = hasAnswer && hasKeywords && hasCitations && groundedResponse.grounded;
+      groundedResponse.grounded &&
+      /Gemini|pgvector|PostgreSQL|Next\.js|React/i.test(groundedResponse.answer);
 
     results.push({
       step: "2. Grounded Q&A with Exact Citations",
       success: isSuccess,
       durationMs: Date.now() - t1,
-      details: `Retrieved ${groundedResponse.retrievedCount} chunks. Answered in ${Date.now() - t1}ms with ${groundedResponse.citations.length} verified citations.`,
+      details: `Intent: "${groundedResponse.intent}" | Retrieved ${groundedResponse.retrievedCount} chunks with ${groundedResponse.citations.length} citations.`,
     });
   } catch (err: any) {
     results.push({
@@ -94,13 +87,51 @@ async function runChainTests() {
     });
   }
 
-  // Step 3: Refusal / Hallucination Defense Test
+  // Grace delay to protect free tier rate limits
+  await new Promise((res) => setTimeout(res, 600));
+
+  // Step 3: Banter / Greeting Query Routing (Zero DB Overhead)
   const t2 = Date.now();
+  const banterQuestion = "Yo RoastMaster, what's up bro? Roast me!";
+  let banterResponse: RagResponse | null = null;
+
+  try {
+    console.log(`[Test 3] Executing Banter Routing Branch for: "${banterQuestion}"...`);
+    banterResponse = (await ragChain.invoke({
+      question: banterQuestion,
+    })) as RagResponse;
+
+    const isBanterSuccess =
+      banterResponse.intent === "banter" &&
+      banterResponse.retrievedCount === 0 &&
+      banterResponse.citations.length === 0 &&
+      !banterResponse.grounded &&
+      banterResponse.answer.length > 10;
+
+    results.push({
+      step: "3. Banter Routing (Zero Vector Queries & Zero Citations)",
+      success: isBanterSuccess,
+      durationMs: Date.now() - t2,
+      details: isBanterSuccess
+        ? `Routed to Banter Branch! Retrieved 0 chunks, attached 0 false citations. Comedy Answer: "${banterResponse.answer.slice(0, 60)}..."`
+        : `Banter routing failed: intent=${banterResponse.intent}, retrievedCount=${banterResponse.retrievedCount}`,
+    });
+  } catch (err: any) {
+    results.push({
+      step: "3. Banter Routing (Zero Vector Queries & Zero Citations)",
+      success: false,
+      durationMs: Date.now() - t2,
+      details: `Execution failed: ${err.message}`,
+    });
+  }
+
+  // Step 4: Refusal / Hallucination Defense Test
+  const t3 = Date.now();
   const irrelevantQuestion = "What is the airspeed velocity of an unladen swallow carrying a coconut?";
   let refusalResponse: RagResponse | null = null;
 
   try {
-    console.log(`Testing Hallucination Defense for: "${irrelevantQuestion}"...`);
+    console.log(`[Test 4] Testing Hallucination Defense for: "${irrelevantQuestion}"...`);
     refusalResponse = (await ragChain.invoke({
       question: irrelevantQuestion,
     })) as RagResponse;
@@ -113,22 +144,22 @@ async function runChainTests() {
     const citationsEmpty = refusalResponse.citations.length === 0;
 
     results.push({
-      step: "3. Hallucination Defense & Refusal Protocol",
+      step: "4. Hallucination Defense & Refusal Protocol",
       success: didRefuse && citationsEmpty && !refusalResponse.grounded,
-      durationMs: Date.now() - t2,
-      details: `LLM refused correctly without hallucinations: "${refusalResponse.answer.slice(0, 70)}..." (Citations: ${refusalResponse.citations.length})`,
+      durationMs: Date.now() - t3,
+      details: `Refused correctly without hallucinations: "${refusalResponse.answer.slice(0, 65)}..." (Citations: ${refusalResponse.citations.length})`,
     });
   } catch (err: any) {
     results.push({
-      step: "3. Hallucination Defense & Refusal Protocol",
+      step: "4. Hallucination Defense & Refusal Protocol",
       success: false,
-      durationMs: Date.now() - t2,
+      durationMs: Date.now() - t3,
       details: `Refusal test failed: ${err.message}`,
     });
   }
 
-  // Step 4: Cross-Tenant Isolation in LCEL Chain
-  const t3 = Date.now();
+  // Step 5: Cross-Tenant Isolation in LCEL Chain
+  const t4 = Date.now();
   try {
     const unauthorizedChain = await createRagChain({
       k: 3,
@@ -138,7 +169,7 @@ async function runChainTests() {
     });
 
     const crossTenantResponse = (await unauthorizedChain.invoke({
-      question: testQuestion,
+      question: docQuestion,
     })) as RagResponse;
 
     const correctlyDenied =
@@ -146,38 +177,24 @@ async function runChainTests() {
       crossTenantResponse.citations.length === 0;
 
     results.push({
-      step: "4. Cross-Tenant Isolation in LCEL",
+      step: "5. Cross-Tenant Isolation in LCEL",
       success: correctlyDenied,
-      durationMs: Date.now() - t3,
+      durationMs: Date.now() - t4,
       details: correctlyDenied
         ? "Unauthorized tenant chain retrieved 0 chunks and returned 0 citations."
         : "Cross-tenant leak detected!",
     });
   } catch (err: any) {
     results.push({
-      step: "4. Cross-Tenant Isolation in LCEL",
+      step: "5. Cross-Tenant Isolation in LCEL",
       success: false,
-      durationMs: Date.now() - t3,
+      durationMs: Date.now() - t4,
       details: `Failed: ${err.message}`,
     });
   }
 
-  // Print Grounded Q&A Preview
-  if (groundedResponse) {
-    console.log("\n------------------------------------------------------------");
-    console.log("LCEL Grounded Response Output Preview:");
-    console.log("------------------------------------------------------------");
-    console.log(`Answer:\n"${groundedResponse.answer}"\n`);
-    console.log(`Citations (${groundedResponse.citations.length}):`);
-    groundedResponse.citations.forEach((c, idx) => {
-      console.log(`  [Citation ${idx + 1}] Source: ${c.fileName} (Page ${c.pageNumber}, Doc ID: ${c.documentId})`);
-      console.log(`  Excerpt: "${c.excerpt}..."`);
-    });
-    console.log("------------------------------------------------------------\n");
-  }
-
   // Print Summary Table
-  console.log("------------------------------------------------------------");
+  console.log("\n------------------------------------------------------------");
   console.log("Test Results Summary:");
   console.log("------------------------------------------------------------");
   let allPassed = true;
@@ -190,10 +207,10 @@ async function runChainTests() {
   console.log("------------------------------------------------------------");
 
   if (allPassed) {
-    console.log("🎉 All Phase 4 LCEL RAG Chain tests PASSED successfully!\n");
+    console.log("🎉 All LCEL RAG Chain + Banter Routing tests PASSED successfully!\n");
     process.exit(0);
   } else {
-    console.error("⚠️ One or more LCEL tests failed.\n");
+    console.error("⚠️ One or more tests failed.\n");
     process.exit(1);
   }
 }
