@@ -33,10 +33,18 @@ export interface IngestionResult {
   averageBatchMs: number;
 }
 
+export class TenantIsolationError extends Error {
+  constructor(message: string) {
+    super(`[Tenant Isolation Violation] ${message}`);
+    this.name = "TenantIsolationError";
+  }
+}
+
 export interface SearchOptions {
   k?: number;
   tenantId?: string;
   documentId?: string;
+  enforceTenantIsolation?: boolean; // Defaults to true in multi-tenant environments
   filter?: Record<string, any>;
 }
 
@@ -124,6 +132,17 @@ export async function ingestDocumentsToVectorStore(
     };
   }
 
+  // Validate tenantId integrity across all documents to prevent un-tenanted chunks
+  for (let i = 0; i < documents.length; i++) {
+    const doc = documents[i];
+    const tId = doc.metadata?.tenantId;
+    if (!tId || typeof tId !== "string" || tId.trim().length === 0) {
+      throw new TenantIsolationError(
+        `Cannot ingest document chunk at index ${i}: missing or empty 'tenantId' metadata.`
+      );
+    }
+  }
+
   const { batchSize = 25, logProgress = true } = options;
   const store = await getLangChainVectorStore(storeOptions);
 
@@ -164,9 +183,11 @@ export async function ingestDocumentsToVectorStore(
 
 /**
  * Performs a vector similarity search with explicit tenant authorization and score metrics.
+ * Implements FAIL-CLOSED security: if enforceTenantIsolation is true (default) and tenantId
+ * is missing or empty, execution aborts immediately before any database query is issued.
  *
  * @param query - User question or query string
- * @param searchOpts - Options including top-K, tenantId, documentId, and raw filter
+ * @param searchOpts - Options including top-K, tenantId, documentId, enforceTenantIsolation, and raw filter
  * @param storeOpts - Target vector store configuration
  * @returns Promise<SearchResult[]> Array of matching documents with distance and similarity scores
  */
@@ -175,16 +196,32 @@ export async function searchSimilarDocuments(
   searchOpts: SearchOptions = {},
   storeOpts: VectorStoreOptions = {}
 ): Promise<SearchResult[]> {
-  const { k = 4, tenantId, documentId, filter = {} } = searchOpts;
+  const {
+    k = 4,
+    tenantId,
+    documentId,
+    enforceTenantIsolation = true,
+    filter = {},
+  } = searchOpts;
+
+  // Fail-Closed Security Assertion: Reject unpartitioned queries
+  if (enforceTenantIsolation) {
+    if (!tenantId || typeof tenantId !== "string" || tenantId.trim().length === 0) {
+      throw new TenantIsolationError(
+        "Multi-tenant vector retrieval requires a valid, non-empty tenantId. Unpartitioned global searches are blocked."
+      );
+    }
+  }
+
   const store = await getLangChainVectorStore(storeOpts);
 
   // Construct compound metadata filter
   const effectiveFilter: Record<string, any> = { ...filter };
   if (tenantId) {
-    effectiveFilter.tenantId = tenantId;
+    effectiveFilter.tenantId = tenantId.trim();
   }
   if (documentId) {
-    effectiveFilter.documentId = documentId;
+    effectiveFilter.documentId = documentId.trim();
   }
 
   const hasFilter = Object.keys(effectiveFilter).length > 0;

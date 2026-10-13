@@ -59,6 +59,7 @@ export interface RagResponse {
 export interface RagChainOptions {
   k?: number;
   tenantId?: string;
+  enforceTenantIsolation?: boolean;
   temperature?: number;
   minSimilarity?: number;
   storeOptions?: VectorStoreOptions;
@@ -196,6 +197,7 @@ export async function createRagChain(options: RagChainOptions = {}) {
   const {
     k = 4,
     tenantId,
+    enforceTenantIsolation = true,
     temperature = 0.2,
     minSimilarity = 0.50, // Minimum relevance threshold (cosine similarity)
     storeOptions = {},
@@ -344,7 +346,7 @@ JSON OUTPUT SCHEMA:
       searchResults: async (input: RagInput) => {
         return searchSimilarDocuments(
           input.question,
-          { k, tenantId },
+          { k, tenantId, enforceTenantIsolation },
           storeOptions
         );
       },

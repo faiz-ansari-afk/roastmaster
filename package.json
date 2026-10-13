@@ -32,7 +32,8 @@
     "test:langchain": "tsx --env-file=.env scripts/test-langchain-runner.ts",
     "test:langchain:docs": "tsx --env-file=.env scripts/test-langchain-documents.ts",
     "test:langchain:vectors": "tsx --env-file=.env scripts/test-langchain-vectorstore.ts",
-    "test:langchain:chain": "tsx --env-file=.env scripts/test-langchain-chain.ts"
+    "test:langchain:chain": "tsx --env-file=.env scripts/test-langchain-chain.ts",
+    "test:langchain:tenant": "tsx --env-file=.env scripts/test-langchain-tenant-isolation.ts"
   },
   "bin": {
     "roastmaster": "./bin/cli.mjs",
