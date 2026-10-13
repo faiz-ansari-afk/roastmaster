@@ -107,6 +107,11 @@ async function runDocumentTests() {
         failureReason = `Invalid pageNumber ${chunk.metadata.pageNumber} at chunk ${i}`;
         break;
       }
+      if (!chunk.metadata.documentId || !chunk.metadata.tenantId || typeof chunk.metadata.documentVersion !== "number") {
+        metadataIntegrityPassed = false;
+        failureReason = `Missing documentId/tenantId/documentVersion at chunk ${i}`;
+        break;
+      }
     }
 
     results.push({
@@ -114,7 +119,7 @@ async function runDocumentTests() {
       success: metadataIntegrityPassed,
       durationMs: Date.now() - t2,
       details: metadataIntegrityPassed
-        ? `Strict 1-to-1 page attribution verified across all ${chunkDocs.length} chunks.`
+        ? `Verified pageNumber, documentId (${chunkDocs[0]?.metadata.documentId}), tenantId, and documentVersion across all ${chunkDocs.length} chunks.`
         : failureReason,
     });
   } catch (err: any) {

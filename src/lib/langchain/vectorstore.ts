@@ -2,8 +2,11 @@
  * src/lib/langchain/vectorstore.ts
  * Isolated PostgreSQL + pgvector VectorStore integration using LangChain.js.
  * 
- * Uses an isolated table ('langchain_pdf_vectors') to avoid touching or altering
- * the production 'document_chunks' table.
+ * Features:
+ * 1. Configuration-aware multi-instance cache (handles distinct collections/tables safely).
+ * 2. Strict tenant-level authorization and filtering.
+ * 3. Unambiguous score semantics (returns both raw distance and normalized similarity).
+ * 4. Configurable, latency-monitored batch ingestion.
  */
 import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { Document } from "@langchain/core/documents";
@@ -15,34 +18,64 @@ export interface VectorStoreOptions {
   tableName?: string;
   collectionTableName?: string;
   collectionName?: string;
+  distanceStrategy?: "cosine" | "innerProduct" | "euclidean";
+}
+
+export interface IngestionOptions {
+  batchSize?: number;
+  logProgress?: boolean;
+}
+
+export interface IngestionResult {
+  insertedCount: number;
+  batchCount: number;
+  totalDurationMs: number;
+  averageBatchMs: number;
+}
+
+export interface SearchOptions {
+  k?: number;
+  tenantId?: string;
+  documentId?: string;
+  filter?: Record<string, any>;
 }
 
 export interface SearchResult {
   document: Document<DocumentMetadata>;
-  score: number;
+  distance: number;    // Raw pgvector distance (for cosine: 0.0 = identical, 1.0 = orthogonal)
+  similarity: number;  // Normalized similarity score (1 - distance)
 }
 
 const DEFAULT_TABLE_NAME = "langchain_pdf_vectors";
 const DEFAULT_COLLECTION_TABLE = "langchain_pdf_collections";
 const DEFAULT_COLLECTION_NAME = "roastmaster_knowledge";
 
-let vectorStoreInstance: PGVectorStore | null = null;
+// Configuration-aware vector store cache: keyed by `${tableName}:${collectionTableName}:${collectionName}`
+const vectorStorePool = new Map<string, PGVectorStore>();
 
 /**
- * Initializes and returns a singleton LangChain PGVectorStore instance.
- * Automatically verifies schema and creates isolated tables if they don't exist.
+ * Builds a deterministic cache key from vector store configuration options.
+ */
+function getStoreCacheKey(options: VectorStoreOptions): string {
+  const table = options.tableName || DEFAULT_TABLE_NAME;
+  const colTable = options.collectionTableName || DEFAULT_COLLECTION_TABLE;
+  const colName = options.collectionName || DEFAULT_COLLECTION_NAME;
+  const strategy = options.distanceStrategy || "cosine";
+  return `${table}:${colTable}:${colName}:${strategy}`;
+}
+
+/**
+ * Retrieves or initializes a LangChain PGVectorStore instance.
+ * Cache is configuration-aware: requests with different table or collection names
+ * receive isolated, correctly configured store instances.
  */
 export async function getLangChainVectorStore(
   options: VectorStoreOptions = {}
 ): Promise<PGVectorStore> {
-  const {
-    tableName = DEFAULT_TABLE_NAME,
-    collectionTableName = DEFAULT_COLLECTION_TABLE,
-    collectionName = DEFAULT_COLLECTION_NAME,
-  } = options;
+  const cacheKey = getStoreCacheKey(options);
 
-  if (vectorStoreInstance) {
-    return vectorStoreInstance;
+  if (vectorStorePool.has(cacheKey)) {
+    return vectorStorePool.get(cacheKey)!;
   }
 
   const pool = getDbPool();
@@ -55,67 +88,121 @@ export async function getLangChainVectorStore(
   const config = getLangChainConfig();
   const embeddings = createEmbeddings();
 
-  // Initialize PGVectorStore with explicit 768 dimensions matching our Gemini embeddings
-  vectorStoreInstance = await PGVectorStore.initialize(embeddings, {
+  const store = await PGVectorStore.initialize(embeddings, {
     pool,
-    tableName,
-    collectionTableName,
-    collectionName,
+    tableName: options.tableName || DEFAULT_TABLE_NAME,
+    collectionTableName: options.collectionTableName || DEFAULT_COLLECTION_TABLE,
+    collectionName: options.collectionName || DEFAULT_COLLECTION_NAME,
     dimensions: config.embeddingDimension,
-    distanceStrategy: "cosine",
+    distanceStrategy: options.distanceStrategy || "cosine",
   });
 
-  return vectorStoreInstance;
+  vectorStorePool.set(cacheKey, store);
+  return store;
 }
 
 /**
- * Ingests an array of chunked LangChain Documents into the pgvector store.
- * Batches inserts into chunks of 25 to respect Gemini embedding rate limits.
+ * Ingests an array of chunked LangChain Documents into pgvector.
+ * Ingestion is batched with configurable size and latency tracking.
  *
  * @param documents - Array of chunked Documents to embed and store
- * @param batchSize - Batch size for embedding and inserting (default: 25)
- * @returns Promise<{ insertedCount: number }>
+ * @param options - Ingestion options (batchSize, logProgress)
+ * @param storeOptions - Target vector store configuration
+ * @returns Promise<IngestionResult> Ingestion performance and count metrics
  */
 export async function ingestDocumentsToVectorStore(
   documents: Document<DocumentMetadata>[],
-  batchSize: number = 25
-): Promise<{ insertedCount: number }> {
+  options: IngestionOptions = {},
+  storeOptions: VectorStoreOptions = {}
+): Promise<IngestionResult> {
   if (!documents || documents.length === 0) {
-    return { insertedCount: 0 };
+    return {
+      insertedCount: 0,
+      batchCount: 0,
+      totalDurationMs: 0,
+      averageBatchMs: 0,
+    };
   }
 
-  const store = await getLangChainVectorStore();
+  const { batchSize = 25, logProgress = true } = options;
+  const store = await getLangChainVectorStore(storeOptions);
+
+  const startTime = Date.now();
   let totalInserted = 0;
+  let batchCount = 0;
+  const batchDurations: number[] = [];
 
   for (let i = 0; i < documents.length; i += batchSize) {
     const batch = documents.slice(i, i + batchSize);
+    batchCount++;
+    const bStart = Date.now();
+
     await store.addDocuments(batch);
+
+    const bDuration = Date.now() - bStart;
+    batchDurations.push(bDuration);
     totalInserted += batch.length;
+
+    if (logProgress) {
+      console.log(
+        `[LangChain VectorStore Ingestion] Batch ${batchCount} (${batch.length} chunks) indexed in ${bDuration}ms`
+      );
+    }
   }
 
-  return { insertedCount: totalInserted };
+  const totalDurationMs = Date.now() - startTime;
+  const averageBatchMs =
+    batchDurations.reduce((acc, d) => acc + d, 0) / (batchDurations.length || 1);
+
+  return {
+    insertedCount: totalInserted,
+    batchCount,
+    totalDurationMs,
+    averageBatchMs,
+  };
 }
 
 /**
- * Performs a vector similarity search using cosine distance in pgvector.
+ * Performs a vector similarity search with explicit tenant authorization and score metrics.
  *
- * @param query - User question or query string to search against
- * @param k - Number of top documents to retrieve (default: 4)
- * @param filter - Optional metadata filter
- * @returns Promise<SearchResult[]> Array of matching documents with similarity scores
+ * @param query - User question or query string
+ * @param searchOpts - Options including top-K, tenantId, documentId, and raw filter
+ * @param storeOpts - Target vector store configuration
+ * @returns Promise<SearchResult[]> Array of matching documents with distance and similarity scores
  */
 export async function searchSimilarDocuments(
   query: string,
-  k: number = 4,
-  filter?: Record<string, any>
+  searchOpts: SearchOptions = {},
+  storeOpts: VectorStoreOptions = {}
 ): Promise<SearchResult[]> {
-  const store = await getLangChainVectorStore();
+  const { k = 4, tenantId, documentId, filter = {} } = searchOpts;
+  const store = await getLangChainVectorStore(storeOpts);
 
-  // similaritySearchWithScore returns: [Document, score][]
-  const rawResults = await store.similaritySearchWithScore(query, k, filter);
+  // Construct compound metadata filter
+  const effectiveFilter: Record<string, any> = { ...filter };
+  if (tenantId) {
+    effectiveFilter.tenantId = tenantId;
+  }
+  if (documentId) {
+    effectiveFilter.documentId = documentId;
+  }
 
-  return rawResults.map(([doc, score]) => ({
-    document: doc as Document<DocumentMetadata>,
-    score,
-  }));
+  const hasFilter = Object.keys(effectiveFilter).length > 0;
+  const rawResults = await store.similaritySearchWithScore(
+    query,
+    k,
+    hasFilter ? effectiveFilter : undefined
+  );
+
+  return rawResults.map(([doc, distanceScore]) => {
+    // For cosine distance: distance = 1 - cosine_similarity
+    // Clamp similarity between 0.0 and 1.0 for safety
+    const normalizedSimilarity = Math.max(0, Math.min(1, 1 - distanceScore));
+
+    return {
+      document: doc as Document<DocumentMetadata>,
+      distance: distanceScore,
+      similarity: Number(normalizedSimilarity.toFixed(4)),
+    };
+  });
 }

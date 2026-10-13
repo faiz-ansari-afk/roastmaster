@@ -3,13 +3,14 @@
  * Isolated PDF Loading & Semantic Chunking utilities using LangChain.js primitives.
  * 
  * Standardizes raw PDF documents into LangChain `Document` objects with rich metadata
- * for pgvector indexing and citations.
+ * for pgvector indexing and citations, including tenant isolation and document provenance.
  */
 import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { extractText } from "unpdf";
 import fs from "node:fs/promises";
 import path from "node:path";
+import crypto from "node:crypto";
 
 export interface PdfChunkOptions {
   chunkSize?: number;
@@ -17,11 +18,21 @@ export interface PdfChunkOptions {
   keepSeparator?: boolean;
 }
 
+export interface DocumentIdentityOptions {
+  fileName?: string;
+  tenantId?: string;
+  documentId?: string;
+  documentVersion?: number;
+}
+
 export interface DocumentMetadata {
   source: string;
   fileName: string;
   pageNumber: number;
   totalPages: number;
+  documentId: string;
+  tenantId: string;
+  documentVersion: number;
   chunkIndex?: number;
   charCount?: number;
   [key: string]: any;
@@ -29,26 +40,37 @@ export interface DocumentMetadata {
 
 /**
  * Loads a PDF file from a filesystem path or Uint8Array buffer and converts each page
- * into an individual LangChain `Document` object.
+ * into an individual LangChain `Document` object with tenant and document provenance.
  *
  * @param input - File path string or Uint8Array of the PDF
- * @param originalFileName - Optional filename override for metadata
+ * @param options - Identity and provenance options (tenantId, documentId, documentVersion, fileName)
  * @returns Promise<Document[]> Array of page-level LangChain Documents
  */
 export async function loadPdfPages(
   input: string | Uint8Array,
-  originalFileName?: string
+  options: DocumentIdentityOptions | string = {}
 ): Promise<Document<DocumentMetadata>[]> {
+  const opts: DocumentIdentityOptions =
+    typeof options === "string" ? { fileName: options } : options;
+
   let uint8Array: Uint8Array;
-  let fileName = originalFileName || "document.pdf";
+  let fileName = opts.fileName || "document.pdf";
 
   if (typeof input === "string") {
-    fileName = path.basename(input);
+    fileName = opts.fileName || path.basename(input);
     const buffer = await fs.readFile(input);
     uint8Array = new Uint8Array(buffer);
   } else {
     uint8Array = input;
   }
+
+  // Generate deterministic documentId from content hash if not provided
+  const documentId =
+    opts.documentId ||
+    crypto.createHash("sha256").update(uint8Array).digest("hex").slice(0, 16);
+
+  const tenantId = opts.tenantId || "default-tenant";
+  const documentVersion = opts.documentVersion || 1;
 
   // Extract page-by-page using unpdf (mergePages: false preserves page granularity)
   const extraction = await extractText(uint8Array, { mergePages: false });
@@ -76,6 +98,9 @@ export async function loadPdfPages(
           fileName,
           pageNumber,
           totalPages,
+          documentId,
+          tenantId,
+          documentVersion,
           charCount: cleanText.length,
         },
       })
@@ -89,8 +114,7 @@ export async function loadPdfPages(
  * Splits page-level LangChain Documents into semantically cohesive chunks
  * using `RecursiveCharacterTextSplitter`.
  *
- * Preserves page numbers and original metadata on every resulting chunk,
- * adding `chunkIndex` and updated `charCount`.
+ * Preserves page numbers and original identity metadata on every resulting chunk.
  *
  * @param documents - Array of page-level Documents
  * @param options - Chunk size and overlap options
@@ -130,6 +154,9 @@ export async function splitPdfDocuments(
         fileName: doc.metadata.fileName,
         pageNumber: doc.metadata.pageNumber,
         totalPages: doc.metadata.totalPages,
+        documentId: doc.metadata.documentId,
+        tenantId: doc.metadata.tenantId,
+        documentVersion: doc.metadata.documentVersion,
         ...chunk.metadata,
         chunkIndex: globalChunkIndex++,
         charCount: trimmedContent.length,
@@ -146,4 +173,3 @@ export async function splitPdfDocuments(
 
   return chunkedDocuments;
 }
-
