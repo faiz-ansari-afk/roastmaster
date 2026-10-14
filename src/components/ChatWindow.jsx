@@ -748,6 +748,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const [isStreaming, setIsStreaming] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
+  const [ragEngine, setRagEngine] = useState("manual");
   const [sessionTitle, setSessionTitle] = useState("");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState("");
@@ -812,6 +813,11 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       const msgs = await getMessages(user.uid, sidToLoad);
       const loadedMsgs = (msgs || []).map((m) => ({ ...m, isNew: false }));
       setMessages(loadedMsgs);
+      if (msgs?.ragEngine) {
+        setRagEngine(msgs.ragEngine);
+      } else {
+        setRagEngine("manual");
+      }
 
       // 1. Prioritize saved title from database
       if (msgs.sessionTitle && msgs.sessionTitle !== "New Roast Session") {
@@ -855,7 +861,12 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       return;
     }
     let isMounted = true;
-    fetch(`/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`)
+    const docsEndpoint =
+      ragEngine === "langchain"
+        ? `/api/langchain/rag/upload?sessionId=${encodeURIComponent(currentSessionId)}`
+        : `/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`;
+
+    fetch(docsEndpoint)
       .then((res) => res.json())
       .then((data) => {
         if (isMounted && Array.isArray(data?.documents)) {
@@ -871,7 +882,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     return () => {
       isMounted = false;
     };
-  }, [currentSessionId]);
+  }, [currentSessionId, ragEngine]);
 
   useEffect(() => {
     currentSessionIdRef.current = sessionId;
@@ -987,7 +998,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       let sid = currentSessionIdRef.current || currentSessionId;
       if (!sid) {
         if (user && !isGuest) {
-          sid = await createSession(user.uid, docTitle);
+          sid = await createSession(user.uid, docTitle, ragEngine);
           if (sid) {
             sessionCreatedLocallyRef.current = sid;
             currentSessionIdRef.current = sid;
@@ -1014,7 +1025,10 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         formData.append("userId", user.uid);
       }
 
-      const res = await fetch("/api/rag/upload", {
+      const uploadEndpoint =
+        ragEngine === "langchain" ? "/api/langchain/rag/upload" : "/api/rag/upload";
+
+      const res = await fetch(uploadEndpoint, {
         method: "POST",
         body: formData,
       });
@@ -1061,7 +1075,12 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const handleRemoveDoc = async () => {
     if (!currentSessionId) return;
     try {
-      await fetch(`/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`, {
+      const deleteEndpoint =
+        ragEngine === "langchain"
+          ? `/api/langchain/rag/upload?sessionId=${encodeURIComponent(currentSessionId)}`
+          : `/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`;
+
+      await fetch(deleteEndpoint, {
         method: "DELETE",
       });
       setAttachedDocs([]);
@@ -1080,7 +1099,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         : (botReply?.title || (userText ? (userText.length > 40 ? userText.slice(0, 40) + "..." : userText) : "Standup Roast"));
 
       if (!sid) {
-        sid = await createSession(user.uid, titleToUse);
+        sid = await createSession(user.uid, titleToUse, ragEngine);
         if (sid) {
           sessionCreatedLocallyRef.current = sid;
           currentSessionIdRef.current = sid;
@@ -1137,13 +1156,15 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         : null;
 
     try {
-      const res = await fetch("/api/chat", {
+      const targetEndpoint = ragEngine === "langchain" ? "/api/langchain/chat" : "/api/chat";
+      const res = await fetch(targetEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: activeSid || null,
           userId: user?.uid || null,
           userProfile: profilePayload,
+          ragEngine,
           messages: updatedMessages.map((m) => {
             let contentText = "";
             if (typeof m.content === "object" && m.content !== null) {
@@ -1185,7 +1206,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       setLoading(false);
       isSendingRef.current = false;
     }
-  }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated, userProfile]);
+  }, [input, loading, isStreaming, messages, currentSessionId, user, isGuest, onSessionCreated, userProfile, ragEngine]);
 
   const handleKey = (e) => {
     if (e.key === "Tab") {
@@ -1264,7 +1285,13 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
             </div>
           </div>
         ) : messages.length === 0 ? (
-          <EmptyStageState onShowAuth={onShowAuth} user={user} isGuest={isGuest} />
+          <EmptyStageState
+            onShowAuth={onShowAuth}
+            user={user}
+            isGuest={isGuest}
+            ragEngine={ragEngine}
+            onSelectEngine={setRagEngine}
+          />
         ) : (
           <>
             {/* Sticky Live Set Marquee & Manual Title Editor — Liquid Glass Capsule */}
@@ -1346,6 +1373,15 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] font-mono text-[#836270] shrink-0">
+                    <span
+                      className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
+                        ragEngine === "langchain"
+                          ? "bg-purple-100 text-purple-700 border border-purple-200"
+                          : "bg-pink-100/80 text-pink-700 border border-pink-200"
+                      }`}
+                    >
+                      {ragEngine === "langchain" ? "🦜 LangChain LCEL" : "⚡ Manual Engine"}
+                    </span>
                     <span>{messages.length} {messages.length === 1 ? "EXCHANGE" : "EXCHANGES"}</span>
                   </div>
                 </div>
@@ -1405,6 +1441,41 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       {/* The Stage Podium Console (Input Deck) — Liquid Glass Dock */}
       <div className="p-2 sm:p-4 mb-2">
         <div className="relative max-w-3xl mx-auto liquid-glass-dock focus-within:ring-2 focus-within:ring-[#F472B6]/30 rounded-2xl sm:rounded-3xl p-2 sm:p-3 transition-all">
+          {/* New Chat Only: Engine Switcher Pill in Input Podium */}
+          {messages.length === 0 && (
+            <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-white/60 text-xs font-mono">
+              <span className="text-[10px] text-[#836270] font-bold tracking-wider uppercase">
+                RAG Engine:
+              </span>
+              <div className="flex items-center gap-1.5 bg-white/60 p-1 rounded-xl border border-white/80 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setRagEngine("manual")}
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                    ragEngine === "manual"
+                      ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-2xs"
+                      : "text-[#836270] hover:text-[#2D1C24] hover:bg-white/50"
+                  }`}
+                  title="Use Custom Broad pgvector + Reciprocal Rank Fusion Reranker"
+                >
+                  <span>⚡ Manual</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRagEngine("langchain")}
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                    ragEngine === "langchain"
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-2xs"
+                      : "text-[#836270] hover:text-[#2D1C24] hover:bg-white/50"
+                  }`}
+                  title="Use LangChain.js 5-Route LCEL Intent Router & Strict Citations"
+                >
+                  <span>🦜 LangChain</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Active PDF Badge / Chip — Liquid Glass Pill */}
           {attachedDocs.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 mb-2 pb-1.5 border-b border-white/70">
@@ -1601,7 +1672,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
 }
 
 // ── The Empty Stage State (Liquid Glass Edition) ─────────────────────────
-function EmptyStageState({ user, onShowAuth }) {
+function EmptyStageState({ user, onShowAuth, ragEngine = "manual", onSelectEngine }) {
   const coasters = [
     {
       label: "Roast my PDF Document",
@@ -1652,9 +1723,47 @@ function EmptyStageState({ user, onShowAuth }) {
       <h2 className="text-[#2D1C24] text-xl sm:text-2xl font-black tracking-wider uppercase font-mono mb-2">
         THE MIC IS HOT. DARE TO HECKLE?
       </h2>
-      <p className="text-[#836270] text-xs sm:text-sm mb-7 max-w-md leading-relaxed font-sans">
+      <p className="text-[#836270] text-xs sm:text-sm mb-5 max-w-md leading-relaxed font-sans">
         RoastMaster is on stage and ready to cook. Throw your code, tech stack, or bad habits at the stage.
       </p>
+
+      {/* Interactive RAG Engine Selector Pill for New Set */}
+      <div className="mb-7 flex flex-col items-center gap-1.5 animate-in fade-in">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-[#9D7889] font-bold">
+          Choose RAG Engine for this Set:
+        </span>
+        <div className="flex items-center gap-2 p-1.5 rounded-2xl liquid-glass-subtle border border-white/90 shadow-xs">
+          <button
+            type="button"
+            onClick={() => onSelectEngine?.("manual")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              ragEngine === "manual"
+                ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-xs scale-102"
+                : "text-[#836270] hover:text-[#2D1C24] hover:bg-white/60"
+            }`}
+          >
+            <span>⚡</span>
+            <span>Manual Pipeline</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectEngine?.("langchain")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              ragEngine === "langchain"
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs scale-102"
+                : "text-[#836270] hover:text-[#2D1C24] hover:bg-white/60"
+            }`}
+          >
+            <span>🦜</span>
+            <span>LangChain.js LCEL</span>
+          </button>
+        </div>
+        <span className="text-[10px] font-mono text-[#9D7889]">
+          {ragEngine === "langchain"
+            ? "5-Route LCEL Intent Router + Strict Evidence Grounding"
+            : "Custom Broad pgvector + Reciprocal Rank Fusion Reranker"}
+        </span>
+      </div>
 
       {/* Front-Row Heckler Coasters (Starter Prompts) — Liquid Glass Coasters */}
       <div className="flex flex-wrap gap-2.5 justify-center max-w-2xl mb-8">

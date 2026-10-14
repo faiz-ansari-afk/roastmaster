@@ -28,7 +28,14 @@
     "lint": "eslint",
     "migrate:firestore": "node --env-file=.env scripts/migrate-firestore-to-postgres.mjs",
     "migrate:embeddings": "node --env-file=.env scripts/migrate-embeddings.mjs",
-    "eval:rag": "node --env-file=.env scripts/evaluate_rag.mjs"
+    "migrate:sessions": "node --env-file=.env scripts/migrate-sessions-rag-engine.mjs",
+    "eval:rag": "node --env-file=.env scripts/evaluate_rag.mjs",
+    "test:langchain": "tsx --env-file=.env scripts/test-langchain-runner.ts",
+    "test:langchain:docs": "tsx --env-file=.env scripts/test-langchain-documents.ts",
+    "test:langchain:vectors": "tsx --env-file=.env scripts/test-langchain-vectorstore.ts",
+    "test:langchain:chain": "tsx --env-file=.env scripts/test-langchain-chain.ts",
+    "test:langchain:tenant": "tsx --env-file=.env scripts/test-langchain-tenant-isolation.ts",
+    "test:langchain:upload": "tsx --env-file=.env scripts/test-langchain-upload-route.ts"
   },
   "bin": {
     "roastmaster": "./bin/cli.mjs",
@@ -37,10 +44,14 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "@google/generative-ai": "^0.24.1",
+    "@langchain/community": "^1.1.29",
+    "@langchain/core": "^1.2.17",
+    "@langchain/google-genai": "^2.3.2",
     "@langchain/textsplitters": "^1.0.2",
     "@phosphor-icons/react": "^2.1.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "langchain": "^1.5.16",
     "lucide-react": "^1.48.0",
     "next": "16.1.6",
     "pdf-parse": "^2.4.5",
@@ -61,6 +72,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
