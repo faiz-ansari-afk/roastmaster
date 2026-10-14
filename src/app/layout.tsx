@@ -1,6 +1,28 @@
 import type { Metadata, Viewport } from "next";
+import { Archivo_Black, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+
+const archivoBlack = Archivo_Black({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-heading",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 const BASE_URL = "https://roastmaster-phi.vercel.app";
 
@@ -18,7 +40,7 @@ export const metadata: Metadata = {
     template: "%s | RoastMaster AI",
   },
   description:
-    "The unfiltered AI standup comedian for developers. Turn your spaghetti architecture, PRs, and midnight commits into savage standup routines — plus constructive senior-staff engineering advice. Available via Web & CLI (npx roastmaster-ai).",
+    "The unfiltered AI standup comedian for developers. Turn your spaghetti architecture, PRs, and midnight commits into savage standup routines — plus constructive senior-staff engineering advice. Available via Web & CLI (npx roastmaster-ai). Powered by Dual Engines: LangChain LCEL & Manual pgvector RAG.",
   applicationName: "RoastMaster AI",
   authors: [{ name: "Faiz Ansari", url: "https://github.com/faiz-ansari-afk" }],
   generator: "Next.js 16",
@@ -30,10 +52,14 @@ export const metadata: Metadata = {
     "developer tools",
     "AI standup comedy",
     "Gemini 2.5",
+    "LangChain",
+    "LangChain.js",
+    "LCEL",
     "Aiven pgvector",
     "RAG code analysis",
     "CLI code review",
     "npx roastmaster-ai",
+    "npm roastmaster-ai",
     "git diff roast",
     "savage code review",
     "developer comedy",
@@ -58,7 +84,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "RoastMaster AI — Unfiltered AI Code Reviewer & Standup Dev Roaster",
     description:
-      "Tired of polite PR comments? Turn your spaghetti architecture and midnight commits into savage standup routines — plus senior-staff constructive truth. Run online or via CLI.",
+      "Tired of polite PR comments? Turn your spaghetti architecture and midnight commits into savage standup routines — plus senior-staff constructive truth. Run online or via CLI (npx roastmaster-ai).",
     url: BASE_URL,
     siteName: "RoastMaster AI",
     locale: "en_US",
@@ -103,13 +129,14 @@ const jsonLd = {
         priceCurrency: "USD",
       },
       description:
-        "An unfiltered AI standup comedy bot and code reviewer for developers. Features real-time RAG document analysis, Git diff roasting, and constructive senior-staff architecture guidance.",
-      softwareVersion: "2.5.0",
+        "An unfiltered AI standup comedy bot and code reviewer for developers. Features Dual RAG Engines (LangChain LCEL & Manual pgvector), real-time document analysis, Git diff roasting, and constructive senior-staff architecture guidance.",
+      softwareVersion: "1.0.0",
       featureList: [
         "Unfiltered Standup Code Reviews",
         "Backstage Real Talk (Senior-Staff Fixes)",
-        "Aiven pgvector RAG Ingestion",
-        "CLI Integration via npx roastmaster-ai",
+        "Dual RAG Architecture: LangChain.js LCEL & Custom Manual Engine",
+        "Aiven pgvector Hybrid Search & RRF",
+        "Official npm Package (npx roastmaster-ai)",
         "Interactive Code Sandbox Roaster",
       ],
       author: {
@@ -120,7 +147,7 @@ const jsonLd = {
     },
     {
       "@type": "SoftwareApplication",
-      name: "roastmaster-ai (CLI)",
+      name: "roastmaster-ai (npm CLI)",
       applicationCategory: "DeveloperApplication",
       operatingSystem: "macOS, Linux, Windows (Node.js)",
       offers: {
@@ -129,7 +156,7 @@ const jsonLd = {
         priceCurrency: "USD",
       },
       description:
-        "Terminal CLI companion that roasts git repositories, uncommitted diffs, and individual code files with zero mercy.",
+        "Official npm CLI companion that roasts git repositories, uncommitted diffs, and individual code files with zero mercy.",
       downloadUrl: "https://www.npmjs.com/package/roastmaster-ai",
     },
   ],
@@ -141,7 +168,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${archivoBlack.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         {/* Google Knowledge Graph / Rich Results Structured Data */}
         <script
@@ -149,7 +176,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="bg-[#FFF5F7] text-[#2D1C24] antialiased selection:bg-[#FCE7F3] selection:text-[#BE185D]">
+      <body className="font-sans bg-[#FFF5F7] text-[#2D1C24] antialiased selection:bg-[#FCE7F3] selection:text-[#BE185D]">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
