@@ -173,9 +173,11 @@ export function classifyQueryIntent(input: RagInput): QueryIntent {
 
   // 1. Explicit code snippet attached or embedded in markdown code blocks
   if (codeSnippet && codeSnippet.trim().length > 0) {
+    console.log(`[LangChain Router] Query: "${question}" -> Intent: "code_analysis" (Explicit codeSnippet provided)`);
     return "code_analysis";
   }
   if (/```[\s\S]*```/.test(question)) {
+    console.log(`[LangChain Router] Query: "${question}" -> Intent: "code_analysis" (Markdown code block detected)`);
     return "code_analysis";
   }
 
@@ -186,6 +188,7 @@ export function classifyQueryIntent(input: RagInput): QueryIntent {
       clean
     )
   ) {
+    console.log(`[LangChain Router] Query: "${question}" -> Intent: "clarification" (Code referenced but none attached)`);
     return "clarification";
   }
 
@@ -203,20 +206,20 @@ export function classifyQueryIntent(input: RagInput): QueryIntent {
     );
 
   if (isPureMath || isMathWordQuery) {
+    console.log(`[LangChain Router] Query: "${question}" -> Intent: "general_knowledge" (Arithmetic expression -> bypassing PDF search)`);
     return "general_knowledge";
   }
 
   // 4. Short non-digit conversational grunts / greetings (e.g. hi, hey, yo, wat, ok)
   if (clean.length <= 3 && !/^\d+$/.test(clean)) {
+    console.log(`[LangChain Router] Query: "${question}" -> Intent: "banter" (Short greeting/grunt <= 3 chars)`);
     return "banter";
   }
 
   // 5. Banter & Small Talk (Fast rules)
   const normalizedClean = clean.replace(/[?!.,;:'"()]/g, "").trim().toLowerCase();
-  if (BANTER_WORDS.has(normalizedClean)) {
-    return "banter";
-  }
-  if (BANTER_PATTERNS.some((p) => p.test(clean))) {
+  if (BANTER_WORDS.has(normalizedClean) || BANTER_PATTERNS.some((p) => p.test(clean))) {
+    console.log(`[LangChain Router] Query: "${question}" -> Intent: "banter" (Banter pattern / word match)`);
     return "banter";
   }
 
@@ -226,6 +229,7 @@ export function classifyQueryIntent(input: RagInput): QueryIntent {
     /\b(main point|key point|takeaways?|summarize|summary|overview|what does (it|the) say|what is (it|the) about|explain (this|the) (pdf|doc|document))\b/i.test(clean);
 
   if (hasDocKeywords && !hasUploadedDocs) {
+    console.log(`[LangChain Router] Query: "${question}" -> Intent: "clarification" (Document requested but none uploaded)`);
     return "clarification";
   }
 
@@ -236,16 +240,19 @@ export function classifyQueryIntent(input: RagInput): QueryIntent {
     /\b(who won|sports score|match score|box office|movie review)\b/i.test(clean);
 
   if (isLifestyleQuery && !hasDocKeywords) {
+    console.log(`[LangChain Router] Query: "${question}" -> Intent: "general_knowledge" (Lifestyle/Cooking/Weather query -> bypassing PDF search)`);
     return "general_knowledge";
   }
 
   // 8. Document RAG: When a document is attached to the session, substantive domain inquiries
   // (e.g. natural inquiries like "whats Biological Mechanism", "explain LNPs") searches the document!
   if (hasUploadedDocs) {
+    console.log(`[LangChain Router] Query: "${question}" -> Intent: "document_rag" (Substantive query with attached document session)`);
     return "document_rag";
   }
 
   // 9. Default Fallback: General Knowledge (when no documents are attached)
+  console.log(`[LangChain Router] Query: "${question}" -> Intent: "general_knowledge" (Default fallback - no documents attached)`);
   return "general_knowledge";
 }
 
@@ -311,11 +318,16 @@ Output valid JSON only:
   ]);
 
   const banterBranch = RunnableSequence.from([
+    (input: RagInput) => {
+      console.log(`[LCEL: Banter Branch] Executing crowd-work pipeline for query: "${input.question}"`);
+      return input;
+    },
     banterPrompt,
     comedyChatModel,
     outputParser,
     (raw: string): RagResponse => {
       const parsed = parseStructuredRagOutput(raw);
+      console.log(`[LCEL: Banter Branch] Response ready | Title: "${parsed.title || "Crowd Work"}"`);
       return {
         title: parsed.title || "Crowd Work",
         roast: parsed.roast || parsed.answer || "Welcome to the front row. Try not to get roasted too hard.",
@@ -362,11 +374,16 @@ Output valid JSON only:
   ]);
 
   const generalKnowledgeBranch = RunnableSequence.from([
+    (input: RagInput) => {
+      console.log(`[LCEL: General Knowledge Branch] Executing pipeline (zero PDF queries) for: "${input.question}"`);
+      return input;
+    },
     generalKnowledgePrompt,
     chatModel,
     outputParser,
     (raw: string): RagResponse => {
       const parsed = parseStructuredRagOutput(raw);
+      console.log(`[LCEL: General Knowledge Branch] Response ready | Title: "${parsed.title || "Standup Roast"}" | Category: "${parsed.category}"`);
       return {
         title: parsed.title || "Standup Roast",
         roast: parsed.roast || parsed.answer || "A quick reality check before your brain overheats.",
@@ -405,11 +422,16 @@ Output valid JSON only:
   ]);
 
   const clarificationBranch = RunnableSequence.from([
+    (input: RagInput) => {
+      console.log(`[LCEL: Clarification Branch] Executing clarification prompt for: "${input.question}"`);
+      return input;
+    },
     clarificationPrompt,
     comedyChatModel,
     outputParser,
     (raw: string): RagResponse => {
       const parsed = parseStructuredRagOutput(raw);
+      console.log(`[LCEL: Clarification Branch] Response ready | Title: "${parsed.title || "Stage Hold Up"}"`);
       return {
         title: parsed.title || "Stage Hold Up",
         roast: parsed.roast || parsed.answer || "You're pointing at thin air expecting me to read your mind.",
@@ -447,15 +469,19 @@ Output valid JSON only:
   ]);
 
   const codeAnalysisBranch = RunnableSequence.from([
-    (input: RagInput) => ({
-      question: input.question,
-      codeSnippet: input.codeSnippet || "(Code included in question)",
-    }),
+    (input: RagInput) => {
+      console.log(`[LCEL: Code Analysis Branch] Executing code roast for: "${input.question}"`);
+      return {
+        question: input.question,
+        codeSnippet: input.codeSnippet || "(Code included in question)",
+      };
+    },
     codeAnalysisPrompt,
     chatModel,
     outputParser,
     (raw: string): RagResponse => {
       const parsed = parseStructuredRagOutput(raw);
+      console.log(`[LCEL: Code Analysis Branch] Response ready | Title: "${parsed.title || "Code Review Roast"}"`);
       return {
         title: parsed.title || "Code Review Roast",
         roast: parsed.roast || parsed.answer || "That code looks like it was written in the dark.",
@@ -533,11 +559,17 @@ Output valid JSON only:
     // Step 1: Perform vector search with distance and similarity metrics
     {
       searchResults: async (input: RagInput) => {
-        return searchSimilarDocuments(
+        console.log(`[LCEL: Document RAG] Step 1 -> Searching pgvector for: "${input.question}" (Session: ${input.sessionId || "none"}, Tenant: ${tenantId || "default"})`);
+        const results = await searchSimilarDocuments(
           input.question,
           { k, tenantId, sessionId: input.sessionId, enforceTenantIsolation },
           storeOptions
         );
+        console.log(`[LCEL: Document RAG] Step 1 -> Retrieved ${results.length} candidate chunks from pgvector:`);
+        results.forEach((r, idx) => {
+          console.log(`  ├ Excerpt ${idx + 1}: ${r.document.metadata.fileName} (Page ${r.document.metadata.pageNumber}) | Match: ${(r.similarity * 100).toFixed(1)}%`);
+        });
+        return results;
       },
       question: (input: RagInput) => input.question,
     },
@@ -548,9 +580,14 @@ Output valid JSON only:
         return formatDocumentsForContext(docs);
       },
       isRelevanceAcceptable: (state: { searchResults: SearchResult[] }) => {
-        if (state.searchResults.length === 0) return false;
+        if (state.searchResults.length === 0) {
+          console.log(`[LCEL: Document RAG] Step 2 -> 0 chunks found in vectorstore.`);
+          return false;
+        }
         const bestSimilarity = state.searchResults[0]?.similarity ?? 0;
-        return bestSimilarity >= minSimilarity;
+        const acceptable = bestSimilarity >= minSimilarity;
+        console.log(`[LCEL: Document RAG] Step 2 -> Best Match: ${(bestSimilarity * 100).toFixed(1)}% vs Threshold: ${(minSimilarity * 100).toFixed(1)}% -> isRelevanceAcceptable: ${acceptable}`);
+        return acceptable;
       },
     }),
     // Step 3: LLM generation (invokes Gemini with Case A / Case B protocol)
@@ -561,12 +598,15 @@ Output valid JSON only:
         isRelevanceAcceptable: boolean;
         searchResults: SearchResult[];
       }) => {
+        console.log(`[LCEL: Document RAG] Step 3 -> Invoking Gemini LLM with Case A/Case B grounding prompt...`);
         const formatted = await ragPrompt.format({
           question: state.question,
           context: state.context,
         });
         const res = await chatModel.invoke(formatted);
-        return outputParser.invoke(res);
+        const parsedText = await outputParser.invoke(res);
+        console.log(`[LCEL: Document RAG] Step 3 -> Received LLM response (${parsedText.length} characters)`);
+        return parsedText;
       },
     }),
     // Step 4: Validate citations and evaluate true semantic groundedness
@@ -575,7 +615,11 @@ Output valid JSON only:
       rawOutput: string;
       isRelevanceAcceptable: boolean;
     }): RagResponse => {
+      console.log(`[LCEL: Document RAG] Step 4 -> Validating model citations against pgvector metadata...`);
       const parsed = parseStructuredRagOutput(state.rawOutput);
+      console.log(`  ├ Parsed Title: "${parsed.title || "untitled"}" | Category: "${parsed.category}"`);
+      console.log(`  ├ Model Evidence Claim: hasSufficientEvidence = ${parsed.hasSufficientEvidence}`);
+      console.log(`  ├ Model Cited Excerpt IDs: [${(parsed.citedExcerptIds || []).join(", ")}]`);
 
       // Validate citations strictly against trusted Document metadata
       const validatedCitations: Citation[] = [];
@@ -626,6 +670,9 @@ Output valid JSON only:
         parsed.hasSufficientEvidence === true &&
         validatedCitations.length > 0 &&
         !hasNegativeRefusal;
+
+      console.log(`  ├ Verified Citations: ${validatedCitations.length} chunk(s) matched real document metadata`);
+      console.log(`  └ Final Grounding Verdict: isGrounded = ${isGrounded}`);
 
       let cleanSuggestion = parsed.suggestion || parsed.answer || "";
 

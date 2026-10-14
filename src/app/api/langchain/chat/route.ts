@@ -59,6 +59,13 @@ export async function POST(req: Request) {
     }
     const hasUploadedDocs = sessionDocs && sessionDocs.length > 0;
 
+    console.log("\n=======================================================");
+    console.log(`[LangChain API] Incoming POST /api/langchain/chat`);
+    console.log(`[LangChain API] User / Tenant: "${verifiedTenantId}" | Session: "${sessionId || "none"}"`);
+    console.log(`[LangChain API] Message: "${lastMessage}"`);
+    console.log(`[LangChain API] Session Docs Detected in DB: ${sessionDocs.length}`);
+    console.log("=======================================================");
+
     // 4. Invoke isolated LangChain LCEL Multi-Route Chain
     const ragChain = await createRagChain({
       tenantId: verifiedTenantId,
@@ -74,6 +81,13 @@ export async function POST(req: Request) {
       sessionId: sessionId || undefined,
       codeSnippet: codeSnippet || undefined,
     });
+
+    console.log(`[LangChain API] Pipeline Execution Complete!`);
+    console.log(`  ├ Resolved Intent: "${chainResult.intent}"`);
+    console.log(`  ├ Grounded in Document: ${chainResult.grounded}`);
+    console.log(`  ├ Citations Attached: ${chainResult.citations?.length ?? 0}`);
+    console.log(`  ├ Accordion ragSources: ${chainResult.ragSources?.length ?? 0}`);
+    console.log(`  └ Category: "${chainResult.category}" | Title: "${chainResult.title}"\n`);
 
     // 5. Map into RoastMaster standard comedy stage UI response format
     const formattedCitations = (chainResult.citations || []).map((c, i) => ({
