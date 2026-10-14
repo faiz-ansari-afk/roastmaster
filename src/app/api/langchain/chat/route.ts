@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/auth";
 import { getSessionDocuments } from "@/lib/db";
+import { getLangChainSessionDocuments } from "@/lib/langchain/vectorstore";
 import { createRagChain } from "@/lib/langchain/rag-chain";
 
 export async function POST(req: Request) {
@@ -44,11 +45,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Empty query string." }, { status: 400 });
     }
 
-    // 3. Check for uploaded documents in session
+    // 3. Check for uploaded documents in session (LangChain store first, fallback to manual)
     let sessionDocs: any[] = [];
     if (sessionId) {
       try {
-        sessionDocs = await getSessionDocuments(sessionId);
+        sessionDocs = await getLangChainSessionDocuments(sessionId);
+        if (sessionDocs.length === 0) {
+          sessionDocs = await getSessionDocuments(sessionId);
+        }
       } catch (err: any) {
         console.warn("[LangChain Chat Route] Notice fetching session docs:", err?.message);
       }
@@ -67,6 +71,7 @@ export async function POST(req: Request) {
     const chainResult = await ragChain.invoke({
       question: lastMessage,
       hasUploadedDocs,
+      sessionId: sessionId || undefined,
       codeSnippet: codeSnippet || undefined,
     });
 

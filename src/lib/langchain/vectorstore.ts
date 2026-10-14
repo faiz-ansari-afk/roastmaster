@@ -12,7 +12,7 @@ import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { Document } from "@langchain/core/documents";
 import { createEmbeddings, getLangChainConfig } from "./config";
 import { DocumentMetadata } from "./document-loader";
-import { getDbPool } from "@/lib/db";
+import { getDbPool, searchSimilarChunks } from "@/lib/db";
 
 export interface VectorStoreOptions {
   tableName?: string;
@@ -43,6 +43,7 @@ export class TenantIsolationError extends Error {
 export interface SearchOptions {
   k?: number;
   tenantId?: string;
+  sessionId?: string;
   documentId?: string;
   enforceTenantIsolation?: boolean; // Defaults to true in multi-tenant environments
   filter?: Record<string, any>;
@@ -199,6 +200,7 @@ export async function searchSimilarDocuments(
   const {
     k = 4,
     tenantId,
+    sessionId,
     documentId,
     enforceTenantIsolation = true,
     filter = {},
@@ -223,6 +225,9 @@ export async function searchSimilarDocuments(
   if (documentId) {
     effectiveFilter.documentId = documentId.trim();
   }
+  if (sessionId) {
+    effectiveFilter.sessionId = sessionId.trim();
+  }
 
   const hasFilter = Object.keys(effectiveFilter).length > 0;
   const rawResults = await store.similaritySearchWithScore(
@@ -230,6 +235,47 @@ export async function searchSimilarDocuments(
     k,
     hasFilter ? effectiveFilter : undefined
   );
+
+  // Hybrid Bridge: If no chunks found in LangChain table, check session's uploaded chunks in document_chunks
+  if (rawResults.length === 0 && sessionId) {
+    try {
+      const embeddings = createEmbeddings();
+      const queryVector = await embeddings.embedQuery(query);
+      const legacyChunks = await searchSimilarChunks({
+        sessionId,
+        queryVector,
+        limit: k,
+        minSimilarity: 0.20,
+      });
+
+      if (legacyChunks && legacyChunks.length > 0) {
+        return legacyChunks.map((c: any) => {
+          const sim = Number(c.similarity);
+          const dist = Math.max(0, 1 - sim);
+          return {
+            document: new Document<DocumentMetadata>({
+              pageContent: c.content,
+              metadata: {
+                source: c.fileName,
+                fileName: c.fileName,
+                pageNumber: c.pageNumber || 1,
+                totalPages: 1,
+                chunkIndex: c.chunkIndex,
+                charCount: c.content.length,
+                documentId: `${sessionId}_${c.fileName}`,
+                tenantId: tenantId || sessionId,
+                documentVersion: 1,
+              },
+            }),
+            distance: Number(dist.toFixed(4)),
+            similarity: Number(sim.toFixed(4)),
+          };
+        });
+      }
+    } catch (bridgeErr: any) {
+      console.warn("[VectorStore] Fallback to document_chunks noticed:", bridgeErr?.message);
+    }
+  }
 
   return rawResults.map(([doc, distanceScore]) => {
     // For cosine distance: distance = 1 - cosine_similarity
@@ -243,3 +289,62 @@ export async function searchSimilarDocuments(
     };
   });
 }
+
+/**
+ * Retrieves the list of documents indexed for a specific chat session in LangChain's vector store.
+ */
+export async function getLangChainSessionDocuments(
+  sessionId: string
+): Promise<Array<{ fileName: string; totalChunks: number; totalPages: number }>> {
+  const pool = getDbPool();
+  if (!pool || !sessionId) return [];
+
+  const query = `
+    SELECT 
+      metadata->>'fileName' AS "fileName",
+      COUNT(*)::int AS "totalChunks",
+      COALESCE(MAX((metadata->>'pageNumber')::int), 1)::int AS "totalPages"
+    FROM langchain_pdf_vectors
+    WHERE metadata->>'sessionId' = $1
+    GROUP BY metadata->>'fileName'
+    ORDER BY metadata->>'fileName' ASC;
+  `;
+
+  try {
+    const res = await pool.query(query, [sessionId]);
+    return res.rows.map((r: any) => ({
+      fileName: r.fileName || "document.pdf",
+      totalChunks: Number(r.totalChunks) || 0,
+      totalPages: Number(r.totalPages) || 1,
+    }));
+  } catch (err: any) {
+    console.error("[LangChain VectorStore] getLangChainSessionDocuments error:", err.message);
+    return [];
+  }
+}
+
+/**
+ * Deletes all chunks for a session (or specific file in a session) from LangChain's vector store.
+ */
+export async function deleteLangChainSessionDocuments(
+  sessionId: string,
+  fileName?: string
+): Promise<void> {
+  const pool = getDbPool();
+  if (!pool || !sessionId) return;
+
+  let query = `DELETE FROM langchain_pdf_vectors WHERE metadata->>'sessionId' = $1`;
+  const params: any[] = [sessionId];
+
+  if (fileName) {
+    query += ` AND metadata->>'fileName' = $2`;
+    params.push(fileName);
+  }
+
+  try {
+    await pool.query(query, params);
+  } catch (err: any) {
+    console.error("[LangChain VectorStore] deleteLangChainSessionDocuments error:", err.message);
+  }
+}
+

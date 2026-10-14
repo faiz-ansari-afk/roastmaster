@@ -45,6 +45,7 @@ export interface Citation {
 export interface RagInput {
   question: string;
   hasUploadedDocs?: boolean;
+  sessionId?: string;
   codeSnippet?: string;
 }
 
@@ -145,7 +146,22 @@ export function classifyQueryIntent(input: RagInput): QueryIntent {
     return "clarification";
   }
 
-  // 3. Banter & Small Talk
+  // 3. Document Query Detection (Comprehensive Keywords & Natural Document Inquiries)
+  const hasDocKeywords =
+    /\b(pdf|document|doc|paper|file|guide|resume|page|pages|text|notes|slides?|chapter|reading)\b/i.test(clean) ||
+    /\b(main point|key point|takeaways?|summarize|summary|overview|what does (it|the) say|what is (it|the) about|explain (this|the) (pdf|doc|document))\b/i.test(clean);
+
+  // If user explicitly asks about a document but has not uploaded any -> Clarify
+  if (hasDocKeywords && !hasUploadedDocs) {
+    return "clarification";
+  }
+
+  // If user uploaded docs and query is asking about the document -> Document RAG
+  if (hasUploadedDocs && hasDocKeywords) {
+    return "document_rag";
+  }
+
+  // 4. Banter & Small Talk
   if (BANTER_WORDS.has(clean.replace(/[?!.,;:'"()]/g, "").trim())) {
     return "banter";
   }
@@ -153,22 +169,7 @@ export function classifyQueryIntent(input: RagInput): QueryIntent {
     return "banter";
   }
 
-  // 4. Missing Document Reference -> Clarification needed
-  const isAskingAboutDocument =
-    /\b(in|from|according to|based on|what does|summarize)\s+(the|my|this)\s+(pdf|document|file|guide|resume|page)\b/i.test(
-      clean
-    ) || /\bpage\s+\d+\b/i.test(clean);
-
-  if (isAskingAboutDocument && !hasUploadedDocs) {
-    return "clarification";
-  }
-
-  // 5. Document RAG (User has uploaded docs AND asks about them, or query targets document specifics)
-  if (hasUploadedDocs && isAskingAboutDocument) {
-    return "document_rag";
-  }
-
-  // 6. Default Fallback: General Knowledge (React, Biryani, DSA, etc.)
+  // 5. Default Fallback: General Knowledge (React, Biryani, DSA, etc.)
   return "general_knowledge";
 }
 
@@ -346,7 +347,7 @@ JSON OUTPUT SCHEMA:
       searchResults: async (input: RagInput) => {
         return searchSimilarDocuments(
           input.question,
-          { k, tenantId, enforceTenantIsolation },
+          { k, tenantId, sessionId: input.sessionId, enforceTenantIsolation },
           storeOptions
         );
       },

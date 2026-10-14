@@ -22,6 +22,7 @@ export interface DocumentIdentityOptions {
   fileName?: string;
   tenantId?: string;
   documentId?: string;
+  sessionId?: string;
   documentVersion?: number;
 }
 
@@ -32,6 +33,7 @@ export interface DocumentMetadata {
   totalPages: number;
   documentId: string;
   tenantId: string;
+  sessionId?: string;
   documentVersion: number;
   chunkIndex?: number;
   charCount?: number;
@@ -100,6 +102,7 @@ export async function loadPdfPages(
           totalPages,
           documentId,
           tenantId,
+          sessionId: opts.sessionId,
           documentVersion,
           charCount: cleanText.length,
         },
@@ -156,6 +159,7 @@ export async function splitPdfDocuments(
         totalPages: doc.metadata.totalPages,
         documentId: doc.metadata.documentId,
         tenantId: doc.metadata.tenantId,
+        sessionId: doc.metadata.sessionId,
         documentVersion: doc.metadata.documentVersion,
         ...chunk.metadata,
         chunkIndex: globalChunkIndex++,

@@ -73,6 +73,46 @@ async function testLangChainChatRoute() {
     process.exit(1);
   }
 
+  // Test 3: The exact user query on real uploaded PDF session
+  console.log("[Test 3] Testing: 'whats the main point of the whole pdf' on session roast_1791953053410_q5dm2lu...");
+  try {
+    const res = await fetch(`${baseUrl}/api/langchain/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [{ role: "user", content: "whats the main point of the whole pdf" }],
+        userId: "test-user-langchain",
+        sessionId: "roast_1791953053410_q5dm2lu",
+      }),
+    });
+
+    const data = await res.json();
+    console.log(`Status: ${res.status}`);
+    console.log(`Title: ${data.title}`);
+    console.log(`Intent: ${data.intent}`);
+    console.log(`Category: ${data.category}`);
+    console.log(`Engine: ${data.engine}`);
+    console.log(`Retrieved Count: ${data.retrievedCount}`);
+    console.log(`Grounded: ${data.isDocumentSupported}`);
+    console.log(`Citations: ${data.citations?.length || 0}`);
+    console.log(`Answer / Suggestion: "${data.suggestion?.slice(0, 180)}..."\n`);
+
+    if (
+      res.status === 200 &&
+      data.engine === "langchain" &&
+      data.intent === "document_rag" &&
+      data.retrievedCount > 0
+    ) {
+      console.log("✅ Test 3 PASSED: 'whats the main point of the whole pdf' correctly routed to document_rag with retrieved chunks and citations!\n");
+    } else {
+      console.error("❌ Test 3 FAILED.", data);
+      process.exit(1);
+    }
+  } catch (err: any) {
+    console.error("❌ Error in Test 3:", err.message);
+    process.exit(1);
+  }
+
   console.log("============================================================");
   console.log("🎉 All /api/langchain/chat endpoint tests PASSED!");
   console.log("============================================================\n");

@@ -861,7 +861,12 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
       return;
     }
     let isMounted = true;
-    fetch(`/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`)
+    const docsEndpoint =
+      ragEngine === "langchain"
+        ? `/api/langchain/rag/upload?sessionId=${encodeURIComponent(currentSessionId)}`
+        : `/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`;
+
+    fetch(docsEndpoint)
       .then((res) => res.json())
       .then((data) => {
         if (isMounted && Array.isArray(data?.documents)) {
@@ -877,7 +882,7 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
     return () => {
       isMounted = false;
     };
-  }, [currentSessionId]);
+  }, [currentSessionId, ragEngine]);
 
   useEffect(() => {
     currentSessionIdRef.current = sessionId;
@@ -1020,7 +1025,10 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
         formData.append("userId", user.uid);
       }
 
-      const res = await fetch("/api/rag/upload", {
+      const uploadEndpoint =
+        ragEngine === "langchain" ? "/api/langchain/rag/upload" : "/api/rag/upload";
+
+      const res = await fetch(uploadEndpoint, {
         method: "POST",
         body: formData,
       });
@@ -1067,7 +1075,12 @@ export default function ChatWindow({ sessionId, onSessionCreated, onShowAuth }) 
   const handleRemoveDoc = async () => {
     if (!currentSessionId) return;
     try {
-      await fetch(`/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`, {
+      const deleteEndpoint =
+        ragEngine === "langchain"
+          ? `/api/langchain/rag/upload?sessionId=${encodeURIComponent(currentSessionId)}`
+          : `/api/rag/documents?sessionId=${encodeURIComponent(currentSessionId)}`;
+
+      await fetch(deleteEndpoint, {
         method: "DELETE",
       });
       setAttachedDocs([]);
