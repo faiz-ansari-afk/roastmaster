@@ -49,9 +49,26 @@ export interface RagInput {
   codeSnippet?: string;
 }
 
+export interface RagSource {
+  fileName: string;
+  chunkIndex: number;
+  pageNumber: number;
+  content: string;
+  snippet: string;
+  similarity: number;
+  isCited: boolean;
+}
+
 export interface RagResponse {
+  title?: string;
+  roast?: string;
+  severity?: number;
+  category?: string;
+  suggestion?: string;
   answer: string;
   citations: Citation[];
+  source?: string | null;
+  ragSources?: RagSource[];
   grounded: boolean;
   intent: QueryIntent;
   retrievedCount: number;
@@ -67,6 +84,11 @@ export interface RagChainOptions {
 }
 
 export interface StructuredRagOutput {
+  title?: string;
+  roast?: string;
+  severity?: number;
+  category?: string;
+  suggestion?: string;
   hasSufficientEvidence: boolean;
   answer: string;
   citedExcerptIds: number[];
@@ -96,12 +118,32 @@ export function parseStructuredRagOutput(text: string): StructuredRagOutput {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
+      const answerText = String(parsed.suggestion || parsed.answer || "").trim();
+      const hasEvidence =
+        typeof parsed.hasSufficientEvidence === "boolean"
+          ? parsed.hasSufficientEvidence
+          : typeof parsed.isDocumentSupported === "boolean"
+          ? parsed.isDocumentSupported
+          : false;
+
+      let excerptIds: number[] = [];
+      if (Array.isArray(parsed.citedExcerptIds)) {
+        excerptIds = parsed.citedExcerptIds.filter((id: any) => typeof id === "number");
+      } else if (Array.isArray(parsed.citations)) {
+        excerptIds = parsed.citations
+          .map((c: any) => (typeof c === "number" ? c : c?.chunkId || c?.pageNumber))
+          .filter((id: any) => typeof id === "number");
+      }
+
       return {
-        hasSufficientEvidence: Boolean(parsed.hasSufficientEvidence),
-        answer: String(parsed.answer || "").trim(),
-        citedExcerptIds: Array.isArray(parsed.citedExcerptIds)
-          ? parsed.citedExcerptIds.filter((id: any) => typeof id === "number")
-          : [],
+        title: parsed.title ? String(parsed.title).trim() : undefined,
+        roast: parsed.roast ? String(parsed.roast).trim() : undefined,
+        severity: typeof parsed.severity === "number" ? Math.min(10, Math.max(1, parsed.severity)) : undefined,
+        category: parsed.category ? String(parsed.category).trim() : undefined,
+        suggestion: answerText,
+        answer: answerText,
+        hasSufficientEvidence: hasEvidence,
+        citedExcerptIds: excerptIds,
       };
     }
   } catch {
@@ -116,6 +158,7 @@ export function parseStructuredRagOutput(text: string): StructuredRagOutput {
   return {
     hasSufficientEvidence: !isRefusal,
     answer: text.trim(),
+    suggestion: text.trim(),
     citedExcerptIds: [],
   };
 }
@@ -146,30 +189,63 @@ export function classifyQueryIntent(input: RagInput): QueryIntent {
     return "clarification";
   }
 
-  // 3. Document Query Detection (Comprehensive Keywords & Natural Document Inquiries)
-  const hasDocKeywords =
-    /\b(pdf|document|doc|paper|file|guide|resume|page|pages|text|notes|slides?|chapter|reading)\b/i.test(clean) ||
-    /\b(main point|key point|takeaways?|summarize|summary|overview|what does (it|the) say|what is (it|the) about|explain (this|the) (pdf|doc|document))\b/i.test(clean);
+  // 3. Simple Arithmetic / Math Queries (e.g. 2+2, 2 + 2, 5*5, what is 2+2, whats 2+2, calculate 10/2) -> General Knowledge
+  const mathPrefixStripped = clean
+    .replace(/^(what\s*is|whats|what's|calculate|evaluate|solve|how\s*much\s*is)\s+/i, "")
+    .trim();
+  const isPureMath =
+    /^[\d\s\+\-\*\/%^.()=]+$/i.test(mathPrefixStripped) &&
+    /\d/.test(mathPrefixStripped) &&
+    /[\+\-\*\/%^=]/.test(mathPrefixStripped);
+  const isMathWordQuery =
+    /\b(what\s*is|whats|what's|calculate|evaluate|solve|how\s*much\s*is)\s+(\d+(\.\d+)?\s*[\+\-\*\/%^]\s*)+\d+(\.\d+)?\b/i.test(
+      clean
+    );
 
-  // If user explicitly asks about a document but has not uploaded any -> Clarify
-  if (hasDocKeywords && !hasUploadedDocs) {
-    return "clarification";
+  if (isPureMath || isMathWordQuery) {
+    return "general_knowledge";
   }
 
-  // If user uploaded docs and query is asking about the document -> Document RAG
-  if (hasUploadedDocs && hasDocKeywords) {
-    return "document_rag";
+  // 4. Short non-digit conversational grunts / greetings (e.g. hi, hey, yo, wat, ok)
+  if (clean.length <= 3 && !/^\d+$/.test(clean)) {
+    return "banter";
   }
 
-  // 4. Banter & Small Talk
-  if (BANTER_WORDS.has(clean.replace(/[?!.,;:'"()]/g, "").trim())) {
+  // 5. Banter & Small Talk (Fast rules)
+  const normalizedClean = clean.replace(/[?!.,;:'"()]/g, "").trim().toLowerCase();
+  if (BANTER_WORDS.has(normalizedClean)) {
     return "banter";
   }
   if (BANTER_PATTERNS.some((p) => p.test(clean))) {
     return "banter";
   }
 
-  // 5. Default Fallback: General Knowledge (React, Biryani, DSA, etc.)
+  // 6. Missing Document Reference -> User explicitly asked about a document but none uploaded
+  const hasDocKeywords =
+    /\b(pdf|document|doc|paper|file|guide|resume|page|pages|text|notes|slides?|chapter|reading)\b/i.test(clean) ||
+    /\b(main point|key point|takeaways?|summarize|summary|overview|what does (it|the) say|what is (it|the) about|explain (this|the) (pdf|doc|document))\b/i.test(clean);
+
+  if (hasDocKeywords && !hasUploadedDocs) {
+    return "clarification";
+  }
+
+  // 7. Unambiguous General Knowledge / Lifestyle Queries (Cooking, Weather, Sports)
+  const isLifestyleQuery =
+    /\b(recipe|ingredients?|cook(ing)?|bake|baking|cuisine|dish|biryani|pizza|burger|pasta)\b/i.test(clean) ||
+    /\b(weather|forecast|temperature outside|rain today)\b/i.test(clean) ||
+    /\b(who won|sports score|match score|box office|movie review)\b/i.test(clean);
+
+  if (isLifestyleQuery && !hasDocKeywords) {
+    return "general_knowledge";
+  }
+
+  // 8. Document RAG: When a document is attached to the session, substantive domain inquiries
+  // (e.g. natural inquiries like "whats Biological Mechanism", "explain LNPs") searches the document!
+  if (hasUploadedDocs) {
+    return "document_rag";
+  }
+
+  // 9. Default Fallback: General Knowledge (when no documents are attached)
   return "general_knowledge";
 }
 
@@ -217,7 +293,19 @@ export async function createRagChain(options: RagChainOptions = {}) {
   const banterPrompt = ChatPromptTemplate.fromMessages([
     [
       "system",
-      "You are RoastMaster — a legendary, unfiltered standup comedian. Deliver a crisp, punchy 1-2 sentence crowd-work joke or greeting. Do NOT mention any files or documents.",
+      `You are RoastMaster — a legendary, razor-sharp standup comedian headlining an unfiltered roast comedy club.
+The user just threw a greeting, short reaction, or small talk at you from the front row.
+Deliver a crisp, punchy 1-2 sentence standup joke or crowd-work greeting (under 35 words).
+Do NOT mention any files or documents.
+
+Output valid JSON only:
+{{
+  "title": "<Concise 2-4 words title, e.g. 'Front Row Heckler', 'Crowd Check'>",
+  "roast": "<1-2 razor-sharp comedy punchlines>",
+  "severity": <integer from 4 to 8>,
+  "category": "Crowd Work",
+  "suggestion": "<Backstage Real Talk: witty, humorous 1-sentence response>"
+}}`,
     ],
     ["human", "{question}"],
   ]);
@@ -226,13 +314,21 @@ export async function createRagChain(options: RagChainOptions = {}) {
     banterPrompt,
     comedyChatModel,
     outputParser,
-    (answer: string): RagResponse => ({
-      answer: answer.trim(),
-      citations: [],
-      grounded: false,
-      intent: "banter",
-      retrievedCount: 0,
-    }),
+    (raw: string): RagResponse => {
+      const parsed = parseStructuredRagOutput(raw);
+      return {
+        title: parsed.title || "Crowd Work",
+        roast: parsed.roast || parsed.answer || "Welcome to the front row. Try not to get roasted too hard.",
+        severity: parsed.severity || 6,
+        category: parsed.category || "Crowd Work",
+        suggestion: parsed.suggestion || parsed.answer,
+        answer: parsed.answer || parsed.suggestion,
+        citations: [],
+        grounded: false,
+        intent: "banter",
+        retrievedCount: 0,
+      };
+    },
   ]);
 
   // -------------------------------------------------------------
@@ -241,7 +337,26 @@ export async function createRagChain(options: RagChainOptions = {}) {
   const generalKnowledgePrompt = ChatPromptTemplate.fromMessages([
     [
       "system",
-      "You are RoastMaster — a witty, world-class AI developer and mentor. Answer the user's general knowledge or technical question thoroughly and helpfully, seasoned with smart comedic flair. You have complete freedom to use your pre-trained knowledge. Do NOT complain about missing documents.",
+      `You are RoastMaster — a legendary standup comedian headlining an unfiltered roast comedy club.
+The user is asking a general knowledge, math, logic, science, or lifestyle question from the front row.
+
+CORE COMEDY & REAL TALK RULES:
+1. COMEDY ROAST ("roast"):
+   - Deliver 1-2 razor-sharp comedy punchlines mocking their question, dilemma, or asking basic things.
+   - For simple math like 2+2, roast them for needing an AI for primary school arithmetic.
+2. BACKSTAGE REAL TALK ("suggestion"):
+   - Answer their question accurately, concisely, and helpfully with witty comedic flair.
+   - If it's math or logic, calculate and provide the correct result immediately (e.g. "It equals 4.").
+   - Do NOT mention or apologize about any documents or files!
+
+Output valid JSON only:
+{{
+  "title": "<Concise 3-5 words punchy title, e.g. 'Basic Arithmetic', 'JavaScript Event Loop'>",
+  "roast": "<1-2 short, razor-sharp punchline sentences roasting the question>",
+  "severity": <integer from 5 to 9>,
+  "category": "<1-2 words category, e.g. Logic, Math, Tech, General>",
+  "suggestion": "<Backstage Real Talk: accurate answer to the user's question with comedic wit>"
+}}`,
     ],
     ["human", "{question}"],
   ]);
@@ -250,13 +365,21 @@ export async function createRagChain(options: RagChainOptions = {}) {
     generalKnowledgePrompt,
     chatModel,
     outputParser,
-    (answer: string): RagResponse => ({
-      answer: answer.trim(),
-      citations: [],
-      grounded: false,
-      intent: "general_knowledge",
-      retrievedCount: 0,
-    }),
+    (raw: string): RagResponse => {
+      const parsed = parseStructuredRagOutput(raw);
+      return {
+        title: parsed.title || "Standup Roast",
+        roast: parsed.roast || parsed.answer || "A quick reality check before your brain overheats.",
+        severity: parsed.severity || 7,
+        category: parsed.category || "Logic",
+        suggestion: parsed.suggestion || parsed.answer,
+        answer: parsed.answer || parsed.suggestion,
+        citations: [],
+        grounded: false,
+        intent: "general_knowledge",
+        retrievedCount: 0,
+      };
+    },
   ]);
 
   // -------------------------------------------------------------
@@ -265,7 +388,18 @@ export async function createRagChain(options: RagChainOptions = {}) {
   const clarificationPrompt = ChatPromptTemplate.fromMessages([
     [
       "system",
-      "You are RoastMaster. The user referenced code or a document that they forgot to paste or upload. Witty roast them for pointing at thin air, and politely ask them to paste their code snippet or upload their document so you can review it.",
+      `You are RoastMaster — a legendary standup comedian headlining an unfiltered roast comedy club.
+The user referenced code or a document that they forgot to paste or upload.
+Deliver a razor-sharp comedy roast roasting them for pointing at thin air, followed by a witty request in "suggestion" to paste the code snippet or upload the file.
+
+Output valid JSON only:
+{{
+  "title": "Hold Up",
+  "roast": "<1-2 razor-sharp comedy punchlines>",
+  "severity": <integer 7 to 9>,
+  "category": "Clarification",
+  "suggestion": "<Polite but witty request to upload the document or paste the code snippet>"
+}}`,
     ],
     ["human", "{question}"],
   ]);
@@ -274,13 +408,21 @@ export async function createRagChain(options: RagChainOptions = {}) {
     clarificationPrompt,
     comedyChatModel,
     outputParser,
-    (answer: string): RagResponse => ({
-      answer: answer.trim(),
-      citations: [],
-      grounded: false,
-      intent: "clarification",
-      retrievedCount: 0,
-    }),
+    (raw: string): RagResponse => {
+      const parsed = parseStructuredRagOutput(raw);
+      return {
+        title: parsed.title || "Stage Hold Up",
+        roast: parsed.roast || parsed.answer || "You're pointing at thin air expecting me to read your mind.",
+        severity: parsed.severity || 8,
+        category: parsed.category || "Clarification",
+        suggestion: parsed.suggestion || parsed.answer,
+        answer: parsed.answer || parsed.suggestion,
+        citations: [],
+        grounded: false,
+        intent: "clarification",
+        retrievedCount: 0,
+      };
+    },
   ]);
 
   // -------------------------------------------------------------
@@ -289,7 +431,17 @@ export async function createRagChain(options: RagChainOptions = {}) {
   const codeAnalysisPrompt = ChatPromptTemplate.fromMessages([
     [
       "system",
-      "You are RoastMaster — code reviewer headlining an unfiltered comedy roast. Roast the provided code snippet with technical savagery (pointing out anti-patterns, complexity, or style sins), followed by a constructive 'Backstage Real Talk' fix.",
+      `You are RoastMaster — code reviewer headlining an unfiltered comedy roast.
+Roast the provided code snippet with technical savagery (pointing out anti-patterns, complexity, or style sins), followed by a constructive "Backstage Real Talk" fix in "suggestion".
+
+Output valid JSON only:
+{{
+  "title": "<Concise 3-5 words punchy title, e.g. 'React Infinite Loop Roast'>",
+  "roast": "<1-2 razor-sharp comedy punchlines about their code>",
+  "severity": <integer 7 to 10>,
+  "category": "Code Review",
+  "suggestion": "<Backstage Real Talk: constructive, clean code advice or refactored solution>"
+}}`,
     ],
     ["human", "User Question: {question}\n\nAttached Code:\n{codeSnippet}"],
   ]);
@@ -302,39 +454,75 @@ export async function createRagChain(options: RagChainOptions = {}) {
     codeAnalysisPrompt,
     chatModel,
     outputParser,
-    (answer: string): RagResponse => ({
-      answer: answer.trim(),
-      citations: [],
-      grounded: false,
-      intent: "code_analysis",
-      retrievedCount: 0,
-    }),
+    (raw: string): RagResponse => {
+      const parsed = parseStructuredRagOutput(raw);
+      return {
+        title: parsed.title || "Code Review Roast",
+        roast: parsed.roast || parsed.answer || "That code looks like it was written in the dark.",
+        severity: parsed.severity || 8,
+        category: parsed.category || "Code Review",
+        suggestion: parsed.suggestion || parsed.answer,
+        answer: parsed.answer || parsed.suggestion,
+        citations: [],
+        grounded: false,
+        intent: "code_analysis",
+        retrievedCount: 0,
+      };
+    },
   ]);
 
   // -------------------------------------------------------------
-  // ROUTE 5: DOCUMENT RAG BRANCH (Grounded Evidence + Verified Citations)
+  // ROUTE 5: DOCUMENT RAG BRANCH (Grounded Evidence + Verified Citations + Standup Comedy)
   // -------------------------------------------------------------
   const ragPrompt = ChatPromptTemplate.fromMessages([
     [
       "system",
-      `You are RoastMaster's backstage AI technical expert and document reviewer.
-Answer the user's question accurately using ONLY the provided document excerpts below.
+      `You are RoastMaster — a legendary, razor-sharp standup comedian headlining an unfiltered roast comedy club.
+The user is sitting in the VIP front row asking a question. You have access to their uploaded reference document context below.
 
 DOCUMENT CONTEXT:
 ======================================================================
 {context}
 ======================================================================
 
-GROUNDING & EVIDENCE RULES (STRICT):
-1. Evaluate whether the provided excerpts contain sufficient facts to answer the question.
-2. If the excerpts do NOT contain enough information, set "hasSufficientEvidence": false, explain what is missing in "answer", and set "citedExcerptIds": []. Do NOT invent or speculate.
-3. In "citedExcerptIds", include ONLY the excerpt numbers (e.g. [1, 2]) that directly prove your answer.
-4. Output valid JSON only matching the schema below.
+GROUNDING & CITATION PROTOCOL (CRITICAL):
+1. RELEVANCE & GROUNDING EVALUATION:
+   Carefully examine the user's question and the DOCUMENT CONTEXT above:
+   Does the document context actually contain facts or information that answer or directly support the user's question?
 
-JSON OUTPUT SCHEMA:
+   CASE A: THE DOCUMENT CONTAINS THE ANSWER:
+   - Set "hasSufficientEvidence": true
+   - "roast": Deliver 1 to 2 crisp, razor-sharp standup punchlines (strictly under 35-45 words) specifically roasting the user's dilemma, question, or curiosity. NEVER copy or repeat factual document text as your roast! The roast MUST be an original, funny standup joke!
+   - "suggestion": Provide a concise, factual explanation directly grounded in the DOCUMENT CONTEXT excerpts. Conclude "suggestion" with the citation in this exact format:
+     Source: <fileName>, Page <pageNumber>
+   - "citedExcerptIds": Array of excerpt numbers (e.g. [1, 2]) from the headers above that directly support your answer.
+
+   CASE B: THE DOCUMENT DOES NOT CONTAIN THE ANSWER (OR IS IRRELEVANT):
+   - Set "hasSufficientEvidence": false
+   - Set "citedExcerptIds": []
+   - CONVERSATIONAL / GENERAL / MATH RULE:
+     If the user's message is a general question (e.g. math like 2+2, science, coding, lifestyle), conversational banter, or heckling:
+     DO NOT apologize about the uploaded document! DO NOT say "I couldn't find this in your document"!
+     Deliver pure comedy in "roast", and in "suggestion" provide the accurate answer (e.g. "It equals 4.") with Backstage Real Talk advice.
+   - ONLY if the user is explicitly seeking document facts from their uploaded file (and it's missing), state in "suggestion":
+     "I couldn't find this in your document."
+   - DO NOT append any "Source:" line to "suggestion" when the document does not contain the answer!
+   - NEVER hallucinate or force a citation to an unrelated excerpt!
+
+2. METADATA:
+   - "title": Concise 3-5 words punchy title summarizing the exact topic (e.g. "mRNA Biological Mechanism", "Basic Arithmetic").
+   - "category": 1-2 words category (e.g. Biotech, Logic, Healthcare, Frontend, Architecture).
+   - "severity": integer from 1 to 10.
+
+OUTPUT FORMAT:
+Output valid JSON only:
 {{
+  "title": "<Concise 3-5 words punchy title>",
+  "roast": "<1-2 short, razor-sharp punchline sentences roasting the user>",
+  "severity": <integer from 1 to 10>,
+  "category": "<1-2 words category>",
   "hasSufficientEvidence": <true | false>,
-  "answer": "<concise, technically accurate answer grounded in excerpts>",
+  "suggestion": "<Backstage Real Talk: factual answer grounded in excerpts with Source line IF in document, or helpful witty answer with NO Source line if not in document>",
   "citedExcerptIds": [<array of supporting excerpt numbers>]
 }}`,
     ],
@@ -353,7 +541,7 @@ JSON OUTPUT SCHEMA:
       },
       question: (input: RagInput) => input.question,
     },
-    // Step 2: Relevance threshold & context formatting
+    // Step 2: Context formatting & relevance calculation
     RunnablePassthrough.assign({
       context: (state: { searchResults: SearchResult[] }) => {
         const docs = state.searchResults.map((r) => r.document);
@@ -365,7 +553,7 @@ JSON OUTPUT SCHEMA:
         return bestSimilarity >= minSimilarity;
       },
     }),
-    // Step 3: LLM generation (only if relevance threshold is satisfied)
+    // Step 3: LLM generation (invokes Gemini with Case A / Case B protocol)
     RunnablePassthrough.assign({
       rawOutput: async (state: {
         question: string;
@@ -373,15 +561,6 @@ JSON OUTPUT SCHEMA:
         isRelevanceAcceptable: boolean;
         searchResults: SearchResult[];
       }) => {
-        if (!state.isRelevanceAcceptable) {
-          return JSON.stringify({
-            hasSufficientEvidence: false,
-            answer:
-              "I cannot find sufficient relevant evidence in the uploaded document to answer this question.",
-            citedExcerptIds: [],
-          });
-        }
-
         const formatted = await ragPrompt.format({
           question: state.question,
           context: state.context,
@@ -425,16 +604,78 @@ JSON OUTPUT SCHEMA:
         }
       }
 
+      // Check for negative refusal phrases in suggestion
+      const suggestionLower = (parsed.suggestion || "").toLowerCase();
+      const negativeRefusalPatterns = [
+        "couldn't find this in your document",
+        "could not find this in your document",
+        "not mentioned in the document",
+        "not found in the document",
+        "document does not mention",
+        "document does not contain",
+        "cannot find sufficient relevant evidence",
+      ];
+      const hasNegativeRefusal = negativeRefusalPatterns.some((pattern) =>
+        suggestionLower.includes(pattern)
+      );
+
       // Strong grounded guarantee:
-      // Must have sufficient evidence AND validated citations AND acceptable retrieval relevance
+      // Must have sufficient evidence AND validated citations AND acceptable retrieval relevance AND no negative refusal
       const isGrounded =
         state.isRelevanceAcceptable &&
         parsed.hasSufficientEvidence === true &&
-        validatedCitations.length > 0;
+        validatedCitations.length > 0 &&
+        !hasNegativeRefusal;
+
+      let cleanSuggestion = parsed.suggestion || parsed.answer || "";
+
+      // If NOT grounded, strip any hallucinated Source lines from suggestion
+      if (!isGrounded) {
+        cleanSuggestion = cleanSuggestion
+          .replace(/\n\s*Source:\s*[^,\n]+,\s*Page\s*\d+[^\n]*/gi, "")
+          .trim();
+      }
+
+      // Construct ragSources for ChatWindow's RagSourcesAccordion ONLY when grounded
+      let ragSources: RagSource[] | undefined = undefined;
+      if (isGrounded && state.searchResults.length > 0) {
+        ragSources = state.searchResults.map((r, idx) => {
+          const page = r.document.metadata.pageNumber || 1;
+          const file = r.document.metadata.fileName || "document.pdf";
+          const isCited = validatedCitations.some(
+            (vc) =>
+              vc.pageNumber === page &&
+              vc.fileName.toLowerCase() === file.toLowerCase()
+          );
+          return {
+            fileName: file,
+            chunkIndex: r.document.metadata.chunkIndex ?? idx,
+            pageNumber: page,
+            content: r.document.pageContent,
+            snippet: r.document.pageContent.slice(0, 160).trim() + "...",
+            similarity: r.similarity,
+            isCited,
+          };
+        });
+      }
+
+      const primarySource =
+        isGrounded && validatedCitations.length > 0
+          ? `Source: ${validatedCitations[0].fileName}, Page ${validatedCitations[0].pageNumber}`
+          : null;
 
       return {
-        answer: parsed.answer,
+        title: parsed.title || (isGrounded ? "Document Review" : "Standup Roast"),
+        roast:
+          parsed.roast ||
+          "You brought reference documents to a comedy club. Truly bold.",
+        severity: parsed.severity || (isGrounded ? 8 : 6),
+        category: parsed.category || (isGrounded ? "Document RAG" : "General"),
+        suggestion: cleanSuggestion,
+        answer: cleanSuggestion,
         citations: isGrounded ? validatedCitations : [],
+        source: primarySource,
+        ragSources: isGrounded ? ragSources : [],
         grounded: isGrounded,
         intent: "document_rag",
         retrievedCount: state.searchResults.length,

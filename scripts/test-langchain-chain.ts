@@ -92,10 +92,10 @@ async function runMultiRouteTests() {
   await delay(600);
   const t2 = Date.now();
   try {
-    console.log("[Route 2] Testing General Tech: \"Explain ReactJS.\" (with hasUploadedDocs=true)...");
+    console.log("[Route 2] Testing General Tech: \"Explain ReactJS.\" (with hasUploadedDocs=false)...");
     const res = (await pipeline.invoke({
       question: "Explain ReactJS.",
-      hasUploadedDocs: true, // User has uploaded a PDF, but this is a general question!
+      hasUploadedDocs: false, // General question without document attachment
     })) as RagResponse;
 
     const pass =
@@ -222,6 +222,39 @@ async function runMultiRouteTests() {
     });
   }
 
+  // Route 5b Test: Natural Domain Query (NO "pdf" or "document" keywords in query)
+  await delay(600);
+  const t5b = Date.now();
+  try {
+    console.log("[Route 5b] Testing Natural Domain Query: \"Explain the core tech stack and architecture of RoastMaster AI\" (no 'pdf' keyword)...");
+    const res = (await pipeline.invoke({
+      question: "Explain the core tech stack and architecture of RoastMaster AI",
+      hasUploadedDocs: true,
+    })) as RagResponse;
+
+    const pass =
+      res.intent === "document_rag" &&
+      res.retrievedCount > 0 &&
+      res.citations.length > 0 &&
+      res.grounded;
+
+    results.push({
+      step: "6b. Natural Domain Query (Zero 'pdf' keywords)",
+      success: pass,
+      durationMs: Date.now() - t5b,
+      details: pass
+        ? `Intent: "${res.intent}" | Successfully retrieved ${res.retrievedCount} chunks & cited Page ${res.citations[0]?.pageNumber} without needing 'pdf' keyword!`
+        : `Failed: intent=${res.intent}, retrieved=${res.retrievedCount}`,
+    });
+  } catch (err: any) {
+    results.push({
+      step: "6b. Natural Domain Query (Zero 'pdf' keywords)",
+      success: false,
+      durationMs: Date.now() - t5b,
+      details: `Failed: ${err.message}`,
+    });
+  }
+
   // Route 6 Test: Document Insufficient Evidence ("What is the author's home address in my PDF?")
   await delay(600);
   const t6 = Date.now();
@@ -237,7 +270,7 @@ async function runMultiRouteTests() {
       res.retrievedCount > 0 &&
       res.citations.length === 0 && // MUST NOT attach citations!
       !res.grounded &&              // MUST NOT claim to be grounded!
-      /cannot find|not mentioned|not found|insufficient|does not state|not contain|no information/i.test(res.answer);
+      /couldn't find|could not find|cannot find|not mentioned|not found|insufficient|does not state|not contain|no information/i.test(res.answer);
 
     results.push({
       step: "7. Insufficient Evidence Defense (retrievedCount > 0 but grounded === false)",
@@ -252,6 +285,40 @@ async function runMultiRouteTests() {
       step: "7. Insufficient Evidence Defense (retrievedCount > 0 but grounded === false)",
       success: false,
       durationMs: Date.now() - t6,
+      details: `Failed: ${err.message}`,
+    });
+  }
+
+  // Route 7 Test: Math Expression with Document Attached ("whats 2+2")
+  await delay(600);
+  const t7 = Date.now();
+  try {
+    console.log("[Route 7] Testing Math Query with Doc Attached: \"whats 2+2\"...");
+    const res = (await pipeline.invoke({
+      question: "whats 2+2",
+      hasUploadedDocs: true,
+    })) as RagResponse;
+
+    const pass =
+      res.intent === "general_knowledge" &&
+      res.retrievedCount === 0 &&
+      res.citations.length === 0 &&
+      !res.grounded &&
+      /4/.test(res.answer);
+
+    results.push({
+      step: "8. Math Query with Attached Docs (\"whats 2+2\")",
+      success: pass,
+      durationMs: Date.now() - t7,
+      details: pass
+        ? `Correctly routed to general_knowledge without querying PDF vectorstore! Answer: "${res.answer.slice(0, 50)}..."`
+        : `Failed: intent=${res.intent}, retrieved=${res.retrievedCount}, answer=${res.answer}`,
+    });
+  } catch (err: any) {
+    results.push({
+      step: "8. Math Query with Attached Docs (\"whats 2+2\")",
+      success: false,
+      durationMs: Date.now() - t7,
       details: `Failed: ${err.message}`,
     });
   }
