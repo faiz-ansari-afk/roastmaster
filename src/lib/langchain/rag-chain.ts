@@ -327,14 +327,15 @@ Output valid JSON only:
     outputParser,
     (raw: string): RagResponse => {
       const parsed = parseStructuredRagOutput(raw);
+      const answerText = parsed.answer || parsed.suggestion || "";
       console.log(`[LCEL: Banter Branch] Response ready | Title: "${parsed.title || "Crowd Work"}"`);
       return {
         title: parsed.title || "Crowd Work",
-        roast: parsed.roast || parsed.answer || "Welcome to the front row. Try not to get roasted too hard.",
+        roast: parsed.roast || answerText || "Welcome to the front row. Try not to get roasted too hard.",
         severity: parsed.severity || 6,
         category: parsed.category || "Crowd Work",
-        suggestion: parsed.suggestion || parsed.answer,
-        answer: parsed.answer || parsed.suggestion,
+        suggestion: answerText,
+        answer: answerText,
         citations: [],
         grounded: false,
         intent: "banter",
@@ -383,14 +384,15 @@ Output valid JSON only:
     outputParser,
     (raw: string): RagResponse => {
       const parsed = parseStructuredRagOutput(raw);
+      const answerText = parsed.answer || parsed.suggestion || "";
       console.log(`[LCEL: General Knowledge Branch] Response ready | Title: "${parsed.title || "Standup Roast"}" | Category: "${parsed.category}"`);
       return {
         title: parsed.title || "Standup Roast",
-        roast: parsed.roast || parsed.answer || "A quick reality check before your brain overheats.",
+        roast: parsed.roast || answerText || "A quick reality check before your brain overheats.",
         severity: parsed.severity || 7,
         category: parsed.category || "Logic",
-        suggestion: parsed.suggestion || parsed.answer,
-        answer: parsed.answer || parsed.suggestion,
+        suggestion: answerText,
+        answer: answerText,
         citations: [],
         grounded: false,
         intent: "general_knowledge",
@@ -431,14 +433,15 @@ Output valid JSON only:
     outputParser,
     (raw: string): RagResponse => {
       const parsed = parseStructuredRagOutput(raw);
+      const answerText = parsed.answer || parsed.suggestion || "";
       console.log(`[LCEL: Clarification Branch] Response ready | Title: "${parsed.title || "Stage Hold Up"}"`);
       return {
         title: parsed.title || "Stage Hold Up",
-        roast: parsed.roast || parsed.answer || "You're pointing at thin air expecting me to read your mind.",
+        roast: parsed.roast || answerText || "You're pointing at thin air expecting me to read your mind.",
         severity: parsed.severity || 8,
         category: parsed.category || "Clarification",
-        suggestion: parsed.suggestion || parsed.answer,
-        answer: parsed.answer || parsed.suggestion,
+        suggestion: answerText,
+        answer: answerText,
         citations: [],
         grounded: false,
         intent: "clarification",
@@ -481,14 +484,15 @@ Output valid JSON only:
     outputParser,
     (raw: string): RagResponse => {
       const parsed = parseStructuredRagOutput(raw);
+      const answerText = parsed.answer || parsed.suggestion || "";
       console.log(`[LCEL: Code Analysis Branch] Response ready | Title: "${parsed.title || "Code Review Roast"}"`);
       return {
         title: parsed.title || "Code Review Roast",
-        roast: parsed.roast || parsed.answer || "That code looks like it was written in the dark.",
+        roast: parsed.roast || answerText || "That code looks like it was written in the dark.",
         severity: parsed.severity || 8,
         category: parsed.category || "Code Review",
-        suggestion: parsed.suggestion || parsed.answer,
-        answer: parsed.answer || parsed.suggestion,
+        suggestion: answerText,
+        answer: answerText,
         citations: [],
         grounded: false,
         intent: "code_analysis",
