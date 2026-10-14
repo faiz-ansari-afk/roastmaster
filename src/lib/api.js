@@ -14,7 +14,7 @@ export function triggerSessionsUpdate() {
 /**
  * Creates a new roast session in PostgreSQL
  */
-export async function createSession(userId, initialTitle = null) {
+export async function createSession(userId, initialTitle = null, ragEngine = "manual") {
   if (!userId) return null;
   try {
     const res = await fetch("/api/sessions", {
@@ -23,6 +23,7 @@ export async function createSession(userId, initialTitle = null) {
       body: JSON.stringify({
         userId,
         title: initialTitle || "New Roast Session",
+        ragEngine: ragEngine === "langchain" ? "langchain" : "manual",
       }),
     });
     if (!res.ok) throw new Error("Failed to create session");
@@ -149,6 +150,7 @@ export async function getMessages(userId, sessionId) {
     const data = await res.json();
     const list = Array.isArray(data?.messages) ? data.messages : [];
     list.sessionTitle = data?.sessionTitle || data?.session?.title || null;
+    list.ragEngine = data?.session?.ragEngine || "manual";
     return list;
   } catch (err) {
     console.error("[API] getMessages error:", err);

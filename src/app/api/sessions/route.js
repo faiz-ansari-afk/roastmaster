@@ -33,7 +33,7 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    let { sessionId, userId, title } = body;
+    let { sessionId, userId, title, ragEngine } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -50,9 +50,10 @@ export async function POST(req) {
       sessionId,
       userId,
       title: title || "New Roast Session",
+      ragEngine: ragEngine === "langchain" ? "langchain" : "manual",
     });
 
-    return NextResponse.json({ success: true, sessionId: id }, { status: 201 });
+    return NextResponse.json({ success: true, sessionId: id, ragEngine: ragEngine === "langchain" ? "langchain" : "manual" }, { status: 201 });
   } catch (error) {
     console.error("[Sessions API POST error]:", error);
     return NextResponse.json(

@@ -24,6 +24,7 @@ export async function ensureVectorSchema(clientOrPool = null) {
 
       ALTER TABLE sessions ADD COLUMN IF NOT EXISTS embedding_model VARCHAR(64) DEFAULT '${EMBEDDING_MODEL}';
       ALTER TABLE sessions ADD COLUMN IF NOT EXISTS embedding_dimension INTEGER DEFAULT ${EMBEDDING_DIMENSION};
+      ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rag_engine VARCHAR(32) DEFAULT 'manual';
     `);
     vectorSchemaEnsured = true;
   } catch (err) {
@@ -681,7 +682,7 @@ export async function getUserSessionsFromDb(userId) {
   if (!db || !userId) return [];
   try {
     const res = await db.query(
-      `SELECT id, user_id, title, snippet, category, message_count, created_at, updated_at
+      `SELECT id, user_id, title, snippet, category, message_count, rag_engine, created_at, updated_at
        FROM sessions
        WHERE user_id = $1
        ORDER BY updated_at DESC`,
@@ -694,6 +695,7 @@ export async function getUserSessionsFromDb(userId) {
       snippet: r.snippet,
       category: r.category,
       messageCount: r.message_count,
+      ragEngine: r.rag_engine || "manual",
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     }));
@@ -703,16 +705,16 @@ export async function getUserSessionsFromDb(userId) {
   }
 }
 
-export async function createSessionInDb({ sessionId, userId, title = null }) {
+export async function createSessionInDb({ sessionId, userId, title = null, ragEngine = "manual" }) {
   const db = getDbPool();
   if (!db || !sessionId || !userId) return null;
   try {
     const res = await db.query(
-      `INSERT INTO sessions (id, user_id, title, message_count, created_at, updated_at)
-       VALUES ($1, $2, $3, 0, NOW(), NOW())
-       ON CONFLICT (id) DO UPDATE SET updated_at = NOW()
-       RETURNING id, title`,
-      [sessionId, userId, title || "New Roast Session"]
+      `INSERT INTO sessions (id, user_id, title, message_count, rag_engine, created_at, updated_at)
+       VALUES ($1, $2, $3, 0, $4, NOW(), NOW())
+       ON CONFLICT (id) DO UPDATE SET updated_at = NOW(), rag_engine = COALESCE(sessions.rag_engine, EXCLUDED.rag_engine)
+       RETURNING id, title, rag_engine`,
+      [sessionId, userId, title || "New Roast Session", ragEngine || "manual"]
     );
     return res.rows[0]?.id || sessionId;
   } catch (err) {
@@ -726,7 +728,7 @@ export async function getSessionByIdFromDb(sessionId) {
   if (!db || !sessionId) return null;
   try {
     const res = await db.query(
-      `SELECT id, user_id, title, snippet, category, message_count, created_at, updated_at
+      `SELECT id, user_id, title, snippet, category, message_count, rag_engine, created_at, updated_at
        FROM sessions
        WHERE id = $1`,
       [sessionId]
@@ -740,6 +742,7 @@ export async function getSessionByIdFromDb(sessionId) {
       snippet: r.snippet,
       category: r.category,
       messageCount: r.message_count,
+      ragEngine: r.rag_engine || "manual",
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     };

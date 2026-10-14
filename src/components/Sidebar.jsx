@@ -432,10 +432,19 @@ export default function Sidebar({
                           {formatSessionDisplayTitle(session)}
                         </p>
                       )}
-                      <div className="flex items-center gap-2 mt-1.5 text-[10px] text-[#836270]">
+                      <div className="flex items-center justify-between gap-1.5 mt-1.5 text-[10px] text-[#836270]">
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           <span>{session.messageCount || 0} roasts</span>
+                        </span>
+                        <span
+                          className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                            session.ragEngine === "langchain"
+                              ? "bg-purple-100 text-purple-700 border border-purple-200"
+                              : "bg-pink-100/70 text-pink-700 border border-pink-200/60"
+                          }`}
+                        >
+                          {session.ragEngine === "langchain" ? "🦜 LangChain" : "⚡ Manual"}
                         </span>
                       </div>
                     </div>
